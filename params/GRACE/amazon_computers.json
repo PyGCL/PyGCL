@@ -1,0 +1,15 @@
+{
+    "learning_rate": 0.01,
+    "hidden_dim": 128,
+    "proj_dim": 128,
+    "activation": "rrelu",
+    "base_model": "GCNConv",
+    "num_layers": 2,
+    "drop_edge_prob1": 0.6,
+    "drop_edge_prob2": 0.3,
+    "drop_feat_prob1": 0.2,
+    "drop_feat_prob2": 0.3,
+    "patience": 2000,
+    "num_epochs": 2000,
+    "tau": 0.2
+}

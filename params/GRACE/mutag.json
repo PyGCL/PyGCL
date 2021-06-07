@@ -1,0 +1,14 @@
+{
+    "learning_rate": 0.01,
+    "weight_decay": 5e-8,
+    "hidden_dim": 256,
+    "proj_dim": 64,
+    "batch_size": 8,
+    "activation": "hardtanh",
+    "drop_edge_prob1": 0.3,
+    "drop_edge_prob2": 0.3,
+    "drop_feat_prob1": 0,
+    "drop_feat_prob2": 0.2,
+    "tau": 0.3,
+    "num_epochs": 1800
+}
