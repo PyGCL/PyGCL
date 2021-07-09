@@ -105,12 +105,12 @@ class GCLJob(Job):
         }
         train_script = {
             TaskType.NodeTask: {
-                Mode.LocalLocal: 'train_node.py',
-                Mode.LocalGlobal: 'train_node_mvgrl.py'
+                Mode.LocalLocal: 'train_node_l2l.py',
+                Mode.LocalGlobal: 'train_node_g2l.py'
             },
             TaskType.GraphTask: {
-                Mode.LocalLocal: 'train_graph_GRACE.py',
-                Mode.LocalGlobal: 'train_graph_mvgrl.py',
+                Mode.LocalLocal: 'train_graph_l2l.py',
+                Mode.LocalGlobal: 'train_graph_g2l.py',
                 Mode.GlobalGlobal: 'train_graph_g2g.py',
             }
         }
