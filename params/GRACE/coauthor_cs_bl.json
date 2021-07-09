@@ -1,0 +1,13 @@
+{
+    "learning_rate": 0.0005,
+    "hidden_dim": 256,
+    "proj_dim": 256,
+    "activation": "rrelu",
+    "drop_edge_prob1": 0.3,
+    "drop_edge_prob2": 0.2,
+    "drop_feat_prob1": 0.3,
+    "drop_feat_prob2": 0.4,
+    "tau": 0.4,
+    "num_epochs": 1000,
+    "patience": 1000
+}
