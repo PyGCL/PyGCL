@@ -6,6 +6,8 @@ import argparse
 import pretty_errors
 from time import time_ns
 from time import perf_counter
+
+from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 
 import GCL.augmentations as A
@@ -130,18 +132,19 @@ def main():
         'num_seeds': 1000,
         'walk_length': 10,
         'mixup_threshold': 0.1,
-        'mixup_s': 200
+        'mixup_s': 200,
+        'warmup_epochs': 200
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument('--dataset', type=str, default='WikiCS')
-    parser.add_argument('--param_path', type=str, default='params/GRACE/wikics.json')
+    parser.add_argument('--param_path', type=str, default='params/GRACE/wikics_barlow_twins.json')
     parser.add_argument('--aug1', type=str, default='ORI')
     parser.add_argument('--aug2', type=str, default='ORI')
     parser.add_argument('--tensorboard', nargs='?')
     parser.add_argument('--loss', type=str,
                         choices=['nt_xent', 'jsd', 'triplet', 'mixup', 'subsampling', 'batch', 'barlow_twins', 'vicreg'],
-                        default='vicreg')
+                        default='barlow_twins')
     parser.add_argument('--sample_size', type=int, default=2000)
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
@@ -219,6 +222,10 @@ def main():
         model.parameters(),
         lr=param['learning_rate'],
         weight_decay=param['weight_decay'])
+    scheduler = LinearWarmupCosineAnnealingLR(
+        optimizer=optimizer,
+        warmup_epochs=param['warmup_epochs'],
+        max_epochs=param['num_epochs'])
 
     best_loss = 1e3
     wait_window = 0
@@ -229,9 +236,11 @@ def main():
         tic = perf_counter()
         loss = train(model, optimizer, data, epoch, args, param, f'intermediate/{epoch}_{args.dataset}_ring.pkl', loss=args.loss)
         toc = perf_counter()
+        if args.loss == 'barlow_twins':
+            scheduler.step()
         # else:
             # loss = train(model, optimizer, data)
-        print(f'(T) | Epoch={epoch:03d}, loss={loss:.8f}, time={toc - tic:.4f}')
+        print(f'\r(T) | Epoch={epoch:03d}, loss={loss:.8f}, time={toc - tic:.4f}', end='')
 
         if loss < best_loss:
             best_loss = loss
@@ -255,9 +264,10 @@ def main():
             writer.flush()
 
         if wait_window >= param['patience']:
+            print()
             break
 
-    print("=== Final ===")
+    print('=== Final ===')
     print(f'(T) | Best epoch={best_epoch}, best loss={best_loss}')
     model.load_state_dict(torch.load(model_save_path))
 
