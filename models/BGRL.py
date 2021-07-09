@@ -10,7 +10,7 @@ import GCL.augmentations as A
 class Normalize(nn.Module):
     def __init__(self, dim=None, norm='batch'):
         super().__init__()
-        if dim is None:
+        if dim is None or norm == 'none':
             self.norm = lambda x: x
         if norm == 'batch':
             self.norm = nn.BatchNorm1d(dim)

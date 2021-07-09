@@ -108,12 +108,15 @@ def main():
         'sp_eps': 0.001,
         'num_seeds': 1000,
         'walk_length': 10,
-        'dropout': 0.2
+        'dropout': 0.2,
+        'encoder_norm': 'batch',
+        'projector_norm': 'batch',
+        'predictor_norm': 'batch'
     }
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cuda:1')
-    parser.add_argument('--dataset', type=str, default='Amazon-Computers')
-    parser.add_argument('--param_path', type=str, default='params/GRACE/amazon_computers.json')
+    parser.add_argument('--device', type=str, default='cuda:0')
+    parser.add_argument('--dataset', type=str, default='Coauthor-CS')
+    parser.add_argument('--param_path', type=str, default='params/GRACE/coauthor_cs.json')
     parser.add_argument('--aug1', type=str, default='FM+ER')
     parser.add_argument('--aug2', type=str, default='FM+ER')
     parser.add_argument('--tensorboard', nargs='?')
@@ -179,10 +182,13 @@ def main():
     model = BGRL(encoder=Encoder(data.num_features, param['hidden_dim'],
                                  activation=get_activation(param['activation']),
                                  num_layers=param['num_layers'],
-                                 dropout=param['dropout']),
+                                 dropout=param['dropout'],
+                                 encoder_norm=param['encoder_norm'],
+                                 projector_norm=param['projector_norm']),
                  augmentation=(aug1, aug2),
                  hidden_dim=param['hidden_dim'],
-                 dropout=param['dropout']).to(device)
+                 dropout=param['dropout'],
+                 predictor_norm=param['predictor_norm']).to(device)
     optimizer = Adam(
         model.parameters(),
         lr=param['learning_rate'],
