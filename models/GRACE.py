@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 from typing import Callable, Optional, Tuple, List
 from GCL.loss import nt_xent_loss, _similarity, jsd_loss, triplet_loss, candidate_mask_mixing_loss, subsampling_nt_xent_loss
+from GCL.losses import bt_loss, vicreg_loss
 import GCL.augmentations as A
 
 from utils import set_differ
@@ -168,6 +169,30 @@ class GRACE(torch.nn.Module):
 
         l1 = nt_xent_loss(h1, h2, batch_size, self.tau)
         l2 = nt_xent_loss(h2, h1, batch_size, self.tau)
+
+        ret = (l1 + l2) * 0.5
+        ret = ret.mean() if mean else ret.sum()
+
+        return ret
+
+    def bt_loss(self, z1: torch.Tensor, z2: torch.Tensor, mean: bool = True):
+        h1 = self.projection(z1)
+        h2 = self.projection(z2)
+
+        l1 = bt_loss(h1, h2)
+        l2 = bt_loss(h2, h1)
+
+        ret = (l1 + l2) * 0.5
+        ret = ret.mean() if mean else ret.sum()
+
+        return ret
+
+    def vicreg_loss(self, z1: torch.Tensor, z2: torch.Tensor, mean: bool = True):
+        h1 = self.projection(z1)
+        h2 = self.projection(z2)
+
+        l1 = vicreg_loss(h1, h2)
+        l2 = vicreg_loss(h2, h1)
 
         ret = (l1 + l2) * 0.5
         ret = ret.mean() if mean else ret.sum()

@@ -79,6 +79,10 @@ def train(model, optimizer, data, epoch, args, param, dump_embed_path=None, loss
             loss = model.jsd_loss(z1, z2)
         elif loss == 'triplet':
             loss = model.triplet_loss(z1, z2)
+        elif loss == 'barlow_twins':
+            loss = model.bt_loss(z1, z2)
+        elif loss == 'vicreg':
+            loss = model.vicreg_loss(z1, z2)
         elif loss == 'mixup':
             loss = model.hard_mixing_loss(z1, z2, threshold=param['mixup_threshold'], s=param['mixup_s'])
         else:
@@ -135,7 +139,9 @@ def main():
     parser.add_argument('--aug1', type=str, default='ORI')
     parser.add_argument('--aug2', type=str, default='ORI')
     parser.add_argument('--tensorboard', nargs='?')
-    parser.add_argument('--loss', type=str, choices=['nt_xent', 'jsd', 'triplet', 'mixup', 'subsampling', 'batch'], default='nt_xent')
+    parser.add_argument('--loss', type=str,
+                        choices=['nt_xent', 'jsd', 'triplet', 'mixup', 'subsampling', 'batch', 'barlow_twins', 'vicreg'],
+                        default='vicreg')
     parser.add_argument('--sample_size', type=int, default=2000)
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
