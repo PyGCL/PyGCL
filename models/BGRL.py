@@ -1,9 +1,24 @@
 import copy
-from typing import Tuple
 import torch
+from torch import nn
+from typing import Tuple
 from torch_geometric.nn import global_add_pool
 
 import GCL.augmentations as A
+
+
+class Normalize(nn.Module):
+    def __init__(self, dim=None, norm='batch'):
+        super().__init__()
+        if dim is None:
+            self.norm = lambda x: x
+        if norm == 'batch':
+            self.norm = nn.BatchNorm1d(dim)
+        elif norm == 'layer':
+            self.norm = nn.LayerNorm(dim)
+
+    def forward(self, x):
+        return self.norm(x)
 
 
 class BGRL(torch.nn.Module):
@@ -11,7 +26,8 @@ class BGRL(torch.nn.Module):
                  encoder: torch.nn.Module,
                  augmentation: Tuple[A.GraphAug, A.GraphAug],
                  hidden_dim: int,
-                 dropout: float = 0.2):
+                 dropout: float = 0.2,
+                 predictor_norm='batch'):
         super(BGRL, self).__init__()
         self.online_encoder = encoder
         self.target_encoder = None
@@ -19,7 +35,7 @@ class BGRL(torch.nn.Module):
 
         self.predictor = torch.nn.Sequential(
             torch.nn.Linear(hidden_dim, hidden_dim),
-            torch.nn.BatchNorm1d(hidden_dim),
+            Normalize(hidden_dim, norm=predictor_norm),
             torch.nn.PReLU(),
             torch.nn.Dropout(dropout))
 
