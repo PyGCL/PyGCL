@@ -115,8 +115,8 @@ def main():
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='Coauthor-CS')
-    parser.add_argument('--param_path', type=str, default='params/GRACE/coauthor_cs.json')
+    parser.add_argument('--dataset', type=str, default='Coauthor-Phy')
+    parser.add_argument('--param_path', type=str, default='params/GRACE/coauthor_phy.json')
     parser.add_argument('--aug1', type=str, default='FM+ER')
     parser.add_argument('--aug2', type=str, default='FM+ER')
     parser.add_argument('--tensorboard', nargs='?')

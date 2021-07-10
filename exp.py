@@ -542,7 +542,7 @@ def bl_batch_norm_ablation():
             for projector_norm in norms:
                 for predictor_norm in norms:
                     job = GCLJob(
-                        'Coauthor-CS',
+                        'Coauthor-Phy',
                         Mode.LocalLocal, Objective.BL,
                         topo_aug='FM', feat_aug='ER',
                         repeat_id=i, exp_name='bl-batch-norm-ablation',
