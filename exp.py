@@ -542,7 +542,18 @@ def bl_batch_norm_ablation():
             for projector_norm in norms:
                 for predictor_norm in norms:
                     job = GCLJob(
-                        'Coauthor-Phy',
+                        'WikiCS',
+                        Mode.LocalLocal, Objective.BL,
+                        topo_aug='FM', feat_aug='ER',
+                        repeat_id=i, exp_name='bl-batch-norm-ablation',
+                        encoder_norm=encoder_norm,
+                        projector_norm=projector_norm,
+                        predictor_norm=predictor_norm
+                    )
+                    jobs.append(job)
+
+                    job = GCLJob(
+                        'Amazon-Computers',
                         Mode.LocalLocal, Objective.BL,
                         topo_aug='FM', feat_aug='ER',
                         repeat_id=i, exp_name='bl-batch-norm-ablation',
