@@ -88,13 +88,12 @@ def nt_xent_loss_en(anchor: torch.FloatTensor,
     sim = f(_similarity(anchor, samples))  # anchor x sample
     assert sim.size() == pos_mask.size()  # sanity check
 
+    neg_mask = 1 - pos_mask
     pos = sim * pos_mask
-    pos = pos.sum(dim=1)
-    neg = sim.sum(dim=1) - pos
+    neg = (sim * neg_mask).sum(dim=1)
 
     loss = pos / (pos + neg)
     loss = -torch.log(loss)
-    # loss = loss / pos_mask.sum(dim=1)
 
     return loss.mean()
 
