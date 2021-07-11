@@ -154,7 +154,7 @@ class MVGRL(torch.nn.Module):
                                   z3: torch.FloatTensor, z4: torch.FloatTensor,
                                   temperature: float
                                   ):
-        num_nodes = z1.size()[0]
+        num_nodes = z1.size(0)
         device = z1.device
         pos_mask_1 = torch.ones((1, num_nodes), dtype=torch.float32, device=device)
         pos_mask_0 = torch.zeros((1, num_nodes), dtype=torch.float32, device=device)

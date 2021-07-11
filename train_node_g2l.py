@@ -80,7 +80,7 @@ def train(model: MVGRL, optimizer, dataloader, device, batch_size: int):
     return epoch_loss
 
 
-# @torch.no_grad()
+@torch.no_grad()
 def test(model: MVGRL, dataloader, device, seed):
     model.eval()
 
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     parser.add_argument('--param_path', type=str, default='None')
     parser.add_argument('--aug1', type=str, default='FM+ER')
     parser.add_argument('--aug2', type=str, default='FM+ER')
-    parser.add_argument('--loss', type=str, default='jsd', choices=['nt_xent', 'jsd', 'triplet'])
+    parser.add_argument('--loss', type=str, default='nt_xent', choices=['nt_xent', 'jsd', 'triplet'])
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
     for k, v in default_param.items():

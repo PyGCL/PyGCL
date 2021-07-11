@@ -28,10 +28,32 @@ def covariance_loss(z1, z2):
 
 
 def vicreg_loss(z1: torch.Tensor, z2: torch.Tensor,
-                sim_loss_weight=25.0, var_loss_weight=25.0, cov_loss_weight=1.0):
+                sim_weight, var_weight, cov_weight):
     sim_loss = invariance_loss(z1, z2)
     var_loss = variance_loss(z1, z2)
     cov_loss = covariance_loss(z1, z2)
 
-    loss = sim_loss_weight * sim_loss + var_loss_weight * var_loss + cov_loss_weight * cov_loss
+    loss = sim_weight * sim_loss + var_weight * var_loss + cov_weight * cov_loss
     return loss
+
+
+class VICRegLoss(torch.nn.Module):
+    def __init__(self, projection,
+                 sim_weight=25.0, var_weight=25.0, cov_weight=1.0):
+        super(VICRegLoss, self).__init__()
+        self.projection = projection
+        self.sim_weight = sim_weight
+        self.var_weight = var_weight
+        self.cov_weight = cov_weight
+
+    def forward(self, z1: torch.Tensor, z2: torch.Tensor, mean: bool = True):
+        h1 = self.projection(z1)
+        h2 = self.projection(z2)
+
+        l1 = vicreg_loss(h1, h2, self.sim_weight, self.var_weight, self.cov_weight)
+        l2 = vicreg_loss(h2, h1, self.sim_weight, self.var_weight, self.cov_weight)
+
+        ret = (l1 + l2) * 0.5
+        ret = ret.mean() if mean else ret.sum()
+
+        return ret

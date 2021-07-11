@@ -175,29 +175,7 @@ class GRACE(torch.nn.Module):
 
         return ret
 
-    def bt_loss(self, z1: torch.Tensor, z2: torch.Tensor, mean: bool = True):
-        h1 = self.projection(z1)
-        h2 = self.projection(z2)
 
-        l1 = bt_loss(h1, h2)
-        l2 = bt_loss(h2, h1)
-
-        ret = (l1 + l2) * 0.5
-        ret = ret.mean() if mean else ret.sum()
-
-        return ret
-
-    def vicreg_loss(self, z1: torch.Tensor, z2: torch.Tensor, mean: bool = True):
-        h1 = self.projection(z1)
-        h2 = self.projection(z2)
-
-        l1 = vicreg_loss(h1, h2)
-        l2 = vicreg_loss(h2, h1)
-
-        ret = (l1 + l2) * 0.5
-        ret = ret.mean() if mean else ret.sum()
-
-        return ret
 
     def jsd_loss(self, z1: torch.FloatTensor, z2: torch.FloatTensor):
         h1 = self.projection(z1)
@@ -224,14 +202,3 @@ class GRACE(torch.nn.Module):
 
         return ((l1 + l2) * 0.5).mean()
 
-    def hard_mixing_loss(self,
-                         z1: torch.FloatTensor, z2: torch.FloatTensor,
-                         threshold: float = 0.1, s: int = 80, mixup: float = 0.2):
-        h1 = self.projection(z1)
-        h2 = self.projection(z2)
-        h = (h1 + h2) * 0.5
-        sim = _similarity(h, h)
-        sim.fill_diagonal_(0.0)
-        num_candidates = int(z1.size(0) * threshold)
-        candidate_mask = torch.topk(sim, dim=1, k=num_candidates).indices
-        return candidate_mask_mixing_loss(self, z1, z2, candidate_mask=candidate_mask, s=s, mixup=mixup)
