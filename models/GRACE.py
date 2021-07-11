@@ -187,12 +187,14 @@ class GRACE(torch.nn.Module):
 
         return ret
 
-    def vicreg_loss(self, z1: torch.Tensor, z2: torch.Tensor, mean: bool = True):
+    def vicreg_loss(self, z1: torch.Tensor, z2: torch.Tensor,
+                    sim_loss_weight: float, var_loss_weight: float, cov_loss_weight: float,
+                    mean: bool = True):
         h1 = self.projection(z1)
         h2 = self.projection(z2)
 
-        l1 = vicreg_loss(h1, h2)
-        l2 = vicreg_loss(h2, h1)
+        l1 = vicreg_loss(h1, h2, sim_loss_weight, var_loss_weight, cov_loss_weight)
+        l2 = vicreg_loss(h2, h1, sim_loss_weight, var_loss_weight, cov_loss_weight)
 
         ret = (l1 + l2) * 0.5
         ret = ret.mean() if mean else ret.sum()

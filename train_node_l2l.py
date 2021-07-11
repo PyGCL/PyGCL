@@ -84,7 +84,10 @@ def train(model, optimizer, data, epoch, args, param, dump_embed_path=None, loss
         elif loss == 'barlow_twins':
             loss = model.bt_loss(z1, z2)
         elif loss == 'vicreg':
-            loss = model.vicreg_loss(z1, z2)
+            loss = model.vicreg_loss(z1, z2,
+                                     sim_loss_weight=param['vicreg_sim_loss_weight'],
+                                     var_loss_weight=param['vicreg_var_loss_weight'],
+                                     cov_loss_weight=param['vicreg_cov_loss_weight'])
         elif loss == 'mixup':
             loss = model.hard_mixing_loss(z1, z2, threshold=param['mixup_threshold'], s=param['mixup_s'])
         else:
@@ -133,7 +136,10 @@ def main():
         'walk_length': 10,
         'mixup_threshold': 0.1,
         'mixup_s': 200,
-        'warmup_epochs': 200
+        'warmup_epochs': 200,
+        'vicreg_sim_loss_weight': 25.0,
+        'vicreg_var_loss_weight': 25.0,
+        'vicreg_cov_loss_weight': 1.0,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
@@ -144,7 +150,7 @@ def main():
     parser.add_argument('--tensorboard', nargs='?')
     parser.add_argument('--loss', type=str,
                         choices=['nt_xent', 'jsd', 'triplet', 'mixup', 'subsampling', 'batch', 'barlow_twins', 'vicreg'],
-                        default='barlow_twins')
+                        default='vicreg')
     parser.add_argument('--sample_size', type=int, default=2000)
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
