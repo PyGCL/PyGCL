@@ -1,8 +1,8 @@
-from GCL.augmentations.GraphAug import Graph, GraphAug
-from GCL.augmentations.functional import compute_markov_diffusion
+from GCL.augmentors.Augmentor import Graph, Augmentor
+from GCL.augmentors.functional import compute_markov_diffusion
 
 
-class MarkovDiffusion(GraphAug):
+class MarkovDiffusion(Augmentor):
     def __init__(self, alpha: float = 0.05, order: int = 16, sp_eps: float = 1e-4, use_cache: bool = True):
         super(MarkovDiffusion, self).__init__()
         self.alpha = alpha
@@ -14,7 +14,7 @@ class MarkovDiffusion(GraphAug):
     def augment(self, g: Graph) -> Graph:
         if self._cache is not None and self.use_cache:
             return self._cache
-        x, edge_index, edge_weights = g.unapply()
+        x, edge_index, edge_weights = g.unfold()
         edge_index, edge_weights = compute_markov_diffusion(
             edge_index, edge_weights,
             alpha=self.alpha, degree=self.order,

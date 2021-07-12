@@ -6,7 +6,7 @@ import argparse
 import pretty_errors
 from time import time_ns
 
-import GCL.augmentations as A
+import GCL.augmentors as A
 import GCL.utils.simple_param as SP
 from GCL.eval import SVM_classification
 
@@ -162,37 +162,6 @@ def main():
 
     print(param)
     print(args.__dict__)
-
-    def get_aug(aug_name: str, view_id: int):
-        if aug_name == 'ER':
-            return A.EdgeRemoving(pe=param[f'drop_edge_prob{view_id}'])
-        if aug_name == 'EA':
-            return A.EdgeAdding(pe=param[f'add_edge_prob{view_id}'])
-        if aug_name == 'ND':
-            return A.NodeDropping(pn=param[f'drop_node_prob{view_id}'])
-        if aug_name == 'RWS':
-            return A.RWSampling(num_seeds=param['num_seeds'], walk_length=param['walk_length'])
-        if aug_name == 'PPR':
-            return A.PPRDiffusion(eps=param['sp_eps'], use_cache=False)
-        if aug_name == 'MKD':
-            return A.MarkovDiffusion(sp_eps=param['sp_eps'], use_cache=False)
-        if aug_name == 'ORI':
-            return A.Identity()
-        if aug_name == 'FM':
-            return A.FeatureMasking(pf=param[f'drop_feat_prob{view_id}'])
-        if aug_name == 'FD':
-            return A.FeatureDropout(pf=param[f'drop_feat_prob{view_id}'])
-
-        raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
-
-    def compile_aug_schema(schema: str, view_id: int) -> A.GraphAug:
-        augs = schema.split('+')
-        augs = [get_aug(x, view_id) for x in augs]
-
-        ret = augs[0]
-        for a in augs[1:]:
-            ret = ret >> a
-        return ret
 
     aug1 = compile_aug_schema(args.aug1, view_id=1)
     aug2 = compile_aug_schema(args.aug2, view_id=2)

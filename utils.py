@@ -1,11 +1,11 @@
 import torch
 import os.path as osp
+import GCL.augmentors as A
 import torch_geometric.transforms as T
 
+from torch_scatter import scatter_add
 from ogb.nodeproppred import PygNodePropPredDataset
 from torch_geometric.datasets import Coauthor, WikiCS, Amazon, CitationFull, Planetoid, TUDataset
-
-from torch_scatter import scatter_add
 
 
 def load_node_dataset(path, name, to_sparse_tensor=True, to_dense=False):
@@ -71,6 +71,39 @@ def get_activation(name: str):
     return activations[name]
 
 
+def get_augmentor(aug_name: str, view_id: int, param: dict):
+    if aug_name == 'ER':
+        return A.EdgeRemoving(pe=param[f'drop_edge_prob{view_id}'])
+    if aug_name == 'EA':
+        return A.EdgeAdding(pe=param[f'add_edge_prob{view_id}'])
+    if aug_name == 'ND':
+        return A.NodeDropping(pn=param[f'drop_node_prob{view_id}'])
+    if aug_name == 'RWS':
+        return A.RWSampling(num_seeds=param['num_seeds'], walk_length=param['walk_length'])
+    if aug_name == 'PPR':
+        return A.PPRDiffusion(eps=param['sp_eps'], use_cache=False)
+    if aug_name == 'MKD':
+        return A.MarkovDiffusion(sp_eps=param['sp_eps'], use_cache=False)
+    if aug_name == 'ORI':
+        return A.Identity()
+    if aug_name == 'FM':
+        return A.FeatureMasking(pf=param[f'drop_feat_prob{view_id}'])
+    if aug_name == 'FD':
+        return A.FeatureDropout(pf=param[f'drop_feat_prob{view_id}'])
+
+    raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
+
+
+def get_compositional_augmentor(schema: str, view_id: int, param: dict) -> A.Augmentor:
+    augs = schema.split('+')
+    augs = [get_augmentor(x, view_id, param) for x in augs]
+
+    aug = augs[0]
+    for a in augs[1:]:
+        aug = aug >> a
+    return aug
+
+
 def set_differ(s1, s2):
     combined = torch.cat([s1, s2])
     uniques, counts = combined.unique(return_counts=True, dim=0)
@@ -87,4 +120,3 @@ def set_intersect(s1, s2):
 
 def indices_to_mask(indices: torch.LongTensor, num_nodes: int) -> torch.Tensor:
     return scatter_add(torch.ones_like(indices, dtype=torch.float32), indices, dim=1, dim_size=num_nodes)
-

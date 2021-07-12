@@ -13,7 +13,7 @@ from sklearn.exceptions import ConvergenceWarning
 
 from torch_geometric.data import DataLoader
 
-import GCL.augmentations as A
+import GCL.augmentors as A
 import GCL.utils.simple_param as SP
 
 from torch import nn
@@ -191,7 +191,7 @@ def main():
 
         raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
 
-    def compile_aug_schema(schema: str, view_id: int) -> A.GraphAug:
+    def compile_aug_schema(schema: str, view_id: int) -> A.Augmentor:
         augs = schema.split('+')
         augs = [get_aug(x, view_id) for x in augs]
 

@@ -1,7 +1,7 @@
-from GCL.augmentations.GraphAug import Graph, GraphAug
+from GCL.augmentors.Augmentor import Graph, Augmentor
 
 
-class Identity(GraphAug):
+class Identity(Augmentor):
     def __init__(self):
         super(Identity, self).__init__()
 

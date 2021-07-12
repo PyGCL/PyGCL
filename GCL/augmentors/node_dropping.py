@@ -2,17 +2,17 @@ import torch
 from torch.distributions.bernoulli import Bernoulli
 from torch_geometric.utils import subgraph
 
-from GCL.augmentations.GraphAug import Graph, GraphAug
-from GCL.augmentations.functional import drop_node
+from GCL.augmentors.Augmentor import Graph, Augmentor
+from GCL.augmentors.functional import drop_node
 
 
-class NodeDropping(GraphAug):
+class NodeDropping(Augmentor):
     def __init__(self, pn: float):
         super(NodeDropping, self).__init__()
         self.pn = pn
 
     def augment(self, g: Graph) -> Graph:
-        x, edge_index, edge_weights = g.unapply()
+        x, edge_index, edge_weights = g.unfold()
 
         edge_index, edge_weights = drop_node(edge_index, edge_weights, keep_prob=1. - self.pn)
 

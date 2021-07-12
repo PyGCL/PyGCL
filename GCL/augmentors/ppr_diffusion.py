@@ -1,8 +1,8 @@
-from GCL.augmentations.GraphAug import Graph, GraphAug
-from GCL.augmentations.functional import compute_ppr
+from GCL.augmentors.Augmentor import Graph, Augmentor
+from GCL.augmentors.functional import compute_ppr
 
 
-class PPRDiffusion(GraphAug):
+class PPRDiffusion(Augmentor):
     def __init__(self, alpha: float = 0.2, eps: float = 1e-4, use_cache: bool = True):
         super(PPRDiffusion, self).__init__()
         self.alpha = alpha
@@ -13,7 +13,7 @@ class PPRDiffusion(GraphAug):
     def augment(self, g: Graph) -> Graph:
         if self._cache is not None and self.use_cache:
             return self._cache
-        x, edge_index, edge_weights = g.unapply()
+        x, edge_index, edge_weights = g.unfold()
         edge_index, edge_weights = compute_ppr(
             edge_index, edge_weights,
             alpha=self.alpha, eps=self.eps, ignore_edge_attr=False

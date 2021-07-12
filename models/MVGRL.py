@@ -2,7 +2,7 @@ from typing import Callable, Tuple, Optional
 import torch
 
 from GCL.loss import jsd_loss, triplet_loss, nt_xent_loss_with_mask, multiple_triplet_loss
-from GCL.augmentations import GraphAug
+from GCL.augmentors import Augmentor
 from torch_geometric.utils import subgraph
 from torch_scatter import scatter
 
@@ -10,7 +10,7 @@ from torch_scatter import scatter
 class MVGRL(torch.nn.Module):
     def __init__(self, gnn1: torch.nn.Module, gnn2: torch.nn.Module,
                  mlp1: torch.nn.Module, mlp2: torch.nn.Module,
-                 augmentations: Tuple[GraphAug, GraphAug],
+                 augmentations: Tuple[Augmentor, Augmentor],
                  sample_size: int,
                  discriminator: Callable[[torch.Tensor, torch.Tensor], torch.Tensor]=lambda x, y: x @ y.t()):
         super(MVGRL, self).__init__()

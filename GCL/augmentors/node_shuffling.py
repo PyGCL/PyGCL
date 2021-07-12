@@ -1,13 +1,13 @@
-from GCL.augmentations.GraphAug import Graph, GraphAug
-from GCL.augmentations.functional import permute
+from GCL.augmentors.Augmentor import Graph, Augmentor
+from GCL.augmentors.functional import permute
 
 
-class NodeShuffling(GraphAug):
+class NodeShuffling(Augmentor):
     def __init__(self):
         super(NodeShuffling, self).__init__()
 
     def augment(self, g: Graph) -> Graph:
-        x, edge_index, edge_weights = g.unapply()
+        x, edge_index, edge_weights = g.unfold()
 
         x = permute(x)
 

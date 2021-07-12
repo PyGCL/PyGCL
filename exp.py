@@ -498,7 +498,7 @@ def bilevel_aug_feat_graph():
                             dataset,
                             Mode.LocalLocal, Objective.InfoNCE,
                             topo_aug, feat_aug,
-                            i, exp_name='bi-level-augmentations'
+                            i, exp_name='bi-level-augmentors'
                         )
                     )
 
@@ -524,7 +524,7 @@ def compositional_random_augmentations():
                             dataset,
                             Mode.LocalLocal, Objective.InfoNCE,
                             base_aug, stoc_aug,
-                            i, exp_name='compositional-random-augmentations'
+                            i, exp_name='compositional-random-augmentors'
                         )
                     )
 

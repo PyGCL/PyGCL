@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from typing import Callable, Optional, Tuple, List
 from GCL.loss import nt_xent_loss, _similarity, jsd_loss, triplet_loss, candidate_mask_mixing_loss, subsampling_nt_xent_loss
 from GCL.losses import bt_loss, vicreg_loss
-import GCL.augmentations as A
+import GCL.augmentors as A
 
 from utils import set_differ
 
@@ -114,7 +114,7 @@ def hard_mixing_loss(self, z1: torch.Tensor, z2: torch.Tensor, threshold=0.1, s=
 
 class GRACE(torch.nn.Module):
     def __init__(self, encoder: torch.nn.Module,
-                 augmentation: Tuple[A.GraphAug, A.GraphAug],
+                 augmentation: Tuple[A.Augmentor, A.Augmentor],
                  hidden_dim: int, proj_dim: int, tau: float = 0.5):
         super(GRACE, self).__init__()
         self.encoder = encoder

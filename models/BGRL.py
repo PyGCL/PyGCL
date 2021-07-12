@@ -4,7 +4,7 @@ from torch import nn
 from typing import Tuple
 from torch_geometric.nn import global_add_pool
 
-import GCL.augmentations as A
+import GCL.augmentors as A
 
 
 class Normalize(nn.Module):
@@ -24,7 +24,7 @@ class Normalize(nn.Module):
 class BGRL(torch.nn.Module):
     def __init__(self,
                  encoder: torch.nn.Module,
-                 augmentation: Tuple[A.GraphAug, A.GraphAug],
+                 augmentation: Tuple[A.Augmentor, A.Augmentor],
                  hidden_dim: int,
                  dropout: float = 0.2,
                  predictor_norm='batch'):
@@ -73,7 +73,7 @@ class BGRL(torch.nn.Module):
 class BGRL_G2G(torch.nn.Module):
     def __init__(self,
                  encoder: torch.nn.Module,
-                 augmentation: Tuple[A.GraphAug, A.GraphAug],
+                 augmentation: Tuple[A.Augmentor, A.Augmentor],
                  hidden_dim: int,
                  dropout: float = 0.2):
         super(BGRL_G2G, self).__init__()
@@ -127,7 +127,7 @@ class BGRL_G2G(torch.nn.Module):
 class BGRL_G2L(torch.nn.Module):
     def __init__(self,
                  encoder: torch.nn.Module,
-                 augmentation: Tuple[A.GraphAug, A.GraphAug],
+                 augmentation: Tuple[A.Augmentor, A.Augmentor],
                  hidden_dim: int,
                  dropout: float = 0.2):
         super(BGRL_G2L, self).__init__()
