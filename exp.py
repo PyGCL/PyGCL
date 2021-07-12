@@ -15,6 +15,8 @@ class Objective(Enum):
     Triplet = 'TM'
     Mixup = 'Mixup'
     BL = 'BL'
+    BarlowTwins = 'BarlowTwins'
+    VICReg = 'VICReg'
 
 
 class Mode(Enum):
@@ -56,6 +58,8 @@ def resolve_param_path(dataset: str, mode: Mode, objective: Objective):
         Objective.JSD: '_jsd',
         Objective.Triplet: '_triplet',
         Objective.BL: '_bl',
+        Objective.BarlowTwins: '_bt',
+        Objective.VICReg: '_vicreg'
     }
     param_dir = mode_dir[mode]
     param_name = dataset_param[dataset]
@@ -104,6 +108,8 @@ class GCLJob(Job):
             Objective.Mixup: 'mixup',
             Objective.JSD: 'jsd',
             Objective.Triplet: 'triplet',
+            Objective.BarlowTwins: 'barlow_twins',
+            Objective.VICReg: 'vicreg',
         }
         train_script = {
             TaskType.NodeTask: {
@@ -562,6 +568,27 @@ def bl_batch_norm_ablation():
                         predictor_norm=predictor_norm
                     )
                     jobs.append(job)
+
+    return jobs
+
+
+@register_runner
+def node_bt_vicreg():
+    jobs = []
+
+    datasets = ['WikiCS', 'Amazon-Computers', 'Coauthor-CS', 'Coauthor-Phy']
+    objectives = [Objective.BarlowTwins, Objective.VICReg]
+
+    for i in range(10):
+        for dataset in datasets:
+            for objective in objectives:
+                job = GCLJob(
+                    dataset,
+                    Mode.LocalLocal, objective,
+                    'FM', 'ER',
+                    i, exp_name='node-bt-vicreg'
+                )
+                jobs.append(job)
 
     return jobs
 
