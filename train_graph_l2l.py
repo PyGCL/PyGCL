@@ -1,8 +1,9 @@
-import nni
-import torch
 import argparse
 import pretty_errors
 from time import time_ns
+
+import nni
+import torch
 
 import GCL.augmentations as A
 import GCL.utils.simple_param as SP
@@ -13,6 +14,8 @@ from torch.optim import Adam
 from GCL.utils import seed_everything
 from torch_geometric.nn import global_add_pool, GINConv
 from torch_geometric.data import DataLoader
+
+from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
 
 from utils import load_graph_dataset, get_activation
 from models.GRACE import GRACE
@@ -47,9 +50,10 @@ class Encoder(nn.Module):
         return z
 
 
-def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args):
+def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args, param):
     model.train()
     tot_loss = 0.0
+    tot_graphs = 0
     for data in loader:
         data = data.to(device)
         if data.x is None:
@@ -63,13 +67,22 @@ def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args):
             loss = model.jsd_loss(z1, z2)
         elif args.loss == 'triplet':
             loss = model.triplet_loss(z1, z2)
+        elif args.loss == 'barlow_twins':
+            loss = model.bt_loss(z1, z2)
+        elif args.loss == 'vicreg':
+            loss = model.vicreg_loss(z1, z2,
+                                     sim_loss_weight=param['vicreg_sim_loss_weight'],
+                                     var_loss_weight=param['vicreg_var_loss_weight'],
+                                     cov_loss_weight=param['vicreg_cov_loss_weight'])
         else:
             raise NotImplementedError(f'Unknown loss type: {args.loss}')
 
         loss.backward()
         optimizer.step()
-        tot_loss += loss.item()
-    return tot_loss
+        batch_size = data.batch.max().item() + 1
+        tot_loss += loss.item() * batch_size
+        tot_graphs += batch_size
+    return tot_loss / tot_graphs
 
 
 def test(model, loader, device, seed):
@@ -114,21 +127,25 @@ def main():
         'drop_node_prob2': 0.1,
         'drop_feat_prob1': 0.3,
         'drop_feat_prob2': 0.2,
-        'patience': 10000,
-        'num_epochs': 2,
+        'patience': 100,
+        'num_epochs': 200,
         'batch_size': 10,
         'tau': 0.8,
         'sp_eps': 0.001,
         'num_seeds': 1000,
-        'walk_length': 10
+        'walk_length': 10,
+        'warmup_epochs': 200,
+        'vicreg_sim_loss_weight': 25.0,
+        'vicreg_var_loss_weight': 25.0,
+        'vicreg_cov_loss_weight': 1.0,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='PROTEINS')
-    parser.add_argument('--param_path', type=str, default='params/GRACE/imdb_multi.json')
+    parser.add_argument('--dataset', type=str, default='REDDIT-BINARY')
+    parser.add_argument('--param_path', type=str, default='params/GRACE/reddit_binary.json')
     parser.add_argument('--aug1', type=str, default='FM+ER')
     parser.add_argument('--aug2', type=str, default='FM+ER')
-    parser.add_argument('--loss', type=str, default='nt_xent', choices=['nt_xent', 'jsd', 'triplet', 'mixup'])
+    parser.add_argument('--loss', type=str, default='nt_xent', choices=['nt_xent', 'jsd', 'triplet', 'mixup', 'barlow_twins', 'vicreg'])
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
     for k, v in default_param.items():
@@ -204,16 +221,19 @@ def main():
         model.parameters(),
         lr=param['learning_rate'],
         weight_decay=param['weight_decay'])
+    scheduler = LinearWarmupCosineAnnealingLR(
+        optimizer=optimizer,
+        warmup_epochs=param['warmup_epochs'],
+        max_epochs=param['num_epochs'])
 
-    best_loss = 1e10
+    best_loss = 1e30
     wait_window = 0
 
     model_save_path = f'intermediate/{time_ns()}-{args.aug1}-{args.aug2}.pkl'
     for epoch in range(param['num_epochs']):
-        # if epoch % 20 == 0:
-        loss = train(model, optimizer, train_loader, device=device, args=args)
-        # else:
-            # loss = train(model, optimizer, data)
+        loss = train(model, optimizer, train_loader, device=device, args=args, param=param)
+        if args.loss == 'barlow_twins':
+            scheduler.step()
         print(f'(T) | Epoch={epoch:03d}, loss={loss:.4f}')
 
         if loss < best_loss:
