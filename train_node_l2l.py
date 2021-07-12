@@ -114,26 +114,18 @@ def main():
         'batch_norm': False,
         'base_model': 'GCNConv',
         'num_layers': 2,
-        'drop_edge_prob1': 0.2,
-        'drop_edge_prob2': 0.1,
-        'add_edge_prob1': 0.1,
-        'add_edge_prob2': 0.1,
-        'drop_node_prob1': 0.1,
-        'drop_node_prob2': 0.1,
-        'drop_feat_prob1': 0.3,
-        'drop_feat_prob2': 0.2,
         'patience': 50,
         'num_epochs': 200,
-        'tau': 0.8,
-        'sp_eps': 0.001,
-        'ppr_alpha': 0.2,
-        'mkd_order': 16,
-        'mkd_alpha': 0.05,
-        'num_seeds': 1000,
-        'walk_length': 10,
-        'mixup_threshold': 0.1,
-        'mixup_s': 200,
-        'warmup_epochs': 200
+        'augmentor': {
+            'drop_edge_prob1': 0.2,
+            'drop_edge_prob2': 0.1,
+            'add_edge_prob1': 0.1,
+            'add_edge_prob2': 0.1,
+            'drop_node_prob1': 0.1,
+            'drop_node_prob2': 0.1,
+            'drop_feat_prob1': 0.3,
+            'drop_feat_prob2': 0.2,
+        }
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
@@ -149,13 +141,15 @@ def main():
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
     for k, v in default_param.items():
-        parser.add_argument(f'--{k}', type=type(v), nargs='?')
+        if type(v) is dict:
+            for subk, subv in v.items():
+                parser.add_argument(f'--{k}:{subk}', type=type(subv), nargs='?')
+        else:
+            parser.add_argument(f'--{k}', type=type(v), nargs='?')
     args = parser.parse_args()
     sp = SP.SimpleParam(default=default_param)
     param = sp(args.param_path, preprocess_nni=False)
     # param = sp()
-
-    param = SP.SimpleParam.merge_args(list(default_param.keys()), args, param)
 
     use_nni = args.param_path == 'nni'
 
