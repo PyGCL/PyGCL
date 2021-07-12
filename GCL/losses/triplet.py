@@ -37,26 +37,25 @@ def triplet_loss_en(anchor: torch.FloatTensor,  # [N, D]
 
 
 class TripletLoss(torch.nn.Module):
-    def __init__(self, projection, eps):
+    def __init__(self, eps):
         super(TripletLoss, self).__init__()
-        self.projection = projection
         self.eps = eps
 
-    def forward(self, z1: torch.FloatTensor, z2: torch.FloatTensor, *args, **kwargs):
-        num_nodes = z1.size(0)
-        device = z1.device
+    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor):
+        num_nodes = h1.size(0)
+        device = h1.device
 
         pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
 
-        l1 = triplet_loss(z1, z2, pos_mask=pos_mask, eps=self.eps)
-        l2 = triplet_loss(z2, z1, pos_mask=pos_mask, eps=self.eps)
+        l1 = triplet_loss(h1, h2, pos_mask=pos_mask, eps=self.eps)
+        l2 = triplet_loss(h2, h1, pos_mask=pos_mask, eps=self.eps)
 
         return ((l1 + l2) * 0.5).mean()
 
 
-class TripletLossEN(torch.nn.Module):
+class TripletLossG2LEN(torch.nn.Module):
     def __init__(self, eps):
-        super(TripletLossEN, self).__init__()
+        super(TripletLossG2LEN, self).__init__()
         self.eps = eps
 
     def forward(self,

@@ -1,2 +1,5 @@
-from .barlow_twins import bt_loss
-from .vicreg import vicreg_loss
+from .jsd import *
+from .vicreg import *
+from .infonce import *
+from .triplet import *
+from .barlow_twins import *

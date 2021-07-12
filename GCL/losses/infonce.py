@@ -112,9 +112,9 @@ class InfoNCELoss(torch.nn.Module):
         return ret
 
 
-class InfoNCELossEN(torch.nn.Module):
+class InfoNCELossG2LEN(torch.nn.Module):
     def __init__(self, tau):
-        super(InfoNCELossEN, self).__init__()
+        super(InfoNCELossG2LEN, self).__init__()
         self.tau = tau
 
     def forward(self,

@@ -54,9 +54,9 @@ class JSDLossL2L(torch.nn.Module):
         return jsd_loss(h1, h2, discriminator=self.discriminator, pos_mask=pos_mask)
 
 
-class JSDLossEN(torch.nn.Module):
+class JSDLossG2LEN(torch.nn.Module):
     def __init__(self, discriminator):
-        super(JSDLossEN, self).__init__()
+        super(JSDLossG2LEN, self).__init__()
         self.discriminator = discriminator
 
     def forward(self,
