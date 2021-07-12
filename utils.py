@@ -3,7 +3,8 @@ import os.path as osp
 import torch_geometric.transforms as T
 
 from ogb.nodeproppred import PygNodePropPredDataset
-from torch_geometric.datasets import Coauthor, WikiCS, Amazon, CitationFull, Planetoid, TUDataset
+from ogb.graphproppred import PygGraphPropPredDataset
+from torch_geometric.datasets import Coauthor, WikiCS, Amazon, CitationFull, Planetoid, TUDataset, QM9
 
 from torch_scatter import scatter_add
 
@@ -55,6 +56,14 @@ def load_graph_dataset(path, name, to_sparse_tensor=True, to_dense=False):
         transform = T.ToDense()
     else:
         transform = None
+
+    if name == 'QM9':
+        return QM9(osp.join(path, 'QM9'))
+
+    if name == 'ogbg-molhiv':
+        return PygGraphPropPredDataset(root=osp.join(path, 'OGB'), name='ogbg-molhiv')
+        pass
+
     return TUDataset(path, name=name, transform=transform)
 
 
