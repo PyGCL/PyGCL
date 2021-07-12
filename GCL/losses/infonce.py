@@ -14,9 +14,7 @@ def nt_xent_loss(h1: torch.FloatTensor, h2: torch.FloatTensor,
     f = lambda x: torch.exp(x / tau)
     inter_sim = f(_similarity(h1, h1))
     intra_sim = f(_similarity(h1, h2))
-    assert intra_sim.size() == pos_mask.size()
-    pos = intra_sim * pos_mask
-    pos = pos.sum(dim=1)
+    pos = inter_sim.diag()
     neg = inter_sim.sum(dim=1) - inter_sim.diag()
 
     loss = pos / (neg + pos)
@@ -27,12 +25,12 @@ def nt_xent_loss(h1: torch.FloatTensor, h2: torch.FloatTensor,
 def debiased_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
                           tau: float, tau_plus: float, *args, **kwargs):
     f = lambda x: torch.exp(x / tau)
-    intra_similarity = f(_similarity(h1, h1))
-    inter_similarity = f(_similarity(h1, h2))
+    intra_sim = f(_similarity(h1, h1))
+    inter_sim = f(_similarity(h1, h2))
 
-    pos = inter_similarity.diag()
-    neg = intra_similarity.sum(dim=1) - intra_similarity.diag() \
-          + inter_similarity.sum(dim=1) - inter_similarity.diag()
+    pos = inter_sim.diag()
+    neg = intra_sim.sum(dim=1) - intra_sim.diag() \
+          + inter_sim.sum(dim=1) - inter_sim.diag()
 
     num_neg = h1.size()[0] * 2 - 2
     ng = (-num_neg * tau_plus * pos + neg) / (1 - tau_plus)
@@ -44,12 +42,12 @@ def debiased_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
 def hardness_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
                           tau: float, tau_plus: float, beta: float, *args, **kwargs):
     f = lambda x: torch.exp(x / tau)
-    intra_similarity = f(_similarity(h1, h1))
-    inter_similarity = f(_similarity(h1, h2))
+    intra_sim = f(_similarity(h1, h1))
+    inter_sim = f(_similarity(h1, h2))
 
-    pos = inter_similarity.diag()
-    neg = intra_similarity.sum(dim=1) - intra_similarity.diag() \
-          + inter_similarity.sum(dim=1) - inter_similarity.diag()
+    pos = inter_sim.diag()
+    neg = intra_sim.sum(dim=1) - intra_sim.diag() \
+          + inter_sim.sum(dim=1) - inter_sim.diag()
 
     num_neg = h1.size()[0] * 2 - 2
     imp = (beta * neg.log()).exp()
@@ -105,12 +103,8 @@ class InfoNCELoss(torch.nn.Module):
         self.loss_fn = loss_fn
 
     def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
-        num_nodes = h1.size(0)
-        device = h1.device
-        pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
-
-        l1 = self.loss_fn(h1, h2, pos_mask=pos_mask, tau=self.tau, *args, **kwargs)
-        l2 = self.loss_fn(h2, h1, pos_mask=pos_mask, tau=self.tau, *args, **kwargs)
+        l1 = self.loss_fn(h1, h2, tau=self.tau, *args, **kwargs)
+        l2 = self.loss_fn(h2, h1, tau=self.tau, *args, **kwargs)
 
         ret = (l1 + l2) * 0.5
         ret = ret.mean()
