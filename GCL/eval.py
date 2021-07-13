@@ -104,20 +104,20 @@ def SVM_classification(z, y, seed):
 
 
 def MLP_regression(z: torch.FloatTensor, y: torch.FloatTensor, target,
+                   evaluator=None, batch_size: int = None, split: dict = None,
                    num_epochs: int = 2000, hidden_dim: int = 256):
     device = z.device
     input_dim = z.size()[1]
     net = nn.Sequential(
         nn.Linear(input_dim, hidden_dim),
         nn.ReLU(),
-        nn.Linear(hidden_dim, hidden_dim),
-        nn.ReLU(),
         nn.Linear(hidden_dim, 1)
     ).to(device)
     optimizer = Adam(net.parameters(), lr=0.01, weight_decay=0.0)
 
-    dataset = namedtuple('Dataset', ['x'])(x=z)
-    split = split_dataset(dataset, split_mode='rand', train_ratio=0.1, test_ratio=0.8)
+    if split is None:
+        dataset = namedtuple('Dataset', ['x'])(x=z)
+        split = split_dataset(dataset, split_mode='rand', train_ratio=0.1, test_ratio=0.8)
 
     loss_fn = nn.MSELoss()
 
@@ -131,16 +131,30 @@ def MLP_regression(z: torch.FloatTensor, y: torch.FloatTensor, target,
     for epoch in range(num_epochs):
         net.train()
         optimizer.zero_grad()
-
         output = net(z).view(-1)
         train_error = loss_fn(output[split['train']], y[split['train']])
 
         train_error.backward()
         optimizer.step()
 
-        train_mae = (output[split['train']] - y[split['train']]).abs().mean().item()
-        val_mae = (output[split['val']] - y[split['val']]).abs().mean().item()
-        test_mae = (output[split['test']] - y[split['test']]).abs().mean().item()
+        if evaluator is None:
+            train_mae = (output[split['train']] - y[split['train']]).mean().abs().item()
+            val_mae = (output[split['val']] - y[split['val']]).mean().abs().item()
+            test_mae = (output[split['test']] - y[split['test']]).mean().abs().item()
+        else:
+            def evaluate(mask_name):
+                mask = split[mask_name]
+                y_pred = output[mask]
+                y_true = y[mask]
+                non_nan_mask = y_true.isnan().logical_not()
+                y_pred = y_pred[non_nan_mask]
+                y_true = y_true[non_nan_mask]
+                input_dict = {'y_pred': y_pred, 'y_true': y_true}
+                result_dict = evaluator.eval(input_dict)
+                return result_dict['mae']
+            train_mae = evaluate('train')
+            val_mae = evaluate('val')
+            test_mae = evaluate('test')
 
         if val_mae < best_val_mae:
             best_val_mae = val_mae
@@ -155,7 +169,7 @@ def MLP_regression(z: torch.FloatTensor, y: torch.FloatTensor, target,
     pbar.close()
 
     return {
-        'error': best_test_mae
+        'mae': best_test_mae
     }
 
 
