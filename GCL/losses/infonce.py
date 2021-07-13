@@ -50,7 +50,8 @@ def hardness_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
           + inter_sim.sum(dim=1) - inter_sim.diag()
 
     num_neg = h1.size()[0] * 2 - 2
-    imp = (beta * neg.log()).exp()
+    # imp = (beta * neg.log()).exp()
+    imp = beta * neg
     reweight_neg = (imp * neg) / neg.mean()
     neg = (-num_neg * tau_plus * pos + reweight_neg) / (1 - tau_plus)
     neg = torch.clamp(neg, min=num_neg * np.e ** (-1. / tau))
@@ -189,8 +190,9 @@ class HardMixingLoss(torch.nn.Module):
 
 
 class RingLoss(torch.nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, tau, *args, **kwargs):
         super(RingLoss, self).__init__()
+        self.tau = tau
 
     def forward(self, h1: torch.Tensor, h2: torch.Tensor, y: torch.Tensor, threshold=0.1, *args, **kwargs):
         f = lambda x: torch.exp(x / self.tau)
@@ -214,13 +216,13 @@ class RingLoss(torch.nn.Module):
             false_neg_cnt[i] = (y_repeated[indices1[i, threshold:-threshold]] == y[i]).sum()
         within_threshold = (false_neg_cnt / threshold / 2).mean().item()
         within_dataset = (false_neg_cnt / num_samples / 2).mean().item()
-        print(f'False negatives: {within_threshold * 100:.2f}%, {within_dataset * 100:.2f}% overall')
+        # print(f'False negatives: {within_threshold * 100:.2f}%, {within_dataset * 100:.2f}% overall')
 
         neg_sim1 = f(neg_sim1[:, threshold:-threshold])
         neg_sim2 = f(neg_sim2[:, threshold:-threshold])
 
-        neg_sim1 = f(neg_sim1 * (1 - false_neg_mask))
-        neg_sim2 = f(neg_sim2 * (1 - false_neg_mask))
+        # neg_sim1 = f(neg_sim1 * (1 - false_neg_mask))
+        # neg_sim2 = f(neg_sim2 * (1 - false_neg_mask))
 
         pos = pos_sim.diag()
         neg1 = neg_sim1.sum(dim=1)

@@ -23,7 +23,7 @@ def train(model, optimizer, data, param):
     _, z1, z2 = model(data.x, data.edge_index)
     h1 = model.projection(z1)
     h2 = model.projection(z2)
-    loss = model.loss(h1, h2, **param)
+    loss = model.loss(h1, h2, y=data.y, **param)
     loss.backward()
     optimizer.step()
     return loss.item()
