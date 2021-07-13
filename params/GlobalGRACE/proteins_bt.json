@@ -1,0 +1,14 @@
+{
+    "learning_rate": 0.0001,
+    "weight_decay": 5e-8,
+    "hidden_dim": 128,
+    "proj_dim": 256,
+    "num_layers": 4,
+    "activation": "leakyrelu",
+    "drop_edge_prob1": 0.2,
+    "drop_edge_prob2": 0.2,
+    "drop_feat_prob1": 0,
+    "drop_feat_prob2": 0,
+    "tau": 0.2,
+    "num_epochs": 1500
+}
