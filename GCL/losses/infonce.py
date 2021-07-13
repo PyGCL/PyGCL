@@ -97,14 +97,13 @@ def nt_xent_loss_en(anchor: torch.FloatTensor,
 
 
 class InfoNCELoss(torch.nn.Module):
-    def __init__(self, tau, loss_fn=nt_xent_loss, *args, **kwargs):
+    def __init__(self, loss_fn=nt_xent_loss, *args, **kwargs):
         super(InfoNCELoss, self).__init__()
-        self.tau = tau
         self.loss_fn = loss_fn
 
-    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
-        l1 = self.loss_fn(h1, h2, *args, **kwargs)
-        l2 = self.loss_fn(h2, h1, *args, **kwargs)
+    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, tau, *args, **kwargs):
+        l1 = self.loss_fn(h1, h2, tau=tau, *args, **kwargs)
+        l2 = self.loss_fn(h2, h1, tau=tau, *args, **kwargs)
 
         ret = (l1 + l2) * 0.5
         ret = ret.mean()
@@ -115,7 +114,6 @@ class InfoNCELoss(torch.nn.Module):
 class InfoNCELossG2LEN(torch.nn.Module):
     def __init__(self, tau, *args, **kwargs):
         super(InfoNCELossG2LEN, self).__init__()
-        self.tau = tau
 
     def forward(self,
                 h1: torch.FloatTensor, g1: torch.FloatTensor,
@@ -131,8 +129,8 @@ class InfoNCELossG2LEN(torch.nn.Module):
         samples1 = torch.cat([h2, h4], dim=0)
         samples2 = torch.cat([h1, h3], dim=0)
 
-        l1 = nt_xent_loss_en(g1, samples1, pos_mask=pos_mask, tau=self.tau, *args, **kwargs)
-        l2 = nt_xent_loss_en(g2, samples2, pos_mask=pos_mask, tau=self.tau, *args, **kwargs)
+        l1 = nt_xent_loss_en(g1, samples1, pos_mask=pos_mask, *args, **kwargs)
+        l2 = nt_xent_loss_en(g2, samples2, pos_mask=pos_mask, *args, **kwargs)
 
         return l1 + l2
 

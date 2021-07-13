@@ -123,6 +123,10 @@ def get_loss(loss, mode, loss_param):
             return L.JSDLoss(discriminator=lambda x, y: x @ y.t(), **loss_param)
         elif loss == 'triplet':
             return L.TripletLoss(**loss_param)
+        elif loss == 'barlow_twins':
+            return L.BTLoss(**loss_param)
+        elif loss == 'vicreg':
+            return L.VICRegLoss(**loss_param)
     raise NotImplementedError(f'Unsupported loss {loss} or contrasting mode {mode}')
 
 

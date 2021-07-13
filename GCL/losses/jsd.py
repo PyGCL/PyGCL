@@ -31,7 +31,7 @@ class JSDLoss(torch.nn.Module):
 
         pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
 
-        return jsd_loss(h1, h2, discriminator=self.discriminator, pos_mask=pos_mask)
+        return jsd_loss(h1, h2, discriminator=self.discriminator, pos_mask=pos_mask, *args, **kwargs)
 
 
 class JSDLossG2L(torch.nn.Module):

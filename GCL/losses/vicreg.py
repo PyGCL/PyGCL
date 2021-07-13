@@ -36,15 +36,15 @@ def vicreg_loss(h1, h2, sim_weight, var_weight, cov_weight, *args, **kwargs):
 
 
 class VICRegLoss(torch.nn.Module):
-    def __init__(self, sim_weight=25.0, var_weight=25.0, cov_weight=1.0, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(VICRegLoss, self).__init__()
-        self.sim_weight = sim_weight
-        self.var_weight = var_weight
-        self.cov_weight = cov_weight
 
-    def forward(self, h1: torch.Tensor, h2: torch.Tensor, mean: bool = True, *args, **kwargs):
-        l1 = vicreg_loss(h1, h2, self.sim_weight, self.var_weight, self.cov_weight, *args, **kwargs)
-        l2 = vicreg_loss(h2, h1, self.sim_weight, self.var_weight, self.cov_weight, *args, **kwargs)
+    def forward(self, h1: torch.Tensor, h2: torch.Tensor,
+                sim_weight=25.0, var_weight=25.0, cov_weight=1.0,
+                mean: bool = True,
+                *args, **kwargs):
+        l1 = vicreg_loss(h1, h2, sim_weight=sim_weight, var_weight=var_weight, cov_weight=cov_weight, *args, **kwargs)
+        l2 = vicreg_loss(h2, h1, sim_weight=sim_weight, var_weight=var_weight, cov_weight=cov_weight, *args, **kwargs)
 
         ret = (l1 + l2) * 0.5
         ret = ret.mean() if mean else ret.sum()

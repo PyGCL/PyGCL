@@ -37,34 +37,32 @@ def triplet_loss_en(anchor: torch.FloatTensor,  # [N, D]
 
 
 class TripletLoss(torch.nn.Module):
-    def __init__(self, eps, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(TripletLoss, self).__init__()
-        self.eps = eps
 
-    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
+    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, eps, *args, **kwargs):
         num_nodes = h1.size(0)
         device = h1.device
 
         pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
 
-        l1 = triplet_loss(h1, h2, pos_mask=pos_mask, eps=self.eps, *args, **kwargs)
-        l2 = triplet_loss(h2, h1, pos_mask=pos_mask, eps=self.eps, *args, **kwargs)
+        l1 = triplet_loss(h1, h2, pos_mask=pos_mask, eps=eps, *args, **kwargs)
+        l2 = triplet_loss(h2, h1, pos_mask=pos_mask, eps=eps, *args, **kwargs)
 
         return ((l1 + l2) * 0.5).mean()
 
 
 class TripletLossG2LEN(torch.nn.Module):
-    def __init__(self, eps, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(TripletLossG2LEN, self).__init__()
-        self.eps = eps
 
     def forward(self,
                 h1: torch.FloatTensor, g1: torch.FloatTensor,
                 h2: torch.FloatTensor, g2: torch.FloatTensor,
                 h3: torch.FloatTensor, h4: torch.FloatTensor,
-                *args, **kwargs):
+                eps, *args, **kwargs):
         anchor = torch.cat([g1, g2], dim=0)
         pos_samples = torch.stack([h2, h1], dim=0)
         neg_samples = torch.stack([h4, h3], dim=0)
 
-        return triplet_loss_en(anchor, pos_samples, neg_samples, eps=self.eps, *args, **kwargs)
+        return triplet_loss_en(anchor, pos_samples, neg_samples, eps=eps, *args, **kwargs)

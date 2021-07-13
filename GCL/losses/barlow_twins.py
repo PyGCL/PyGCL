@@ -20,15 +20,14 @@ def bt_loss(h1: torch.Tensor, h2: torch.Tensor, lambda_, batch_norm=True, eps=1e
 
 
 class BTLoss(torch.nn.Module):
-    def __init__(self, lambda_, batch_norm=True, eps=1e-15, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(BTLoss, self).__init__()
-        self.lambda_ = lambda_
-        self.batch_norm = batch_norm
-        self.eps = eps
 
-    def forward(self, h1: torch.Tensor, h2: torch.Tensor, mean: bool = True, *args, **kwargs):
-        l1 = bt_loss(h1, h2, self.lambda_, batch_norm=self.batch_norm, eps=self.eps, *args, **kwargs)
-        l2 = bt_loss(h2, h1, self.lambda_, batch_norm=self.batch_norm, eps=self.eps, *args, **kwargs)
+    def forward(self, h1: torch.Tensor, h2: torch.Tensor,
+                lambda_, batch_norm=True, eps=1e-15,
+                mean: bool = True, *args, **kwargs):
+        l1 = bt_loss(h1, h2, lambda_, batch_norm=batch_norm, eps=eps, *args, **kwargs)
+        l2 = bt_loss(h2, h1, lambda_, batch_norm=batch_norm, eps=eps, *args, **kwargs)
 
         ret = (l1 + l2) * 0.5
         ret = ret.mean() if mean else ret.sum()
