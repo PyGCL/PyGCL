@@ -55,8 +55,8 @@ class Encoder(nn.Module):
             self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
 
     def forward(self, x, edge_index, edge_weight):
-        z = self.atom_encoder(x)
-        edge_attr = self.bond_encoder(edge_weight)
+        z = x
+        edge_attr = edge_weight
         num_layers = len(self.layers)
         for i, conv in enumerate(self.layers):
             z = conv(z, edge_index, edge_attr)
@@ -76,7 +76,9 @@ def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args, epoch
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
         optimizer.zero_grad()
-        _, z1, z2 = model(data.x, data.edge_index, data.edge_attr)
+        dense_x = model.encoder.atom_encoder(data.x)
+        edge_attr = model.encoder.bond_encoder(data.edge_attr)
+        _, z1, z2 = model(dense_x, data.edge_index, edge_attr)
 
         g1 = global_add_pool(z1, data.batch)
         g2 = global_add_pool(z2, data.batch)
@@ -110,7 +112,9 @@ def test(model, loader, device, seed, num_graphs, split):
         data = data.to(device)
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
-        z, _, _ = model(data.x, data.edge_index, data.edge_attr)
+        dense_x = model.encoder.atom_encoder(data.x)
+        edge_attr = model.encoder.bond_encoder(data.edge_attr)
+        z, _, _ = model(dense_x, data.edge_index, edge_attr)
 
         g = global_add_pool(z, data.batch)
 
@@ -159,7 +163,7 @@ def main():
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/qm9.json')
+    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/pcqm4m.json')
     parser.add_argument('--aug1', type=str, default='FM+ER')
     parser.add_argument('--aug2', type=str, default='FM+ER')
     parser.add_argument('--loss', type=str, default='nt_xent', choices=['nt_xent', 'jsd', 'triplet', 'mixup'])

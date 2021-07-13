@@ -2,9 +2,9 @@ import torch
 import os.path as osp
 import torch_geometric.transforms as T
 
+from ogb.lsc import PygPCQM4MDataset
 from ogb.nodeproppred import PygNodePropPredDataset
 from ogb.graphproppred import PygGraphPropPredDataset
-from ogb.lsc import PygPCQM4MDataset
 from torch_geometric.datasets import Coauthor, WikiCS, Amazon, CitationFull, Planetoid, TUDataset, QM9
 
 from torch_scatter import scatter_add

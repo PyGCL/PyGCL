@@ -9,5 +9,5 @@ class EdgeAdding(GraphAug):
 
     def augment(self, g: Graph) -> Graph:
         x, edge_index, edge_weights = g.unapply()
-        edge_index = add_edge(edge_index, ratio=self.pe)
+        edge_index, edge_weights = add_edge(edge_index, ratio=self.pe, edge_weights=edge_weights)
         return Graph(x=x, edge_index=edge_index, edge_weights=edge_weights)

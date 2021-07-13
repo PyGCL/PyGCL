@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import *
 import torch
 import numpy as np
 import networkx as nx
@@ -275,17 +275,30 @@ def coalesce_edge_index(edge_index: torch.Tensor, edge_weights: Optional[torch.T
     return coalesce(edge_index, edge_weights, m=num_nodes, n=num_nodes)
 
 
-def add_edge(edge_index: torch.Tensor, ratio: float) -> torch.Tensor:
+def add_edge(edge_index: torch.Tensor, ratio: float, edge_weights: Optional[torch.FloatTensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
     num_edges = edge_index.size()[1]
     num_nodes = edge_index.max().item() + 1
     num_add = int(num_edges * ratio)
 
-    new_edge_index = torch.randint(0, num_nodes - 1, size=(2, num_add)).to(edge_index.device)
-    edge_index = torch.cat([edge_index, new_edge_index], dim=1)
+    if edge_weights is None:
+        new_edge_index = torch.randint(0, num_nodes - 1, size=(2, num_add)).to(edge_index.device)
+        edge_index = torch.cat([edge_index, new_edge_index], dim=1)
 
-    edge_index = sort_edge_index(edge_index)[0]
+        edge_index = sort_edge_index(edge_index)[0]
 
-    return coalesce_edge_index(edge_index)[0]
+        return coalesce_edge_index(edge_index)[0], None
+    else:
+        mean_edge_weight = edge_weights.mean().item()
+
+        new_edge_index = torch.randint(0, num_nodes - 1, size=(2, num_add)).to(edge_index.device)
+        edge_index = torch.cat([edge_index, new_edge_index], dim=1)
+
+        new_edge_weights = torch.full((num_add,), fill_value=mean_edge_weight).to(edge_weights.device)
+        edge_weights = torch.cat([edge_weights, new_edge_weights], dim=0)
+
+        edge_index, edge_weights = sort_edge_index(edge_index, edge_attr=edge_weights)
+
+        return coalesce_edge_index(edge_index, edge_weights=edge_weights)
 
 
 def drop_node(edge_index: torch.Tensor, edge_weight: Optional[torch.Tensor] = None, keep_prob: float = 0.5) -> (torch.Tensor, Optional[torch.Tensor]):
