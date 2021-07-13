@@ -56,13 +56,13 @@ def train(model, optimizer, data, param):
     return loss.item()
 
 
-def test(model, data, args, verbose=True):
+def test(model, data, args):
     model.eval()
     z, _, _ = model(data.x, data.edge_index)
 
     test_result = LR_classification(
         z, data, split_mode='ogb' if args.dataset.startswith('ogb') else 'rand',
-        train_ratio=0.1, test_ratio=0.8, verbose=verbose)
+        train_ratio=0.1, test_ratio=0.8)
     return test_result
 
 
@@ -158,7 +158,7 @@ def main():
 
                 # log evaluation metrics
                 if epoch % 10 == 0:
-                    test_result = test(model, data, args, verbose=False)
+                    test_result = test(model, data, args)
                     writer.add_scalar('Eval/MicroF1', test_result['F1Mi'], epoch)
                     writer.add_scalar('Eval/MacroF1', test_result['F1Ma'], epoch)
                     print(f'(E) | Best test F1Mi={test_result["F1Mi"]:.4f}, F1Ma={test_result["F1Ma"]:.4f}')
