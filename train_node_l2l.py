@@ -6,42 +6,14 @@ import GCL.utils.simple_param as SP
 
 from tqdm import tqdm
 from time import time_ns
-from torch import nn
 from torch.optim import Adam
 from GCL.eval import LR_classification
 from GCL.utils import seed_everything
-from torch_geometric.nn import GCNConv
 from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 
-
 from utils import load_node_dataset, get_activation, get_compositional_augmentor, get_loss
-from models.L2L import L2L
-
-
-class Encoder(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, activation, num_layers: int, batch_norm: bool = False):
-        super(Encoder, self).__init__()
-        self.activation = activation()
-        self.layers = torch.nn.ModuleList()
-        self.batch_norms = torch.nn.ModuleList() if batch_norm else None
-        self.layers.append(GCNConv(input_dim, hidden_dim, cached=False))
-
-        for _ in range(num_layers - 1):
-            # add batch norm layer if batch norm is used
-            if self.batch_norms is not None:
-                self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
-            self.layers.append(GCNConv(hidden_dim, hidden_dim, cached=False))
-
-    def forward(self, x, edge_index, edge_weight=None):
-        z = x
-        num_layers = len(self.layers)
-        for i, conv in enumerate(self.layers):
-            z = conv(z, edge_index, edge_weight)
-            z = self.activation(z)
-            if self.batch_norms is not None and i != num_layers - 1:
-                z = self.batch_norms[i](z)
-        return z
+from models.L2L import L2L, NodeEncoder
 
 
 def train(model, optimizer, data, param):
@@ -76,9 +48,6 @@ def main():
         'activation': 'prelu',
         'batch_norm': False,
         'base_model': 'GCNConv',
-        'num_layers': 2,
-        'patience': 50,
-        'num_epochs': 200
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
@@ -113,10 +82,10 @@ def main():
     aug2 = get_compositional_augmentor(param['augmentor2'])
     loss = get_loss(param['loss'], 'L2L', param[param['loss']])
 
-    model = L2L(encoder=Encoder(data.num_features, param['hidden_dim'],
-                                activation=get_activation(param['activation']),
-                                batch_norm=param['batch_norm'],
-                                num_layers=param['num_layers']),
+    model = L2L(encoder=NodeEncoder(data.num_features, param['hidden_dim'],
+                                    activation=get_activation(param['activation']),
+                                    batch_norm=param['batch_norm'],
+                                    num_layers=param['num_layers']),
                 augmentor=(aug1, aug2),
                 hidden_dim=param['hidden_dim'],
                 proj_dim=param['proj_dim'],

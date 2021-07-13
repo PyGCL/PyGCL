@@ -1,79 +1,34 @@
 import nni
 import math
-from time import perf_counter
 import torch
 import argparse
 import pretty_errors
-from time import time_ns
 
-import GCL.augmentors as A
 import GCL.utils.simple_param as SP
 from GCL.eval import SVM_classification
 
-from torch import nn
+from tqdm import tqdm
+from time import time_ns
 from torch.optim import Adam
 from GCL.utils import seed_everything
-from torch_geometric.nn import global_add_pool, GINConv
+from torch_geometric.nn import global_add_pool
 from torch_geometric.data import DataLoader
+from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
 
-from utils import load_graph_dataset, get_activation
-from models.GRACE import GRACE
-
-
-def make_gin_conv(input_dim: int, out_dim: int) -> GINConv:
-    return GINConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
+from utils import load_graph_dataset, get_activation, get_compositional_augmentor, get_loss
+from models.G2G import G2G, GraphEncoder
 
 
-class Encoder(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, activation, num_layers: int, batch_norm: bool = False):
-        super(Encoder, self).__init__()
-        self.activation = activation()
-        self.layers = torch.nn.ModuleList()
-        self.batch_norms = torch.nn.ModuleList() if batch_norm else None
-        self.layers.append(make_gin_conv(input_dim, hidden_dim))
-
-        for _ in range(num_layers - 1):
-            # add batch norm layer if batch norm is used
-            if self.batch_norms is not None:
-                self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
-            self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
-
-    def forward(self, x, edge_index, edge_weight=None):
-        z = x
-        num_layers = len(self.layers)
-        for i, conv in enumerate(self.layers):
-            z = conv(z, edge_index, edge_weight)
-            z = self.activation(z)
-            if self.batch_norms is not None and i != num_layers - 1:
-                z = self.batch_norms[i](z)
-        return z
-
-
-def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args, params):
+def train(model, optimizer, loader: DataLoader, device, param):
     model.train()
     tot_loss = 0.0
-    # pbar = tqdm(totallen(loader))
     for data in loader:
         data = data.to(device)
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
         optimizer.zero_grad()
-        _, z1, z2 = model(data.x, data.edge_index)
-
-        g1 = global_add_pool(z1, data.batch)
-        g2 = global_add_pool(z2, data.batch)
-
-        if args.loss == 'nt_xent':
-            loss = model.loss(g1, g2)
-        elif args.loss == 'jsd':
-            loss = model.jsd_loss(g1, g2)
-        elif args.loss == 'triplet':
-            loss = model.triplet_loss(g1, g2)
-        elif args.loss == 'mixup':
-            loss = model.hard_mixing_loss(g1, g2, threshold=params['mixup_threshold'], s=params['mixup_s'])
-        else:
-            raise NotImplementedError(f'Unknown loss type: {args.loss}')
-
+        _, _, _, g1, g2 = model(data.x, edge_index=data.edge_index, batch=data.batch)
+        loss = model.loss(g1, g2, **param)
         loss.backward()
         optimizer.step()
         tot_loss += loss.item()
@@ -88,8 +43,7 @@ def test(model, loader, device, seed):
         data = data.to(device)
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
-        z, _, _ = model(data.x, data.edge_index)
-
+        z, _, _, g1, g2 = model(data.x, edge_index=data.edge_index, batch=data.batch)
         g = global_add_pool(z, data.batch)
 
         x.append(g.detach().cpu())
@@ -113,44 +67,25 @@ def main():
         'weight_decay': 1e-5,
         'activation': 'prelu',
         'base_model': 'GINConv',
-        'num_layers': 2,
-        'drop_edge_prob1': 0.2,
-        'drop_edge_prob2': 0.1,
-        'add_edge_prob1': 0.1,
-        'add_edge_prob2': 0.1,
-        'drop_node_prob1': 0.1,
-        'drop_node_prob2': 0.1,
-        'drop_feat_prob1': 0.3,
-        'drop_feat_prob2': 0.2,
-        'patience': 10000,
-        'num_epochs': 2,
+        'batch_norm': False,
         'batch_size': 10,
-        'tau': 0.8,
-        'sp_eps': 0.001,
-        'num_seeds': 1000,
-        'walk_length': 10,
-        'mixup_threshold': 0.2,
-        'mixup_s': 100
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='IMDB-MULTI')
-    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/imdb_multi_triplet.json')
-    parser.add_argument('--aug1', type=str, default='FM+ER')
-    parser.add_argument('--aug2', type=str, default='FM+ER')
-    parser.add_argument('--loss', type=str, default='mixup', choices=['nt_xent', 'jsd', 'triplet', 'mixup'])
-    parser.add_argument('--save_split', type=str, nargs='?')
-    parser.add_argument('--load_split', type=str, nargs='?')
+    parser.add_argument('--dataset', type=str, default='PROTEINS')
+    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/proteins@current.json')
     for k, v in default_param.items():
-        parser.add_argument(f'--{k}', type=type(v), nargs='?')
+        if type(v) is dict:
+            for subk, subv in v.items():
+                parser.add_argument(f'--{k}:{subk}', type=type(subv), nargs='?')
+        else:
+            parser.add_argument(f'--{k}', type=type(v), nargs='?')
     args = parser.parse_args()
     sp = SP.SimpleParam(default=default_param)
-    param = sp(args.param_path, preprocess_nni=False)
-    # param = sp()
+    sp.update(args.param_path, preprocess_nni=False)
+    param = sp()
 
     nni_mode = args.param_path == 'nni'
-
-    param = SP.SimpleParam.merge_args(list(default_param.keys()), args, param)
 
     seed_everything(param['seed'])
     device = torch.device(args.device if args.param_path != 'nni' else 'cuda')
@@ -163,54 +98,53 @@ def main():
     print(param)
     print(args.__dict__)
 
-    aug1 = compile_aug_schema(args.aug1, view_id=1)
-    aug2 = compile_aug_schema(args.aug2, view_id=2)
+    aug1 = get_compositional_augmentor(param['augmentor1'])
+    aug2 = get_compositional_augmentor(param['augmentor2'])
+    loss = get_loss(param['loss'], 'L2L', param[param['loss']])
 
-    model = GRACE(encoder=Encoder(
-                      input_dim, param['hidden_dim'],
-                      activation=get_activation(param['activation']),
-                      num_layers=param['num_layers']),
-                  augmentation=(
-                      aug1, aug2
-                      # A.FeatureMasking(pf=param['drop_feat_prob1']) >> A.EdgeRemoving(pe=param['drop_edge_prob1']),
-                      # A.FeatureMasking(pf=param['drop_feat_prob2']) >> A.EdgeRemoving(pe=param['drop_edge_prob2']),
-                      # A.FeatureMasking(pf=param['drop_feat_prob2']) >> A.PPRDiffusion(eps=0.1),
-                  ),
-                  hidden_dim=param['hidden_dim'],
-                  proj_dim=param['proj_dim'],
-                  tau=param['tau']).to(device)
+    model = G2G(encoder=GraphEncoder(input_dim, param['hidden_dim'],
+                                     activation=get_activation(param['activation']),
+                                     num_layers=param['num_layers'],
+                                     batch_norm=param['batch_norm']),
+                augmentor=(aug1, aug2),
+                hidden_dim=param['hidden_dim'],
+                proj_dim=param['proj_dim'],
+                loss=loss).to(device)
     optimizer = Adam(
         model.parameters(),
         lr=param['learning_rate'],
         weight_decay=param['weight_decay'])
+    if param['loss'] == 'barlow_twins':
+        scheduler = LinearWarmupCosineAnnealingLR(
+            optimizer=optimizer,
+            warmup_epochs=param['warmup_epochs'],
+            max_epochs=param['num_epochs'])
 
     best_loss = 1e10
     wait_window = 0
 
-    model_save_path = f'intermediate/{time_ns()}-{args.aug1}-{args.aug2}.pkl'
-    print()
-    for epoch in range(param['num_epochs']):
-        # if epoch % 20 == 0:
-        tic = perf_counter()
-        loss = train(model, optimizer, train_loader, device=device, args=args, params=param)
-        toc = perf_counter()
-        # else:
-            # loss = train(model, optimizer, data)
-        print(f'\r(T) | Epoch={epoch:03d}, loss={loss:.4f}, time={toc - tic:.4f}', end='')
+    model_save_path = f'intermediate/{time_ns()}-{param["augmentor1"]["scheme"]}-{param["augmentor2"]["scheme"]}.pkl'
+    with tqdm(total=param['num_epochs'], desc='(T)') as pbar:
+        for epoch in range(param['num_epochs']):
+            loss = train(model, optimizer, train_loader, device=device, param=param[param['loss']])
+            if param['loss'] == 'barlow_twins':
+                scheduler.step()
+            pbar.set_postfix({'loss': loss})
+            pbar.update()
 
-        if loss < best_loss:
-            best_loss = loss
-            best_epoch = epoch
-            wait_window = 0
-            torch.save(model.state_dict(), model_save_path)
-        else:
-            wait_window += 1
+            if loss < best_loss:
+                best_loss = loss
+                best_epoch = epoch
+                wait_window = 0
+                torch.save(model.state_dict(), model_save_path)
+            else:
+                wait_window += 1
 
-        if wait_window >= param['patience']:
-            break
+            if wait_window >= param['patience']:
+                break
 
     print("=== Final ===")
-    print(f'(T) | Best epoch={best_epoch}, best loss={best_loss}')
+    print(f'(T) | Best epoch={best_epoch}, best loss={best_loss:.4f}')
     model.load_state_dict(torch.load(model_save_path))
 
     test_result = test(model, test_loader, device, param['seed'])

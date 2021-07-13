@@ -18,5 +18,8 @@
     "infonce": {
         "tau": 0.7
     },
-    "num_epochs": 1800
+    "num_epochs": 1800,
+    "patience": 50,
+    "num_layers": 2,
+    "batch_norm": false
 }
