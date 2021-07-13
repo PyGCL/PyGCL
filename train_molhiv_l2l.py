@@ -232,9 +232,10 @@ def main():
         toc = perf_counter()
         print(f'(T) | Epoch={epoch:03d}, loss={loss:.4f}, time={toc - tic:.4f}')
 
-        # if (epoch + 1) % 20 == 0:
-        #     rocauc = test(model, test_loader, device, dataset)
-        #     print(f'(T) | Epoch={epoch:03d}, rocauc={rocauc}')
+        if (epoch + 1) % 20 == 0:
+            rocauc = test(model, test_loader, device, dataset)['rocauc']
+            print(f'(T) | Epoch={epoch:03d}, rocauc={rocauc}')
+            nni.report_intermediate_result(rocauc)
 
         if loss < best_loss:
             best_loss = loss
