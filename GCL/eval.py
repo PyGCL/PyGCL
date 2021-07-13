@@ -117,9 +117,9 @@ def MLP_regression(z: torch.FloatTensor, y: torch.FloatTensor, target,
 
     if split is None:
         dataset = namedtuple('Dataset', ['x'])(x=z)
-        split = split_dataset(dataset, split_mode='rand', train_ratio=0.1, test_ratio=0.8)
+        split = split_dataset(dataset, split_mode='rand', train_ratio=0.8, test_ratio=0.1)
 
-    loss_fn = nn.MSELoss()
+    loss_fn = nn.L1Loss()
 
     best_val_mae = 1e10
     best_test_mae = 1e10
