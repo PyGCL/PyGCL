@@ -5,57 +5,19 @@ import math
 import torch
 import argparse
 import pretty_errors
-import torch.nn.functional as F
 from tqdm import tqdm
 
-import GCL.augmentors as A
 import GCL.utils.simple_param as SP
 
 from time import time_ns
-from torch import nn
 from torch.optim import Adam
 from GCL.eval import SVM_classification
 from GCL.utils import seed_everything
 from sklearn.exceptions import ConvergenceWarning
-from torch_geometric.nn import GINConv
 from torch_geometric.data import DataLoader
 
 from utils import get_activation, load_graph_dataset, get_compositional_augmentor
-from models.BGRL import BGRL, Normalize
-
-
-def make_gin_conv(input_dim: int, out_dim: int) -> GINConv:
-    return GINConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
-
-
-class Encoder(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, activation,
-                 num_layers: int, dropout: float = 0.2,
-                 encoder_norm='batch', projector_norm='batch'):
-        super(Encoder, self).__init__()
-        self.activation = activation()
-        self.dropout = dropout
-
-        self.layers = torch.nn.ModuleList()
-        self.layers.append(make_gin_conv(input_dim, hidden_dim))
-        for _ in range(num_layers - 1):
-            self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
-
-        self.batch_norm = Normalize(hidden_dim, norm=encoder_norm)
-        self.projection_head = torch.nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            Normalize(hidden_dim, norm=projector_norm),
-            nn.PReLU(),
-            nn.Dropout(dropout))
-
-    def forward(self, x, edge_index, edge_weight=None):
-        z = x
-        for conv in self.layers:
-            z = conv(z, edge_index, edge_weight)
-            z = self.activation(z)
-            z = F.dropout(z, p=self.dropout, training=self.training)
-        z = self.batch_norm(z)
-        return z, self.projection_head(z)
+from models.BGRL import BGRL, GraphEncoder
 
 
 def train(model, optimizer, loader, device, param):
@@ -149,12 +111,12 @@ def main():
     aug1 = get_compositional_augmentor(param['augmentor1'])
     aug2 = get_compositional_augmentor(param['augmentor2'])
 
-    model = BGRL(encoder=Encoder(input_dim, param['hidden_dim'],
-                                 activation=get_activation(param['activation']),
-                                 num_layers=param['num_layers'],
-                                 dropout=param['dropout'],
-                                 encoder_norm=param['bootstrap']['encoder_norm'],
-                                 projector_norm=param['bootstrap']['projector_norm']),
+    model = BGRL(encoder=GraphEncoder(input_dim, param['hidden_dim'],
+                                      activation=get_activation(param['activation']),
+                                      num_layers=param['num_layers'],
+                                      dropout=param['dropout'],
+                                      encoder_norm=param['bootstrap']['encoder_norm'],
+                                      projector_norm=param['bootstrap']['projector_norm']),
                  augmentor=(aug1, aug2),
                  hidden_dim=param['hidden_dim'],
                  dropout=param['dropout'],

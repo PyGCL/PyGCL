@@ -24,7 +24,7 @@ from GCL.utils import seed_everything
 from torch_geometric.nn import GINConv
 
 from utils import get_activation, load_graph_dataset
-from models.BGRL import BGRL_G2L as BGRL
+from models.BGRL import BGRLG2L as BGRL
 
 
 def make_gin_conv(input_dim: int, out_dim: int) -> GINConv:
