@@ -29,7 +29,7 @@ class L2L(torch.nn.Module):
     def forward(self, x: torch.Tensor,
                 edge_index: torch.Tensor, edge_weight: Optional[torch.Tensor] = None)\
             -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        aug1, aug2 = self.augmentaor
+        aug1, aug2 = self.augmentor
         x1, edge_index1, edge_weight1 = aug1(x, edge_index, edge_weight)
         x2, edge_index2, edge_weight2 = aug2(x, edge_index, edge_weight)
 

@@ -1,6 +1,7 @@
 import torch
 import os.path as osp
 import GCL.augmentors as A
+import GCL.losses as L
 import torch_geometric.transforms as T
 
 from torch_scatter import scatter_add
@@ -104,8 +105,25 @@ def get_compositional_augmentor(param: dict) -> A.Augmentor:
     return aug
 
 
-def get_loss(loss, loss_param):
-    pass
+def get_loss(loss, mode, loss_param):
+    if mode == 'G2L':
+        pass
+    else:  # mode is L2L or G2G
+        if loss == 'infonce':
+            return L.InfoNCELoss(loss_fn=L.nt_xent_loss, **loss_param)
+        elif loss == 'debiased_infonce':
+            return L.InfoNCELoss(loss_fn=L.debiased_nt_xent_loss, **loss_param)
+        elif loss == 'hardness_infonce':
+            return L.InfoNCELoss(loss_fn=L.hardness_nt_xent_loss, **loss_param)
+        elif loss == 'subsampling_infonce':
+            return L.InfoNCELoss(loss_fn=L.subsampling_nt_xent_loss, **loss_param)
+        elif loss == 'ring_loss':
+            return L.RingLoss(**loss_param)
+        elif loss == 'jsd':
+            return L.JSDLoss(discriminator=lambda x, y: x @ y.t(), **loss_param)
+        elif loss == 'triplet':
+            return L.TripletLoss(**loss_param)
+    raise NotImplementedError(f'Unsupported loss {loss} or contrasting mode {mode}')
 
 
 def set_differ(s1, s2):

@@ -10,14 +10,14 @@ def _similarity(h1: torch.Tensor, h2: torch.Tensor):
 
 
 def nt_xent_loss(h1: torch.FloatTensor, h2: torch.FloatTensor,
-                 tau: float, pos_mask: torch.FloatTensor, *args, **kwargs):
+                 tau: float, *args, **kwargs):
     f = lambda x: torch.exp(x / tau)
     inter_sim = f(_similarity(h1, h1))
     intra_sim = f(_similarity(h1, h2))
-    pos = inter_sim.diag()
-    neg = inter_sim.sum(dim=1) - inter_sim.diag()
+    pos = intra_sim.diag()
+    neg = inter_sim.sum(dim=1) + intra_sim.sum(dim=1) - inter_sim.diag()
 
-    loss = pos / (neg + pos)
+    loss = pos / neg
     loss = -torch.log(loss)
     return loss
 
@@ -103,8 +103,8 @@ class InfoNCELoss(torch.nn.Module):
         self.loss_fn = loss_fn
 
     def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
-        l1 = self.loss_fn(h1, h2, tau=self.tau, *args, **kwargs)
-        l2 = self.loss_fn(h2, h1, tau=self.tau, *args, **kwargs)
+        l1 = self.loss_fn(h1, h2, *args, **kwargs)
+        l2 = self.loss_fn(h2, h1, *args, **kwargs)
 
         ret = (l1 + l2) * 0.5
         ret = ret.mean()

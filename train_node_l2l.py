@@ -93,7 +93,8 @@ def main():
             parser.add_argument(f'--{k}', type=type(v), nargs='?')
     args = parser.parse_args()
     sp = SP.SimpleParam(default=default_param)
-    param = sp(args.param_path, preprocess_nni=False)
+    sp.update(args.param_path, preprocess_nni=False)
+    param = sp()
 
     use_nni = args.param_path == 'nni'
 
@@ -110,7 +111,7 @@ def main():
 
     aug1 = get_compositional_augmentor(param['augmentor1'])
     aug2 = get_compositional_augmentor(param['augmentor2'])
-    loss = get_loss(param['loss'], param[param['loss']])
+    loss = get_loss(param['loss'], 'L2L', param[param['loss']])
 
     model = L2L(encoder=Encoder(data.num_features, param['hidden_dim'],
                                 activation=get_activation(param['activation']),
@@ -124,10 +125,11 @@ def main():
         model.parameters(),
         lr=param['learning_rate'],
         weight_decay=param['weight_decay'])
-    scheduler = LinearWarmupCosineAnnealingLR(
-        optimizer=optimizer,
-        warmup_epochs=param['warmup_epochs'],
-        max_epochs=param['num_epochs'])
+    if param['loss'] == 'barlow_twins':
+        scheduler = LinearWarmupCosineAnnealingLR(
+            optimizer=optimizer,
+            warmup_epochs=param['warmup_epochs'],
+            max_epochs=param['num_epochs'])
 
     best_loss = 1e3
     wait_window = 0
@@ -139,8 +141,6 @@ def main():
             loss = train(model, optimizer, data, param[param['loss']])
             if param['loss'] == 'barlow_twins':
                 scheduler.step()
-            # else:
-                # loss = train(model, optimizer, data)
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
