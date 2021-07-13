@@ -1,4 +1,4 @@
-experimentName: L--L InfoNCE on ogbg-molhiv
+experimentName: G--G on PCQM4M-1M
 searchSpace:
   learning_rate:
     _type: choice
@@ -45,7 +45,7 @@ searchSpace:
 #  vicreg_var_loss_weight:
 #    _type: choice
 #    _value: [10.0, 15.0, 20.0, 25.0, 30.0, 40.0, 50.0]
-trialCommand: python train_molhiv_l2l.py --aug1 FM+ER --aug2 FM+ER --loss nt_xent --param_path nni
+trialCommand: python train_pcqm4m_g2g.py --aug1 FM+ER --aug2 FM+ER --param_path nni
 trialCodeDirectory: .
 trialGpuNumber: 1
 trialConcurrency: 8

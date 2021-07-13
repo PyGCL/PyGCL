@@ -593,6 +593,67 @@ def node_bt_vicreg():
     return jobs
 
 
+@register_runner
+def graph_l2l_bt():
+    jobs = []
+
+    datasets = ['PTC_MR', 'PROTEINS', 'REDDIT-BINARY', 'IMDB-MULTI']
+    for i in range(10):
+        for dataset in datasets:
+            job = GCLJob(
+                dataset,
+                Mode.LocalLocal, Objective.BarlowTwins,
+                'FM', 'ER',
+                i, exp_name='graph-l2l-bt'
+            )
+            jobs.append(job)
+
+    return jobs
+
+
+@register_runner
+def graph_l2l_vicreg():
+    jobs = []
+
+    datasets = ['PTC_MR', 'PROTEINS', 'REDDIT-BINARY', 'IMDB-MULTI']
+    for i in range(10):
+        for dataset in datasets:
+            job = GCLJob(
+                dataset,
+                Mode.LocalLocal, Objective.VICReg,
+                'FM', 'ER',
+                i, exp_name='graph-l2l-vicreg'
+            )
+            jobs.append(job)
+
+    return jobs
+
+
+@register_runner
+def graph_g2g_bt_vicreg():
+    jobs = []
+
+    datasets = ['PTC_MR', 'PROTEINS', 'REDDIT-BINARY', 'IMDB-MULTI']
+    for i in range(10):
+        for dataset in datasets:
+            job = GCLJob(
+                dataset,
+                Mode.GlobalGlobal, Objective.BarlowTwins,
+                'FM', 'ER',
+                i, exp_name='graph-g2g-bt-vicreg'
+            )
+            jobs.append(job)
+            job = GCLJob(
+                dataset,
+                Mode.GlobalGlobal, Objective.VICReg,
+                'FM', 'ER',
+                i, exp_name='graph-g2g-bt-vicreg'
+            )
+            jobs.append(job)
+
+    return jobs
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpus', type=lambda x: [int(i) for i in x.split(',')], default=[0, 1, 2, 3, 4, 5, 6, 7])
