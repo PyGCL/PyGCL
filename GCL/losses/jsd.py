@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn.functional as F
 
 
-def jsd_loss(z1, z2, discriminator, pos_mask, neg_mask=None):
+def jsd_loss(z1, z2, discriminator, pos_mask, neg_mask=None, *args, **kwargs):
     if neg_mask is None:
         neg_mask = 1 - pos_mask
     num_neg = neg_mask.int().sum()
@@ -21,11 +21,11 @@ def jsd_loss(z1, z2, discriminator, pos_mask, neg_mask=None):
 
 
 class JSDLossG2L(torch.nn.Module):
-    def __init__(self, discriminator):
+    def __init__(self, discriminator, *args, **kwargs):
         super(JSDLossG2L, self).__init__()
         self.discriminator = discriminator
 
-    def forward(self, h1, g1, h2, g2, batch):
+    def forward(self, h1, g1, h2, g2, batch, *args, **kwargs):
         num_graphs = g1.shape[0]
         num_nodes = h1.shape[0]
         device = h1.device
@@ -34,18 +34,18 @@ class JSDLossG2L(torch.nn.Module):
         for node_idx, graph_idx in enumerate(batch):
             pos_mask[node_idx][graph_idx] = 1.
 
-        l1 = jsd_loss(g2, h1, self.discriminator, pos_mask=pos_mask.t())
-        l2 = jsd_loss(g1, h2, self.discriminator, pos_mask=pos_mask.t())
+        l1 = jsd_loss(g2, h1, self.discriminator, pos_mask=pos_mask.t(), *args, **kwargs)
+        l2 = jsd_loss(g1, h2, self.discriminator, pos_mask=pos_mask.t(), *args, **kwargs)
 
         return l1 + l2
 
 
 class JSDLossL2L(torch.nn.Module):
-    def __init__(self, discriminator):
+    def __init__(self, discriminator, *args, **kwargs):
         super(JSDLossL2L, self).__init__()
         self.discriminator = discriminator
 
-    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor):
+    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
         num_nodes = h1.size(0)
         device = h1.device
 
@@ -55,14 +55,15 @@ class JSDLossL2L(torch.nn.Module):
 
 
 class JSDLossG2LEN(torch.nn.Module):
-    def __init__(self, discriminator):
+    def __init__(self, discriminator, *args, **kwargs):
         super(JSDLossG2LEN, self).__init__()
         self.discriminator = discriminator
 
     def forward(self,
                 h1: torch.FloatTensor, g1: torch.FloatTensor,
                 h2: torch.FloatTensor, g2: torch.FloatTensor,
-                h3: torch.FloatTensor, h4: torch.FloatTensor):
+                h3: torch.FloatTensor, h4: torch.FloatTensor,
+                *args, **kwargs):
         num_nodes = h1.size(0)
         device = h1.device
 
@@ -73,7 +74,7 @@ class JSDLossG2LEN(torch.nn.Module):
         samples1 = torch.cat([h2, h4], dim=0)
         samples2 = torch.cat([h1, h3], dim=0)
 
-        l1 = jsd_loss(g1, samples1, self.discriminator, pos_mask=pos_mask)
-        l2 = jsd_loss(g2, samples2, self.discriminator, pos_mask=pos_mask)
+        l1 = jsd_loss(g1, samples1, self.discriminator, pos_mask=pos_mask, *args, **kwargs)
+        l2 = jsd_loss(g2, samples2, self.discriminator, pos_mask=pos_mask, *args, **kwargs)
 
         return l1 + l2

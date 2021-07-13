@@ -81,7 +81,7 @@ def subsampling_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
 def nt_xent_loss_en(anchor: torch.FloatTensor,
                     samples: torch.FloatTensor,
                     pos_mask: torch.FloatTensor,
-                    tau: float):
+                    tau: float, *args, **kwargs):
     f = lambda x: torch.exp(x / tau)
     sim = f(_similarity(anchor, samples))  # anchor x sample
     assert sim.size() == pos_mask.size()  # sanity check
@@ -97,7 +97,7 @@ def nt_xent_loss_en(anchor: torch.FloatTensor,
 
 
 class InfoNCELoss(torch.nn.Module):
-    def __init__(self, tau, loss_fn=nt_xent_loss):
+    def __init__(self, tau, loss_fn=nt_xent_loss, *args, **kwargs):
         super(InfoNCELoss, self).__init__()
         self.tau = tau
         self.loss_fn = loss_fn
@@ -113,14 +113,15 @@ class InfoNCELoss(torch.nn.Module):
 
 
 class InfoNCELossG2LEN(torch.nn.Module):
-    def __init__(self, tau):
+    def __init__(self, tau, *args, **kwargs):
         super(InfoNCELossG2LEN, self).__init__()
         self.tau = tau
 
     def forward(self,
                 h1: torch.FloatTensor, g1: torch.FloatTensor,
                 h2: torch.FloatTensor, g2: torch.FloatTensor,
-                h3: torch.FloatTensor, h4: torch.FloatTensor):
+                h3: torch.FloatTensor, h4: torch.FloatTensor,
+                *args, **kwargs):
         num_nodes = h1.size()[0]
         device = h1.device
         pos_mask1 = torch.ones((1, num_nodes), dtype=torch.float32, device=device)
@@ -130,15 +131,16 @@ class InfoNCELossG2LEN(torch.nn.Module):
         samples1 = torch.cat([h2, h4], dim=0)
         samples2 = torch.cat([h1, h3], dim=0)
 
-        l1 = nt_xent_loss_en(g1, samples1, pos_mask=pos_mask, tau=self.tau)
-        l2 = nt_xent_loss_en(g2, samples2, pos_mask=pos_mask, tau=self.tau)
+        l1 = nt_xent_loss_en(g1, samples1, pos_mask=pos_mask, tau=self.tau, *args, **kwargs)
+        l2 = nt_xent_loss_en(g2, samples2, pos_mask=pos_mask, tau=self.tau, *args, **kwargs)
 
         return l1 + l2
 
 
 class HardMixingLoss(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, projection, *args, **kwargs):
         super(HardMixingLoss, self).__init__()
+        self.projection = projection
 
     @staticmethod
     def tensor_similarity(z1, z2):
@@ -146,7 +148,7 @@ class HardMixingLoss(torch.nn.Module):
         z2 = F.normalize(z2, dim=-1)  # [N, s, d]
         return torch.bmm(z2, z1.unsqueeze(dim=-1)).squeeze()
 
-    def forward(self, z1: torch.Tensor, z2: torch.Tensor, threshold=0.1, s=150, mixup=0.2):
+    def forward(self, z1: torch.Tensor, z2: torch.Tensor, threshold=0.1, s=150, mixup=0.2, *args, **kwargs):
         f = lambda x: torch.exp(x / self.tau)
         num_samples = z1.shape[0]
         device = z1.device
@@ -185,4 +187,51 @@ class HardMixingLoss(torch.nn.Module):
         loss2 = -torch.log(pos / (neg2 + neg_m2 - refl2))
         loss = (loss1 + loss2) * 0.5
         loss = loss.mean()
+        return loss
+
+
+class RingLoss(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super(RingLoss, self).__init__()
+
+    def forward(self, h1: torch.Tensor, h2: torch.Tensor, y: torch.Tensor, threshold=0.1, *args, **kwargs):
+        f = lambda x: torch.exp(x / self.tau)
+        num_samples = h1.shape[0]
+        device = h1.device
+        threshold = int(num_samples * threshold)
+
+        false_neg_mask = torch.zeros((num_samples, 2 * num_samples), dtype=torch.int).to(device)
+        for i in range(num_samples):
+            false_neg_mask[i] = (y == y[i]).repeat(2)
+
+        pos_sim = f(_similarity(h1, h2))
+        neg_sim1 = torch.cat([_similarity(h1, h1), _similarity(h1, h2)], dim=1)  # [n, 2n]
+        neg_sim2 = torch.cat([_similarity(h2, h1), _similarity(h2, h2)], dim=1)
+        neg_sim1, indices1 = torch.sort(neg_sim1, descending=True)
+        neg_sim2, indices2 = torch.sort(neg_sim2, descending=True)
+
+        y_repeated = y.repeat(2)
+        false_neg_cnt = torch.zeros((num_samples)).to(device)
+        for i in range(num_samples):
+            false_neg_cnt[i] = (y_repeated[indices1[i, threshold:-threshold]] == y[i]).sum()
+        within_threshold = (false_neg_cnt / threshold / 2).mean().item()
+        within_dataset = (false_neg_cnt / num_samples / 2).mean().item()
+        print(f'False negatives: {within_threshold * 100:.2f}%, {within_dataset * 100:.2f}% overall')
+
+        neg_sim1 = f(neg_sim1[:, threshold:-threshold])
+        neg_sim2 = f(neg_sim2[:, threshold:-threshold])
+
+        neg_sim1 = f(neg_sim1 * (1 - false_neg_mask))
+        neg_sim2 = f(neg_sim2 * (1 - false_neg_mask))
+
+        pos = pos_sim.diag()
+        neg1 = neg_sim1.sum(dim=1)
+        neg2 = neg_sim2.sum(dim=1)
+
+        loss1 = -torch.log(pos / neg1)
+        loss2 = -torch.log(pos / neg2)
+
+        loss = (loss1 + loss2) * 0.5
+        loss = loss.mean()
+
         return loss
