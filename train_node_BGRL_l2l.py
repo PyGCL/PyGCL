@@ -57,7 +57,6 @@ def train(model, optimizer, data, param):
     loss = model.loss(h1_pred, h2_pred, h1_target.detach(), h2_target.detach())
     loss.backward()
     optimizer.step()
-
     model.update_target_encoder(param['momentum'])
 
     return loss.item()
@@ -128,7 +127,8 @@ def main():
                  augmentor=(aug1, aug2),
                  hidden_dim=param['hidden_dim'],
                  dropout=param['dropout'],
-                 predictor_norm=param['bootstrap']['predictor_norm']).to(device)
+                 predictor_norm=param['bootstrap']['predictor_norm'],
+                 mode='L2L').to(device)
     optimizer = Adam(
         model.parameters(),
         lr=param['learning_rate'],
@@ -159,7 +159,7 @@ def main():
 
                 # log evaluation metrics
                 if epoch % 10 == 0:
-                    test_result = test(model, data, args, verbose=False)
+                    test_result = test(model, data, args)
                     writer.add_scalar('Eval/MicroF1', test_result['F1Mi'], epoch)
                     writer.add_scalar('Eval/MacroF1', test_result['F1Ma'], epoch)
                     print(f'(E) | Best test F1Mi={test_result["F1Mi"]:.4f}, F1Ma={test_result["F1Ma"]:.4f}')
