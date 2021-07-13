@@ -1,15 +1,15 @@
 {
-    "learning_rate": 0.001,
-    "weight_decay": 0.00001,
-    "hidden_dim": 256,
-    "proj_dim": 128,
-    "batch_size": 400,
-    "num_layers": 4,
-    "activation": "relu",
+    "learning_rate": 0.01,
+    "weight_decay": 5e-8,
+    "hidden_dim": 300,
+    "proj_dim": 300,
+    "batch_size": 256,
+    "num_layers": 5,
+    "activation": "prelu",
     "drop_edge_prob1": 0.1,
     "drop_edge_prob2": 0.1,
     "drop_feat_prob1": 0.2,
-    "drop_feat_prob2": 0,
+    "drop_feat_prob2": 0.2,
     "tau": 0.1,
     "num_epochs": 200
 }

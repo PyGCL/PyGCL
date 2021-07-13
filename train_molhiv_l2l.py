@@ -16,7 +16,7 @@ from GCL.utils import seed_everything
 
 from torch import nn
 from torch.optim import Adam
-from torch_geometric.nn import global_add_pool, GINEConv
+from torch_geometric.nn import global_mean_pool, GINEConv
 from torch_geometric.data import DataLoader
 from ogb.graphproppred import Evaluator
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
@@ -26,7 +26,8 @@ from models.GRACE import GRACE
 
 
 def make_gin_conv(input_dim: int, out_dim: int) -> GINEConv:
-    return GINEConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
+    return GINEConv(nn.Sequential(nn.Linear(input_dim, 2 * input_dim), nn.BatchNorm1d(2 * input_dim), nn.ReLU(),
+                                  nn.Linear(2 * input_dim, out_dim)))
 
 
 class Encoder(nn.Module):
@@ -99,7 +100,7 @@ def test(model, loader, device, dataset):
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
         z, _, _ = model(data.x, data.edge_index, data.edge_attr)
 
-        g = global_add_pool(z, data.batch)
+        g = global_mean_pool(z, data.batch)
 
         x.append(g.detach())
         y.append(data.y)
@@ -202,16 +203,20 @@ def main():
     aug1 = compile_aug_schema(args.aug1, view_id=1)
     aug2 = compile_aug_schema(args.aug2, view_id=2)
 
-    model = GRACE(encoder=Encoder(
-                      input_dim, param['hidden_dim'],
-                      activation=get_activation(param['activation']),
-                      num_layers=param['num_layers']),
-                  augmentation=(
-                      aug1, aug2
-                  ),
-                  hidden_dim=param['hidden_dim'],
-                  proj_dim=param['proj_dim'],
-                  tau=param['tau']).to(device)
+    encoder = Encoder(
+        input_dim, param['hidden_dim'],
+        activation=get_activation(param['activation']),
+        num_layers=param['num_layers'],
+        batch_norm=True
+    )
+    model = GRACE(
+        encoder=encoder,
+        augmentation=(
+            aug1, aug2
+        ),
+        hidden_dim=param['hidden_dim'],
+        proj_dim=param['proj_dim'],
+        tau=param['tau']).to(device)
     optimizer = Adam(
         model.parameters(),
         lr=param['learning_rate'],
