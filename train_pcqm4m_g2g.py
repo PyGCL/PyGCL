@@ -1,3 +1,4 @@
+import os
 import tensorflow
 import nni
 import math
@@ -125,7 +126,7 @@ def test(model, loader, device, seed, num_graphs, split):
     results = dict()
 
     evaluator = PCQM4MEvaluator()
-    res = MLP_regression(x, y, target=(0, 'default'), evaluator=evaluator, split=split)
+    res = MLP_regression(x, y, target=(0, 'default'), evaluator=evaluator, split=split, num_epochs=5000)
 
     return res
 
@@ -150,7 +151,7 @@ def main():
         'drop_feat_prob2': 0.2,
         'patience': 10000,
         'num_epochs': 2,
-        'batch_size': 10,
+        'batch_size': 256,
         'tau': 0.8,
         'sp_eps': 0.001,
         'num_seeds': 1000,
@@ -182,35 +183,32 @@ def main():
     input_dim = dataset.num_features if dataset.num_features > 0 else 1
 
     # subsampling dataset for efficient training
-    def idx2mask(indices: torch.LongTensor, num_graphs: int = num_graphs) -> torch.BoolTensor:
-        num_graphs = indices.max().item() + 1 if num_graphs is None else num_graphs
-        mask = torch.zeros((num_graphs,), dtype=torch.bool)
-        mask[indices] = True
-        return mask
+    subset_path = f'pcqm4m_subset_{args.subset_size}.pt'
+    if os.path.exists(subset_path):
+        print(f'loading subset indices from {subset_path} ...')
+        subset_indices = torch.load(subset_path)
+    else:
+        def idx2mask(indices: torch.LongTensor, num_graphs: int = num_graphs) -> torch.BoolTensor:
+            num_graphs = indices.max().item() + 1 if num_graphs is None else num_graphs
+            mask = torch.zeros((num_graphs,), dtype=torch.bool)
+            mask[indices] = True
+            return mask
 
-    # compute masks
-    train_idx = dataset.get_idx_split()['train']
-    val_idx = dataset.get_idx_split()['valid']
-    test_idx = dataset.get_idx_split()['test']
-    train_mask, val_mask, test_mask = [idx2mask(idx) for idx in [train_idx, val_idx, test_idx]]
+        # compute masks
+        train_idx = dataset.get_idx_split()['train']
+        val_idx = dataset.get_idx_split()['valid']
+        test_idx = dataset.get_idx_split()['test']
+        train_mask, val_mask, test_mask = [idx2mask(idx) for idx in [train_idx, val_idx, test_idx]]
 
-    # # do the sampling
-    labeled_mask = train_mask.logical_or(val_mask).logical_or(test_mask)
-    labeled_indices = torch.nonzero(labeled_mask, as_tuple=False).view(-1)
+        # do the sampling
+        labeled_mask = train_mask.logical_or(val_mask)
+        labeled_indices = torch.nonzero(labeled_mask, as_tuple=False).view(-1)
 
-    indices = torch.randperm(labeled_indices.shape[0])[:args.subset_size]
-    subset_indices = labeled_indices[indices]
-    subset_mask = idx2mask(subset_indices)
-    train_mask, val_mask, test_mask = [x[subset_indices] for x in [train_mask, val_mask, test_mask]]
-    train_idx, val_idx, test_idx = [torch.nonzero(x, as_tuple=False).view(-1) for x in [train_mask, val_mask, test_mask]]
+        indices = torch.randperm(labeled_indices.shape[0])[:args.subset_size]
+        subset_indices = labeled_indices[indices]
+        torch.save(subset_indices, f'pcqm4m_subset_{args.subset_size}.pt')
 
     dataset = Subset(dataset, subset_indices.tolist())
-
-    split = {
-        'train': train_idx,
-        'val': val_idx,
-        'test': test_idx
-    }
 
     train_loader = DataLoader(dataset, batch_size=param['batch_size'])
     test_loader = DataLoader(dataset, batch_size=param['batch_size'])
@@ -295,12 +293,12 @@ def main():
     print(f'(T) | Best epoch={best_epoch}, best loss={best_loss}')
     model.load_state_dict(torch.load(model_save_path))
 
-    test_result = test(model, test_loader, device, param['seed'], num_graphs=len(dataset), split=split)
+    test_result = test(model, test_loader, device, param['seed'], num_graphs=len(dataset), split=None)
     test_mae = test_result['mae']
     print(f'(E) | test mae={test_mae:.4f}')
 
     if nni_mode:
-        nni.report_final_result(test_result["F1Mi"][0])
+        nni.report_final_result(test_mae)
 
 
 if __name__ == '__main__':
