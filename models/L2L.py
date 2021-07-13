@@ -3,7 +3,6 @@ import torch.nn.functional as F
 import GCL.augmentors as A
 
 from typing import Optional, Tuple
-from torch_geometric.nn import GCNConv
 
 
 class L2L(torch.nn.Module):
@@ -37,28 +36,3 @@ class L2L(torch.nn.Module):
     def projection(self, z: torch.Tensor) -> torch.Tensor:
         z = F.elu(self.fc1(z))
         return self.fc2(z)
-
-
-class NodeEncoder(torch.nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, activation, num_layers: int, batch_norm: bool = False):
-        super(NodeEncoder, self).__init__()
-        self.activation = activation()
-        self.layers = torch.nn.ModuleList()
-        self.batch_norms = torch.nn.ModuleList() if batch_norm else None
-        self.layers.append(GCNConv(input_dim, hidden_dim, cached=False))
-
-        for _ in range(num_layers - 1):
-            # add batch norm layer if batch norm is used
-            if self.batch_norms is not None:
-                self.batch_norms.append(torch.nn.BatchNorm1d(hidden_dim))
-            self.layers.append(GCNConv(hidden_dim, hidden_dim, cached=False))
-
-    def forward(self, x, edge_index, edge_weight=None):
-        z = x
-        num_layers = len(self.layers)
-        for i, conv in enumerate(self.layers):
-            z = conv(z, edge_index, edge_weight)
-            z = self.activation(z)
-            if self.batch_norms is not None and i != num_layers - 1:
-                z = self.batch_norms[i](z)
-        return z

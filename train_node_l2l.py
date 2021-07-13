@@ -13,7 +13,8 @@ from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 
 from utils import load_node_dataset, get_activation, get_compositional_augmentor, get_loss
-from models.L2L import L2L, NodeEncoder
+from models.L2L import L2L
+from models.GConv import Encoder
 
 
 def train(model, optimizer, data, param):
@@ -82,10 +83,11 @@ def main():
     aug2 = get_compositional_augmentor(param['augmentor2'])
     loss = get_loss(param['loss'], 'L2L', param[param['loss']])
 
-    model = L2L(encoder=NodeEncoder(data.num_features, param['hidden_dim'],
-                                    activation=get_activation(param['activation']),
-                                    batch_norm=param['batch_norm'],
-                                    num_layers=param['num_layers']),
+    model = L2L(encoder=Encoder(data.num_features, param['hidden_dim'],
+                                activation=get_activation(param['activation']),
+                                batch_norm=param['batch_norm'],
+                                num_layers=param['num_layers'],
+                                base_conv='GCNConv'),
                 augmentor=(aug1, aug2),
                 hidden_dim=param['hidden_dim'],
                 proj_dim=param['proj_dim'],
