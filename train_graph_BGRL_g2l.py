@@ -1,85 +1,27 @@
 import nni
-import numpy
 import math
 import torch
 import argparse
 import pretty_errors
-from time import time_ns
-from time import perf_counter
-import torch.nn.functional as F
 import warnings
 
-from sklearn.exceptions import ConvergenceWarning
+from tqdm import tqdm
 
-from torch_geometric.data import DataLoader
-from torch_scatter import scatter
-
-import GCL.augmentors as A
 import GCL.utils.simple_param as SP
 
-from torch import nn
+from time import time_ns
 from torch.optim import Adam
+from sklearn.exceptions import ConvergenceWarning
+from torch_geometric.data import DataLoader
 from GCL.eval import SVM_classification
+from GCL.losses import BootstrapLossG2L
 from GCL.utils import seed_everything
-from torch_geometric.nn import GINConv
 
-from utils import get_activation, load_graph_dataset
-from models.BGRL import BGRLG2L as BGRL
-
-
-def make_gin_conv(input_dim: int, out_dim: int) -> GINConv:
-    return GINConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
+from utils import get_activation, load_graph_dataset, get_compositional_augmentor
+from models.BGRL import BGRL, GraphEncoder
 
 
-class Encoder(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, activation, num_layers: int, dropout: float = 0.2):
-        super(Encoder, self).__init__()
-        self.activation = activation()
-        self.dropout = dropout
-
-        self.layers = torch.nn.ModuleList()
-        self.layers.append(make_gin_conv(input_dim, hidden_dim))
-        for _ in range(num_layers - 1):
-            self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
-
-        self.batch_norm = nn.BatchNorm1d(hidden_dim)
-        self.projection_head = torch.nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.PReLU(),
-            nn.Dropout(dropout))
-
-    def forward(self, x, edge_index, edge_weight=None):
-        z = x
-        for conv in self.layers:
-            z = conv(z, edge_index, edge_weight)
-            z = self.activation(z)
-            z = F.dropout(z, p=self.dropout, training=self.training)
-        z = self.batch_norm(z)
-        return z, self.projection_head(z)
-
-
-def bgrl_loss(g: torch.FloatTensor, h: torch.FloatTensor, batch):
-    num_graphs = batch.max().item() + 1  # N := num_graphs
-    num_nodes = h.size()[0]  # M := num_nodes
-    device = h.device
-
-    values = torch.eye(num_nodes, dtype=torch.float32, device=device)  # [M, M]
-    pos_mask = scatter(values, batch, dim=0, reduce='sum')  # [M, N]
-
-    # pos_mask = []
-    # for i in range(num_graphs):
-    #     mask = batch == i
-    #     pos_mask.append(mask.to(torch.long))
-    # pos_mask = torch.stack(pos_mask, dim=0).to(torch.float32)
-
-    g = F.normalize(g, dim=-1, p=2)
-    h = F.normalize(h, dim=-1, p=2)
-
-    similarity = g @ h.t()
-    return (similarity * pos_mask).sum(dim=-1)
-
-
-def train(model, optimizer, loader, device, args):
+def train(model, optimizer, loader, device, param):
     model.train()
     total_loss = 0
 
@@ -89,15 +31,12 @@ def train(model, optimizer, loader, device, args):
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
 
         optimizer.zero_grad()
-        _, _, h1_pred, h2_pred, g1_target, g2_target = model(data.x, data.batch, data.edge_index)
+        _, _, h1_pred, h2_pred, g1_target, g2_target = model(data.x, data.edge_index, batch=data.batch)
 
-        loss = bgrl_loss(g2_target.detach(), h1_pred, data.batch)
-        loss += bgrl_loss(g1_target.detach(), h2_pred, data.batch)
-        loss = loss.mean()
+        loss = model.loss(h1_pred, h2_pred, g1_target.detach(), g2_target.detach(), data.batch)
         loss.backward()
         optimizer.step()
-
-        model.update_target_encoder(momentum=0.99)
+        model.update_target_encoder(param['momentum'])
 
         total_loss += loss.item()
 
@@ -112,7 +51,7 @@ def test(model, loader, device, seed):
         data = data.to(device)
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
-        g1, g2, _, _, _, _ = model(data.x, data.batch, data.edge_index)
+        g1, g2, _, _, _, _ = model(data.x, data.edge_index, batch=data.batch)
         z = torch.cat([g1, g2], dim=1)
 
         x.append(z.detach().cpu())
@@ -139,40 +78,25 @@ def main():
         'activation': 'prelu',
         'base_model': 'GINConv',
         'num_layers': 2,
-        'drop_edge_prob1': 0.2,
-        'drop_edge_prob2': 0.1,
-        'add_edge_prob1': 0.1,
-        'add_edge_prob2': 0.1,
-        'drop_node_prob1': 0.1,
-        'drop_node_prob2': 0.1,
-        'drop_feat_prob1': 0.3,
-        'drop_feat_prob2': 0.2,
-        'patience': 10000,
+        'patience': 100,
         'num_epochs': 1000,
-        'batch_size': 10,
-        'tau': 0.8,
-        'sp_eps': 0.001,
-        'num_seeds': 1000,
-        'walk_length': 10,
+        'batch_size': 32,
         'dropout': 0.2
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:6')
-    parser.add_argument('--dataset', type=str, default='PTC_MR')
-    parser.add_argument('--param_path', type=str, default='None')
-    parser.add_argument('--aug1', type=str, default='FM+ER')
-    parser.add_argument('--aug2', type=str, default='FM+ER')
-    parser.add_argument('--loss', type=str, default='nt_xent', choices=['nt_xent', 'jsd', 'triplet'])
-    parser.add_argument('--save_split', type=str, nargs='?')
-    parser.add_argument('--load_split', type=str, nargs='?')
+    parser.add_argument('--dataset', type=str, default='IMDB-MULTI')
+    parser.add_argument('--param_path', type=str, default='params/BGRL/imdb_multi.json')
     for k, v in default_param.items():
-        parser.add_argument(f'--{k}', type=type(v), nargs='?')
+        if type(v) is dict:
+            for subk, subv in v.items():
+                parser.add_argument(f'--{k}:{subk}', type=type(subv), nargs='?')
+        else:
+            parser.add_argument(f'--{k}', type=type(v), nargs='?')
     args = parser.parse_args()
     sp = SP.SimpleParam(default=default_param)
-    param = sp(args.param_path, preprocess_nni=False)
-    # param = sp()
-
-    param = SP.SimpleParam.merge_args(list(default_param.keys()), args, param)
+    sp.update(args.param_path, preprocess_nni=False)
+    param = sp()
 
     use_nni = args.param_path == 'nni'
 
@@ -186,47 +110,21 @@ def main():
     print(param)
     print(args.__dict__)
 
-    def get_aug(aug_name: str, view_id: int):
-        if aug_name == 'ER':
-            return A.EdgeRemoving(pe=param[f'drop_edge_prob{view_id}'])
-        if aug_name == 'EA':
-            return A.EdgeAdding(pe=param[f'add_edge_prob{view_id}'])
-        if aug_name == 'ND':
-            return A.NodeDropping(pn=param[f'drop_node_prob{view_id}'])
-        if aug_name == 'RWS':
-            return A.RWSampling(num_seeds=param['num_seeds'], walk_length=param['walk_length'])
-        if aug_name == 'PPR':
-            return A.PPRDiffusion(eps=param['sp_eps'])
-        if aug_name == 'MKD':
-            return A.MarkovDiffusion(sp_eps=param['sp_eps'])
-        if aug_name == 'ORI':
-            return A.Identity()
-        if aug_name == 'FM':
-            return A.FeatureMasking(pf=param[f'drop_feat_prob{view_id}'])
-        if aug_name == 'FD':
-            return A.FeatureDropout(pf=param[f'drop_feat_prob{view_id}'])
+    aug1 = get_compositional_augmentor(param['augmentor1'])
+    aug2 = get_compositional_augmentor(param['augmentor2'])
 
-        raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
-
-    def compile_aug_schema(schema: str, view_id: int) -> A.Augmentor:
-        augs = schema.split('+')
-        augs = [get_aug(x, view_id) for x in augs]
-
-        ret = augs[0]
-        for a in augs[1:]:
-            ret = ret >> a
-        return ret
-
-    aug1 = compile_aug_schema(args.aug1, view_id=1)
-    aug2 = compile_aug_schema(args.aug2, view_id=2)
-
-    model = BGRL(encoder=Encoder(input_dim, param['hidden_dim'],
-                                 activation=get_activation(param['activation']),
-                                 num_layers=param['num_layers'],
-                                 dropout=param['dropout']),
-                 augmentation=(aug1, aug2),
+    model = BGRL(encoder=GraphEncoder(input_dim, param['hidden_dim'],
+                                      activation=get_activation(param['activation']),
+                                      num_layers=param['num_layers'],
+                                      dropout=param['dropout'],
+                                      encoder_norm=param['bootstrap']['encoder_norm'],
+                                      projector_norm=param['bootstrap']['projector_norm']),
+                 augmentor=(aug1, aug2),
                  hidden_dim=param['hidden_dim'],
-                 dropout=param['dropout']).to(device)
+                 dropout=param['dropout'],
+                 predictor_norm=param['bootstrap']['predictor_norm'],
+                 mode='G2L',
+                 loss=BootstrapLossG2L()).to(device)
     optimizer = Adam(
         model.parameters(),
         lr=param['learning_rate'],
@@ -235,23 +133,24 @@ def main():
     best_loss = 1e3
     wait_window = 0
 
-    model_save_path = f'intermediate/{time_ns()}-{args.aug1}-{args.aug2}.pkl'
-    for epoch in range(param['num_epochs']):
-        tic = perf_counter()
-        loss = train(model, optimizer, train_loader, device=device, args=args)
-        toc = perf_counter()
-        print(f'\r(T) | Epoch={epoch:03d}, loss={loss:.8f}, time={toc - tic:.4f}', end='')
+    model_save_path = f'intermediate/{time_ns()}-{param["augmentor1"]["scheme"]}-{param["augmentor2"]["scheme"]}.pkl'
 
-        if loss < best_loss:
-            best_loss = loss
-            best_epoch = epoch
-            wait_window = 0
-            torch.save(model.state_dict(), model_save_path)
-        else:
-            wait_window += 1
+    with tqdm(total=param['num_epochs'], desc='(T)') as pbar:
+        for epoch in range(param['num_epochs']):
+            loss = train(model, optimizer, train_loader, device=device, param=param['bootstrap'])
+            pbar.set_postfix({'loss': loss})
+            pbar.update()
 
-        if wait_window >= param['patience']:
-            break
+            if loss < best_loss:
+                best_loss = loss
+                best_epoch = epoch
+                wait_window = 0
+                torch.save(model.state_dict(), model_save_path)
+            else:
+                wait_window += 1
+
+            if wait_window >= param['patience']:
+                break
 
     print('\n=== Final ===')
     print(f'(T) | Best epoch={best_epoch}, best loss={best_loss}')
