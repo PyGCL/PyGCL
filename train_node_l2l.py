@@ -148,8 +148,6 @@ def main():
     if use_nni:
         nni.report_final_result(test_result['F1Mi'])
 
-    return data, model
-
 
 if __name__ == '__main__':
-    data, model = main()
+    main()
