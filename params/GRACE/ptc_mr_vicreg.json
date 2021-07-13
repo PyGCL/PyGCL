@@ -1,0 +1,17 @@
+{
+    "learning_rate": 0.01,
+    "weight_decay": 0.001,
+    "hidden_dim": 512,
+    "proj_dim": 128,
+    "num_layers": 3,
+    "activation": "hardtanh",
+    "drop_edge_prob1": 0.3,
+    "drop_edge_prob2": 0.2,
+    "drop_feat_prob1": 0.3,
+    "drop_feat_prob2": 0.1,
+    "tau": 0.4,
+    "num_epochs": 1800,
+    "warmup_epochs": 200,
+    "vicreg_sim_loss_weight": 40,
+    "vicreg_var_loss_weight": 10
+}
