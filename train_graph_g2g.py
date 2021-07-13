@@ -10,6 +10,8 @@ import GCL.augmentations as A
 import GCL.utils.simple_param as SP
 from GCL.eval import SVM_classification
 
+from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
+
 from torch import nn
 from torch.optim import Adam
 from GCL.utils import seed_everything
@@ -71,6 +73,13 @@ def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args, param
             loss = model.triplet_loss(g1, g2)
         elif args.loss == 'mixup':
             loss = model.hard_mixing_loss(g1, g2, threshold=params['mixup_threshold'], s=params['mixup_s'])
+        elif args.loss == 'barlow_twins':
+            loss = model.bt_loss(z1, z2)
+        elif args.loss == 'vicreg':
+            loss = model.vicreg_loss(z1, z2,
+                                     sim_loss_weight=params['vicreg_sim_loss_weight'],
+                                     var_loss_weight=params['vicreg_var_loss_weight'],
+                                     cov_loss_weight=params['vicreg_cov_loss_weight'])
         else:
             raise NotImplementedError(f'Unknown loss type: {args.loss}')
 
@@ -130,15 +139,20 @@ def main():
         'num_seeds': 1000,
         'walk_length': 10,
         'mixup_threshold': 0.2,
-        'mixup_s': 100
+        'mixup_s': 100,
+        'warmup_epochs': 200,
+        'vicreg_sim_loss_weight': 25.0,
+        'vicreg_var_loss_weight': 25.0,
+        'vicreg_cov_loss_weight': 1.0,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='IMDB-MULTI')
-    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/imdb_multi_triplet.json')
+    parser.add_argument('--dataset', type=str, default='PROTEINS')
+    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/proteins.json')
     parser.add_argument('--aug1', type=str, default='FM+ER')
     parser.add_argument('--aug2', type=str, default='FM+ER')
-    parser.add_argument('--loss', type=str, default='mixup', choices=['nt_xent', 'jsd', 'triplet', 'mixup'])
+    parser.add_argument('--loss', type=str, default='vicreg',
+                        choices=['nt_xent', 'jsd', 'triplet', 'mixup', 'barlow_twins', 'vicreg'])
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
     for k, v in default_param.items():
@@ -214,6 +228,10 @@ def main():
         model.parameters(),
         lr=param['learning_rate'],
         weight_decay=param['weight_decay'])
+    scheduler = LinearWarmupCosineAnnealingLR(
+        optimizer=optimizer,
+        warmup_epochs=param['warmup_epochs'],
+        max_epochs=param['num_epochs'])
 
     best_loss = 1e10
     wait_window = 0
@@ -224,6 +242,8 @@ def main():
         # if epoch % 20 == 0:
         tic = perf_counter()
         loss = train(model, optimizer, train_loader, device=device, args=args, params=param)
+        if args.loss == 'barlow_twins':
+            scheduler.step()
         toc = perf_counter()
         # else:
             # loss = train(model, optimizer, data)
