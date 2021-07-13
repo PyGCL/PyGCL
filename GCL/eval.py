@@ -45,7 +45,8 @@ def LR_classification(
     best_test_macro = 0
     best_epoch = 0
 
-    with tqdm(total=num_epochs, desc='(LR)') as pbar:
+    with tqdm(total=num_epochs, desc='(LR)',
+              bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}{postfix}]') as pbar:
         for epoch in range(num_epochs):
             classifier.train()
             optimizer.zero_grad()

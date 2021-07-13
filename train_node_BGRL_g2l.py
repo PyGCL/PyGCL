@@ -195,7 +195,7 @@ def main():
                                  activation=get_activation(param['activation']),
                                  num_layers=param['num_layers'],
                                  dropout=param['dropout']),
-                 augmentation=(aug1, aug2),
+                 augmentor=(aug1, aug2),
                  hidden_dim=param['hidden_dim'],
                  dropout=param['dropout']).to(device)
     optimizer = Adam(
