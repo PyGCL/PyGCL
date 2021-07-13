@@ -9,7 +9,7 @@
         "drop_edge_prob": 0.6,
         "drop_feat_prob": 0.2
     },
-    "augmentor1": {
+    "augmentor2": {
         "drop_edge_prob": 0.3,
         "drop_feat_prob": 0.3
     },
