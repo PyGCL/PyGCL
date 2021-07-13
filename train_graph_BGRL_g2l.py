@@ -153,7 +153,7 @@ def main():
                 break
 
     print('\n=== Final ===')
-    print(f'(T) | Best epoch={best_epoch}, best loss={best_loss}')
+    print(f'(T) | Best epoch={best_epoch}, best loss={best_loss:.4f}')
     model.load_state_dict(torch.load(model_save_path))
 
     test_result = test(model, test_loader, device, param['seed'])
