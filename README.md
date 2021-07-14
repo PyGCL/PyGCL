@@ -45,17 +45,17 @@ Besides try the above examples for node and graph classification tasks, you can 
 
 In `GCL.augmentors`, PyGCL provides the `Augmentor` base class, which offers a universal interface for graph augmentation functions. Specifically, PyGCL implements the following augmentation functions:
 
-| Augmentation                             | Class name          |
-| ---------------------------------------- | ------------------- |
-| Edge Adding (EA)                        | `EdgeAdding`      |
-| Edge Removing (ER)                      | `EdgeRemoving`    |
-| Feature Masking (FM)                    | `FeatureMasking`  |
-| Feature Dropout (FD)                    | `FeatureDropout`  |
-| Personalized PageRank (PPR)             | `PPRDiffusion`    |
-| Markov Diffusion Kernel (MDK)           | `MarkovDiffusion` |
-| Node Dropping (ND)                      | `NodeDropping`    |
-| Subgraphs induced by Random Walks (RWS) | `RWSampling`      |
-| Ego-net Sampling (ES)                   | `Identity`        |
+| Augmentation                             | Class name        |
+| ---------------------------------------- | ----------------- |
+| Edge Adding (EA)                         | `EdgeAdding`      |
+| Edge Removing (ER)                       | `EdgeRemoving`    |
+| Feature Masking (FM)                     | `FeatureMasking`  |
+| Feature Dropout (FD)                     | `FeatureDropout`  |
+| Personalized PageRank (PPR)              | `PPRDiffusion`    |
+| Markov Diffusion Kernel (MDK)            | `MarkovDiffusion` |
+| Node Dropping (ND)                       | `NodeDropping`    |
+| Subgraphs induced by Random Walks (RWS)  | `RWSampling`      |
+| Ego-net Sampling (ES)                    | `Identity`        |
 
 Call these augmentation functions by feeding with a graph of in a tuple form of node features, edge index, and edge features `x, edge_index, edge_weights`will produce corresponding augmented graphs.
 
@@ -73,20 +73,31 @@ You can also write your own augmentation functions by defining the `augment` fun
 
 PyGCL implements three contrasting modes: (a) local-local, (b) global-local, and (c) global-global modes. You can refer to the `models` folder for details. Note that the bootstrapping latent loss involves some special model design (asymmetric online/offline encoders and momentum weight updates) and thus we implement contrasting modes involving this contrastive objective in a separate `BGRL` model.
 
-### Contrastive Objectives and Hard Negative Mining Strategies
+### Contrastive Objectives
 
 In `GCL.losses`, PyGCL implements the following contrastive objectives:
 
-| Contrastive objectives                   | Class name          |
-| ---------------------------------------- | ------------------- |
-| InfoNCE loss                          | `InfoNCELoss`       |
-| Jensen-Shannon Divergence (JSD) loss     | `JSDLoss`           |
-| Triplet Margin (TM) loss | `TripletLoss` |
-| Bootstrapping Latent (BL) loss       | `BootstrapLoss` |
-| Barlow Twins (BT) loss | `BTLoss` |
-| VICReg loss                          | `VICRegLoss` |
+| Contrastive objectives                | Class name      |
+| ------------------------------------- | --------------- |
+| InfoNCE loss                          | `InfoNCELoss`   |
+| Jensen-Shannon Divergence (JSD) loss  | `JSDLoss`       |
+| Triplet Margin (TM) loss              | `TripletLoss`   |
+| Bootstrapping Latent (BL) loss        | `BootstrapLoss` |
+| Barlow Twins (BT) loss                | `BTLoss`        |
+| VICReg loss                           | `VICRegLoss`    |
 
 All these objectives are for contrasting positive and negative pairs at the same scale (i.e. local-local and global-global modes). For global-local modes, we offer `G2L` variants except for Barlow Twins and VICReg losses. Moreover, for InfoNCE, JSD, and Triplet losses, we further provide `G2LEN` variants, primarily for node-level tasks, which involve explicit construction of negative samples. You can find their examples in the root folder.
+
+### Hard Negative Mining Strategies
+
+In `GCL.losses`, PyGCL further implements four hard negative mining strategies that are build upon the InfoNCE contrastive objective:
+
+| Hard negative mining strategies  | Class name                           |
+| -------------------------------- | ------------------------------------ |
+| Hard negative mixing             | `HardMixingLoss`                     |
+| Conditional negative sampling    | `RingLoss`                           |
+| Debiased contrastive objective   | `InfoNCELoss(debiased_nt_xent_loss)` |
+| Hardness-aware negative sampling | `InfoNCELoss(hardness_nt_xent_loss)` |
 
 ## Utilities
 
