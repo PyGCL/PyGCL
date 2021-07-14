@@ -63,7 +63,9 @@ class SimpleParam:
 
     def update(self, from_: str, allowed_namespaces: Optional[list] = None, *args, **kwargs):
         if from_ == 'nni':
-            self.parameters.update(**nni.get_next_parameter())
+            loaded = nni.get_next_parameter()
+            namespace, loaded = self._process_namespace(loaded, allowed_namespaces)
+            self.parameters.update(loaded)
         else:
             if from_.endswith('.json'):
                 loaded = self._parse_json(from_)
