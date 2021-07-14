@@ -15,8 +15,9 @@ from torch_geometric.nn import global_add_pool
 from torch_geometric.data import DataLoader
 from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
 
+from models.GConv import Encoder
 from utils import load_graph_dataset, get_activation, get_compositional_augmentor, get_loss
-from models.G2G import G2G, GraphEncoder
+from models.G2G import G2G
 
 
 def train(model, optimizer, loader: DataLoader, device, param):
@@ -102,10 +103,11 @@ def main():
     aug2 = get_compositional_augmentor(param['augmentor2'])
     loss = get_loss(param['loss'], 'L2L')
 
-    model = G2G(encoder=GraphEncoder(input_dim, param['hidden_dim'],
-                                     activation=get_activation(param['activation']),
-                                     num_layers=param['num_layers'],
-                                     batch_norm=param['batch_norm']),
+    model = G2G(encoder=Encoder(input_dim, param['hidden_dim'],
+                                activation=get_activation(param['activation']),
+                                num_layers=param['num_layers'],
+                                batch_norm=param['batch_norm'],
+                                base_conv='GINConv'),
                 augmentor=(aug1, aug2),
                 hidden_dim=param['hidden_dim'],
                 proj_dim=param['proj_dim'],

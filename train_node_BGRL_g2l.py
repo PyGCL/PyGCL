@@ -14,7 +14,7 @@ from GCL.losses import BootstrapLossG2L
 from GCL.utils import seed_everything
 
 from utils import load_node_dataset, get_activation, get_compositional_augmentor
-from models.BGRL import BGRL, NodeEncoder
+from models.BGRL import BGRL, Encoder
 
 
 def train(model, optimizer, data, param):
@@ -86,12 +86,13 @@ def main():
     aug1 = get_compositional_augmentor(param['augmentor1'])
     aug2 = get_compositional_augmentor(param['augmentor2'])
 
-    model = BGRL(encoder=NodeEncoder(data.num_features, param['hidden_dim'],
-                                     activation=get_activation(param['activation']),
-                                     num_layers=param['num_layers'],
-                                     dropout=param['dropout'],
-                                     encoder_norm=param['bootstrap']['encoder_norm'],
-                                     projector_norm=param['bootstrap']['projector_norm']),
+    model = BGRL(encoder=Encoder(data.num_features, param['hidden_dim'],
+                                 activation=get_activation(param['activation']),
+                                 num_layers=param['num_layers'],
+                                 dropout=param['dropout'],
+                                 encoder_norm=param['bootstrap']['encoder_norm'],
+                                 projector_norm=param['bootstrap']['projector_norm'],
+                                 base_conv='GCNConv'),
                  augmentor=(aug1, aug2),
                  hidden_dim=param['hidden_dim'],
                  dropout=param['dropout'],

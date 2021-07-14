@@ -106,18 +106,23 @@ class BGRL(torch.nn.Module):
             return g1, g2, h1_pred, h2_pred, g1_target, g2_target
 
 
-class NodeEncoder(nn.Module):
+class Encoder(nn.Module):
     def __init__(self, input_dim: int, hidden_dim: int, activation,
                  num_layers: int, dropout: float = 0.2,
-                 encoder_norm='batch', projector_norm='batch'):
-        super(NodeEncoder, self).__init__()
+                 encoder_norm='batch', projector_norm='batch', base_conv='GCNConv'):
+        super(Encoder, self).__init__()
         self.activation = activation()
         self.dropout = dropout
 
         self.layers = torch.nn.ModuleList()
-        self.layers.append(GCNConv(input_dim, hidden_dim, cached=False))
-        for _ in range(num_layers - 1):
-            self.layers.append(GCNConv(hidden_dim, hidden_dim, cached=False))
+        if base_conv == 'GINConv':
+            self.layers.append(GCNConv(input_dim, hidden_dim, cached=False))
+            for _ in range(num_layers - 1):
+                self.layers.append(GCNConv(hidden_dim, hidden_dim, cached=False))
+        else:  # base_conv == 'GCNConv'
+            self.layers.append(make_gin_conv(input_dim, hidden_dim))
+            for _ in range(num_layers - 1):
+                self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
 
         self.batch_norm = Normalize(hidden_dim, norm=encoder_norm)
         self.projection_head = torch.nn.Sequential(
@@ -138,33 +143,3 @@ class NodeEncoder(nn.Module):
 
 def make_gin_conv(input_dim: int, out_dim: int) -> GINConv:
     return GINConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
-
-
-class GraphEncoder(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, activation,
-                 num_layers: int, dropout: float = 0.2,
-                 encoder_norm='batch', projector_norm='batch'):
-        super(GraphEncoder, self).__init__()
-        self.activation = activation()
-        self.dropout = dropout
-
-        self.layers = torch.nn.ModuleList()
-        self.layers.append(make_gin_conv(input_dim, hidden_dim))
-        for _ in range(num_layers - 1):
-            self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
-
-        self.batch_norm = Normalize(hidden_dim, norm=encoder_norm)
-        self.projection_head = torch.nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            Normalize(hidden_dim, norm=projector_norm),
-            nn.PReLU(),
-            nn.Dropout(dropout))
-
-    def forward(self, x, edge_index, edge_weight=None):
-        z = x
-        for conv in self.layers:
-            z = conv(z, edge_index, edge_weight)
-            z = self.activation(z)
-            z = F.dropout(z, p=self.dropout, training=self.training)
-        z = self.batch_norm(z)
-        return z, self.projection_head(z)
