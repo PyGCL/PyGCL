@@ -105,28 +105,33 @@ def get_compositional_augmentor(param: dict) -> A.Augmentor:
     return aug
 
 
-def get_loss(loss, mode, loss_param):
-    if mode == 'G2L':
-        pass
+def get_loss(loss, mode):
+    if mode == 'G2LEN':
+        if loss == 'infonce':
+            return L.InfoNCELossG2LEN()
+        elif loss == 'jsd':
+            return L.JSDLossG2LEN(discriminator=lambda x, y: x @ y.t())
+        elif loss == 'triplet':
+            return L.TripletLossG2LEN()
     else:  # mode is L2L or G2G
         if loss == 'infonce':
-            return L.InfoNCELoss(loss_fn=L.nt_xent_loss, **loss_param)
+            return L.InfoNCELoss(loss_fn=L.nt_xent_loss)
         elif loss == 'debiased_infonce':
-            return L.InfoNCELoss(loss_fn=L.debiased_nt_xent_loss, **loss_param)
+            return L.InfoNCELoss(loss_fn=L.debiased_nt_xent_loss)
         elif loss == 'hardness_infonce':
-            return L.InfoNCELoss(loss_fn=L.hardness_nt_xent_loss, **loss_param)
+            return L.InfoNCELoss(loss_fn=L.hardness_nt_xent_loss)
         elif loss == 'subsampling_infonce':
-            return L.InfoNCELoss(loss_fn=L.subsampling_nt_xent_loss, **loss_param)
+            return L.InfoNCELoss(loss_fn=L.subsampling_nt_xent_loss)
         elif loss == 'ring_loss':
-            return L.RingLoss(**loss_param)
+            return L.RingLoss()
         elif loss == 'jsd':
-            return L.JSDLoss(discriminator=lambda x, y: x @ y.t(), **loss_param)
+            return L.JSDLoss(discriminator=lambda x, y: x @ y.t())
         elif loss == 'triplet':
-            return L.TripletLoss(**loss_param)
+            return L.TripletLoss()
         elif loss == 'barlow_twins':
-            return L.BTLoss(**loss_param)
+            return L.BTLoss()
         elif loss == 'vicreg':
-            return L.VICRegLoss(**loss_param)
+            return L.VICRegLoss()
     raise NotImplementedError(f'Unsupported loss {loss} or contrasting mode {mode}')
 
 

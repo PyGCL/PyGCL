@@ -36,7 +36,7 @@ def vicreg_loss(h1, h2, sim_weight, var_weight, cov_weight, *args, **kwargs):
 
 
 class VICRegLoss(torch.nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         super(VICRegLoss, self).__init__()
 
     def forward(self, h1: torch.Tensor, h2: torch.Tensor,

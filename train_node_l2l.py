@@ -81,7 +81,7 @@ def main():
 
     aug1 = get_compositional_augmentor(param['augmentor1'])
     aug2 = get_compositional_augmentor(param['augmentor2'])
-    loss = get_loss(param['loss'], 'L2L', param[param['loss']])
+    loss = get_loss(param['loss'], 'L2L')
 
     model = L2L(encoder=Encoder(data.num_features, param['hidden_dim'],
                                 activation=get_activation(param['activation']),

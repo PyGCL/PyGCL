@@ -100,7 +100,7 @@ def main():
 
     aug1 = get_compositional_augmentor(param['augmentor1'])
     aug2 = get_compositional_augmentor(param['augmentor2'])
-    loss = get_loss(param['loss'], 'L2L', param[param['loss']])
+    loss = get_loss(param['loss'], 'L2L')
 
     model = G2G(encoder=GraphEncoder(input_dim, param['hidden_dim'],
                                      activation=get_activation(param['activation']),

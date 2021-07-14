@@ -21,21 +21,20 @@ def jsd_loss(z1, z2, discriminator, pos_mask, neg_mask=None, *args, **kwargs):
 
 
 class JSDLoss(torch.nn.Module):
-    def __init__(self, discriminator, *args, **kwargs):
+    def __init__(self, discriminator):
         super(JSDLoss, self).__init__()
         self.discriminator = discriminator
 
     def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
         num_nodes = h1.size(0)
         device = h1.device
-
         pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
 
         return jsd_loss(h1, h2, discriminator=self.discriminator, pos_mask=pos_mask, *args, **kwargs)
 
 
 class JSDLossG2L(torch.nn.Module):
-    def __init__(self, discriminator, *args, **kwargs):
+    def __init__(self, discriminator):
         super(JSDLossG2L, self).__init__()
         self.discriminator = discriminator
 
@@ -55,7 +54,7 @@ class JSDLossG2L(torch.nn.Module):
 
 
 class JSDLossG2LEN(torch.nn.Module):
-    def __init__(self, discriminator, *args, **kwargs):
+    def __init__(self, discriminator):
         super(JSDLossG2LEN, self).__init__()
         self.discriminator = discriminator
 

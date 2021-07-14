@@ -98,13 +98,13 @@ def nt_xent_loss_en(anchor: torch.FloatTensor,
 
 
 class InfoNCELoss(torch.nn.Module):
-    def __init__(self, loss_fn=nt_xent_loss, *args, **kwargs):
+    def __init__(self, loss_fn=nt_xent_loss):
         super(InfoNCELoss, self).__init__()
         self.loss_fn = loss_fn
 
-    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, tau, *args, **kwargs):
-        l1 = self.loss_fn(h1, h2, tau=tau, *args, **kwargs)
-        l2 = self.loss_fn(h2, h1, tau=tau, *args, **kwargs)
+    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
+        l1 = self.loss_fn(h1, h2, *args, **kwargs)
+        l2 = self.loss_fn(h2, h1, *args, **kwargs)
 
         ret = (l1 + l2) * 0.5
         ret = ret.mean()
@@ -113,7 +113,7 @@ class InfoNCELoss(torch.nn.Module):
 
 
 class InfoNCELossG2LEN(torch.nn.Module):
-    def __init__(self, tau, *args, **kwargs):
+    def __init__(self):
         super(InfoNCELossG2LEN, self).__init__()
 
     def forward(self,
@@ -137,7 +137,7 @@ class InfoNCELossG2LEN(torch.nn.Module):
 
 
 class HardMixingLoss(torch.nn.Module):
-    def __init__(self, projection, *args, **kwargs):
+    def __init__(self, projection):
         super(HardMixingLoss, self).__init__()
         self.projection = projection
 
@@ -190,12 +190,11 @@ class HardMixingLoss(torch.nn.Module):
 
 
 class RingLoss(torch.nn.Module):
-    def __init__(self, tau, *args, **kwargs):
+    def __init__(self):
         super(RingLoss, self).__init__()
-        self.tau = tau
 
-    def forward(self, h1: torch.Tensor, h2: torch.Tensor, y: torch.Tensor, threshold=0.1, *args, **kwargs):
-        f = lambda x: torch.exp(x / self.tau)
+    def forward(self, h1: torch.Tensor, h2: torch.Tensor, y: torch.Tensor, tau, threshold=0.1, *args, **kwargs):
+        f = lambda x: torch.exp(x / tau)
         num_samples = h1.shape[0]
         device = h1.device
         threshold = int(num_samples * threshold)
@@ -214,15 +213,9 @@ class RingLoss(torch.nn.Module):
         false_neg_cnt = torch.zeros((num_samples)).to(device)
         for i in range(num_samples):
             false_neg_cnt[i] = (y_repeated[indices1[i, threshold:-threshold]] == y[i]).sum()
-        within_threshold = (false_neg_cnt / threshold / 2).mean().item()
-        within_dataset = (false_neg_cnt / num_samples / 2).mean().item()
-        # print(f'False negatives: {within_threshold * 100:.2f}%, {within_dataset * 100:.2f}% overall')
 
         neg_sim1 = f(neg_sim1[:, threshold:-threshold])
         neg_sim2 = f(neg_sim2[:, threshold:-threshold])
-
-        # neg_sim1 = f(neg_sim1 * (1 - false_neg_mask))
-        # neg_sim2 = f(neg_sim2 * (1 - false_neg_mask))
 
         pos = pos_sim.diag()
         neg1 = neg_sim1.sum(dim=1)

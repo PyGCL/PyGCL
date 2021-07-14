@@ -37,7 +37,7 @@ def triplet_loss_en(anchor: torch.FloatTensor,  # [N, D]
 
 
 class TripletLoss(torch.nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         super(TripletLoss, self).__init__()
 
     def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, eps, *args, **kwargs):
@@ -53,7 +53,7 @@ class TripletLoss(torch.nn.Module):
 
 
 class TripletLossG2LEN(torch.nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         super(TripletLossG2LEN, self).__init__()
 
     def forward(self,

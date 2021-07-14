@@ -20,7 +20,7 @@ def bt_loss(h1: torch.Tensor, h2: torch.Tensor, lambda_, batch_norm=True, eps=1e
 
 
 class BTLoss(torch.nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         super(BTLoss, self).__init__()
 
     def forward(self, h1: torch.Tensor, h2: torch.Tensor,
