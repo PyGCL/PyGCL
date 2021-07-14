@@ -46,6 +46,8 @@ def resolve_param_path(dataset: str, mode: Mode, objective: Objective):
         'PTC_MR': 'ptc_mr',
         'REDDIT-BINARY': 'reddit_binary',
         'IMDB-MULTI': 'imdb_multi',
+        'ogbg-molhiv': 'ogbg_molhiv',
+        'PCQM4M': 'pcqm4m'
     }
     mode_dir = {
         Mode.LocalLocal: 'GRACE',
@@ -137,6 +139,50 @@ class GCLJob(Job):
         for k, v in self.params.items():
             additional_params.append(f'--{k}')
             additional_params.append(f'{v}')
+
+        if self.dataset == 'ogbg-molhiv':
+            molhiv_script = {
+                Mode.LocalLocal: 'train_molhiv_l2l.py',
+                Mode.LocalGlobal: 'train_molhiv_g2l.py',
+                Mode.GlobalGlobal: 'train_molhiv_g2g.py',
+            }
+            return [
+                Command(
+                    exe="python",
+                    args=[
+                        molhiv_script[self.mode],
+                        "--dataset", self.dataset,
+                        "--param_path", self.param_path,
+                        "--loss", objective_name[self.objective],
+                        "--aug1", self.aug1, "--aug2", self.aug2,
+                        *additional_params,
+                        "--device", f"cuda:{args.gpus[worker_id % len(args.gpus)]}"
+                    ],
+                    stdout_redirect=self.log_path
+                )
+            ]
+
+        if self.dataset == 'PCQM4M':
+            pcqm4m_scripts = {
+                Mode.LocalLocal: 'train_pcqm4m_l2l.py',
+                Mode.LocalGlobal: 'train_pcqm4m_g2l.py',
+                Mode.GlobalGlobal: 'train_pcqm4m_g2g.py',
+            }
+            return [
+                Command(
+                    exe="python",
+                    args=[
+                        pcqm4m_scripts[self.mode],
+                        # "--dataset", self.dataset,
+                        "--param_path", self.param_path,
+                        "--loss", objective_name[self.objective],
+                        "--aug1", self.aug1, "--aug2", self.aug2,
+                        *additional_params,
+                        "--device", f"cuda:{args.gpus[worker_id % len(args.gpus)]}"
+                    ],
+                    stdout_redirect=self.log_path
+                )
+            ]
 
         if self.objective != Objective.BL:
             return [
@@ -650,6 +696,82 @@ def graph_g2g_bt_vicreg():
                 i, exp_name='graph-g2g-bt-vicreg'
             )
             jobs.append(job)
+
+    return jobs
+
+
+@register_runner
+def molhiv_augmentation_ablation():
+    jobs = []
+
+    augs = ['ER', 'ND', 'RWS', 'FM', 'FD']
+    for i in range(10):
+        for aug in augs:
+            job = GCLJob(
+                'ogbg-molhiv',
+                Mode.LocalLocal, Objective.InfoNCE,
+                aug, 'ORI',
+                i, exp_name='molhiv-augmentations-ablation'
+            )
+            jobs.append(job)
+
+    return jobs
+
+
+@register_runner
+def pcqm4m_augmentation_ablation():
+    jobs = []
+
+    augs = ['ER', 'ND', 'RWS', 'FM', 'FD']
+    for i in range(10):
+        for aug in augs:
+            job = GCLJob(
+                'PCQM4M',
+                Mode.GlobalGlobal, Objective.InfoNCE,
+                aug, 'ORI',
+                i, exp_name='pcqm4m-augmentations-ablation'
+            )
+            jobs.append(job)
+
+    return jobs
+
+
+@register_runner
+def molhiv_contrastive_ablation():
+    jobs = []
+
+    modes = [Mode.LocalLocal, Mode.LocalGlobal, Mode.GlobalGlobal]
+    objectives = [Objective.InfoNCE, Objective.JSD, Objective.Triplet]
+    for i in range(3):
+        for mode in modes:
+            for objective in objectives:
+                job = GCLJob(
+                    'ogbg-molhiv',
+                    mode, objective,
+                    'FM', 'ER',
+                    i, exp_name='molhiv-contrastive-ablation'
+                )
+                jobs.append(job)
+
+    return jobs
+
+
+@register_runner
+def pcqm4m_contrastive_ablation():
+    jobs = []
+
+    modes = [Mode.LocalLocal, Mode.LocalGlobal, Mode.GlobalGlobal]
+    objectives = [Objective.InfoNCE, Objective.JSD, Objective.Triplet]
+    for i in range(3):
+        for mode in modes:
+            for objective in objectives:
+                job = GCLJob(
+                    'PCQM4M',
+                    mode, objective,
+                    'FM', 'ER',
+                    i, exp_name='pcqm4m-contrastive-ablation'
+                )
+                jobs.append(job)
 
     return jobs
 

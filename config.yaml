@@ -48,13 +48,13 @@ searchSpace:
 trialCommand: python train_pcqm4m_g2g.py --aug1 FM+ER --aug2 FM+ER --param_path nni
 trialCodeDirectory: .
 trialGpuNumber: 1
-trialConcurrency: 8
+trialConcurrency: 16
 maxExperimentDuration: 72h
 maxTrialNumber: 10000
 tuner:
   name: TPE
   classArgs:
-    optimize_mode: maximize
+    optimize_mode: minimize
 trainingService:
   platform: local
   useActiveGpu: True
