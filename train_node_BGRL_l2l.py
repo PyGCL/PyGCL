@@ -67,7 +67,8 @@ def main():
     args = parser.parse_args()
     sp = SP.SimpleParam(default=default_param)
     sp.update(args.param_path, preprocess_nni=False)
-    sp.load(args.__dict__)
+    overwrite_params = {k: v for k, v in args.__dict__.items() if v is not None}
+    sp.load(overwrite_params)
     param = sp()
 
     use_nni = args.param_path == 'nni'
