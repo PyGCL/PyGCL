@@ -1,4 +1,5 @@
 import torch
+from torch_scatter import scatter
 
 
 def triplet_loss(anchor: torch.FloatTensor, samples: torch.FloatTensor,
@@ -48,6 +49,22 @@ class TripletLoss(torch.nn.Module):
 
         l1 = triplet_loss(h1, h2, pos_mask=pos_mask, eps=eps, *args, **kwargs)
         l2 = triplet_loss(h2, h1, pos_mask=pos_mask, eps=eps, *args, **kwargs)
+
+        return ((l1 + l2) * 0.5).mean()
+
+
+class TripletLossG2L(torch.nn.Module):
+    def __init__(self):
+        super(TripletLossG2L, self).__init__()
+
+    def forward(self, h1: torch.FloatTensor, g1: torch.FloatTensor,
+                      h2: torch.FloatTensor, g2: torch.FloatTensor,
+                      batch: torch.LongTensor, eps: float, *args, **kwargs):
+        num_nodes = h1.size()[0]  # M := num_nodes
+        ones = torch.eye(num_nodes, dtype=torch.float32, device=h1.device)  # [M, M]
+        pos_mask = scatter(ones, batch, dim=0, reduce='sum')  # [M, N]
+        l1 = triplet_loss(g1, h2, pos_mask=pos_mask, eps=eps, *args, **kwargs)
+        l2 = triplet_loss(g2, h1, pos_mask=pos_mask, eps=eps, *args, **kwargs)
 
         return ((l1 + l2) * 0.5).mean()
 

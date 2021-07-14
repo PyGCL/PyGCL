@@ -131,7 +131,7 @@ class InfoNCELossG2L(torch.nn.Module):
 
 class InfoNCELossG2LEN(torch.nn.Module):
     def __init__(self):
-        super(InfoNCELossG2L, self).__init__()
+        super(InfoNCELossG2LEN, self).__init__()
 
     def forward(self,
                 h1: torch.FloatTensor, g1: torch.FloatTensor,
