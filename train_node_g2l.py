@@ -70,6 +70,7 @@ def main():
     args = parser.parse_args()
     sp = SP.SimpleParam(default=default_param)
     sp.update(args.param_path, preprocess_nni=False)
+    sp.load(args.__dict__)
     param = sp()
 
     seed_everything(param['seed'])
