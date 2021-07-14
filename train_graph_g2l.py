@@ -1,5 +1,3 @@
-from time import time_ns
-
 import nni
 import torch
 import argparse
@@ -8,10 +6,9 @@ from tqdm import tqdm
 
 import GCL.utils.simple_param as SP
 
-from torch_scatter import scatter
+from time import time_ns
 from torch_geometric.data import DataLoader
 from GCL.eval import SVM_classification
-from GCL.losses import nt_xent_loss_en
 from GCL.utils import seed_everything
 from models.G2L import GCN, MLP, G2L
 from utils import load_graph_dataset, get_compositional_augmentor, get_loss
