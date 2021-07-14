@@ -1,91 +1,37 @@
-import numpy
-import argparse
-from time import perf_counter
+from time import time_ns
 
 import nni
 import torch
+import argparse
 import pretty_errors
-import GCL.augmentors as A
+from tqdm import tqdm
+
 import GCL.utils.simple_param as SP
 
-from GCL.eval import SVM_classification
-from GCL.utils import seed_everything
-from utils import load_graph_dataset
-from models.MVGRL import MVGRL
+from torch_scatter import scatter
 from torch_geometric.data import DataLoader
-from torch_geometric import nn
+from GCL.eval import SVM_classification
+from GCL.losses import nt_xent_loss_en
+from GCL.utils import seed_everything
+from models.G2L import GCN, MLP, G2L
+from utils import load_graph_dataset, get_compositional_augmentor, get_loss
 
 
-def make_gin_conv(input_dim: int, out_dim: int) -> nn.GINConv:
-    return nn.GINConv(torch.nn.Sequential(torch.nn.Linear(input_dim, out_dim), torch.nn.ReLU(), torch.nn.Linear(out_dim, out_dim)))
-
-
-class GCN(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, num_layers, activation, readout):
-        super(GCN, self).__init__()
-        self.activation = activation()
-        self.readout = readout
-        self.layers = torch.nn.ModuleList()
-        self.layers.append(make_gin_conv(input_dim, hidden_dim))
-
-        for _ in range(num_layers - 1):
-            self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
-
-    def forward(self, x, edge_index, edge_weights, batch):
-        z = x
-        g = []
-        for conv in self.layers:
-            z = conv(z, edge_index)
-            z = self.activation(z)
-            if self.readout == 'mean':
-                g.append(nn.global_mean_pool(z, batch))
-            elif self.readout == 'max':
-                g.append(nn.global_max_pool(z, batch))
-            elif self.readout == 'sum':
-                g.append(nn.global_add_pool(z, batch))
-        g = torch.cat(g, dim=1)
-        return z, g
-
-
-class MLP(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, num_layers, activation):
-        super(MLP, self).__init__()
-        self.net = []
-        self.net.append(torch.nn.Linear(input_dim, hidden_dim))
-        self.net.append(activation())
-        for _ in range(num_layers - 1):
-            self.net.append(torch.nn.Linear(hidden_dim, hidden_dim))
-            self.net.append(activation())
-        self.net = torch.nn.Sequential(*self.net)
-        self.shortcut = torch.nn.Linear(input_dim, hidden_dim)
-
-    def forward(self, x):
-        return self.net(x) + self.shortcut(x)
-
-
-def train(model: MVGRL, optimizer, dataloader, device, batch_size: int):
+def train(model, optimizer, dataloader, device, param):
     model.train()
     epoch_loss = 0
     for data in dataloader:
         data = data.to(device)
-
         optimizer.zero_grad()
-        z1, g1, z2, g2, _, _ = model(data.batch, data.x, data.edge_index, sample_size=None)
-
-        if args.loss == 'nt_xent':
-            loss = model.nt_xent_loss(z1, g1, z2, g2, data.batch, temperature=param['tau'])
-        elif args.loss == 'triplet':
-            loss = model.triplet_loss(z1, g1, z2, g2, data.batch, eps=1)
-        else:
-            loss = model.loss(z1, g1, z2, g2, data.batch)
-
+        z1, g1, z2, g2, _, _ = model(data.batch, data.x, data.edge_index)
+        loss = model.loss(z1, g1, z2, g2, batch=data.batch, **param)
         epoch_loss += loss.item()
         loss.backward()
         optimizer.step()
     return epoch_loss
 
 
-def test(model: MVGRL, dataloader, device, seed):
+def test(model, dataloader, device, seed):
     model.eval()
     x = []
     y = []
@@ -106,6 +52,36 @@ def test(model: MVGRL, dataloader, device, seed):
 
 
 def main():
+    default_param = {
+        'seed': 39788,
+        'learning_rate': 0.001,
+        'hidden_dim': 256,
+        'proj_dim': 256,
+        'weight_decay': 1e-5,
+        'activation': 'prelu',
+        'base_model': 'GCNConv',
+        'num_layers': 2,
+        'patience': 50,
+        'num_epochs': 200,
+    }
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--device', type=str, default='cuda:7')
+    parser.add_argument('--dataset', type=str, default='PROTEINS')
+    parser.add_argument('--param_path', type=str, default='params/MVGRL/proteins@current.json')
+    for k, v in default_param.items():
+        if type(v) is dict:
+            for subk, subv in v.items():
+                parser.add_argument(f'--{k}:{subk}', type=type(subv), nargs='?')
+        else:
+            parser.add_argument(f'--{k}', type=type(v), nargs='?')
+    args = parser.parse_args()
+    sp = SP.SimpleParam(default=default_param)
+    sp.update(args.param_path, preprocess_nni=False)
+    param = sp()
+
+    seed_everything(param['seed'])
+    device = torch.device(args.device)
+
     hidden_dim = param['hidden_dim']
     num_GCN_layers = param['num_layers']
     num_MLP_layers = 3
@@ -119,67 +95,49 @@ def main():
     else:
         input_dim = 1
 
-    def get_aug(aug_name: str, view_id: int):
-        if aug_name == 'ER':
-            return A.EdgeRemoving(pe=param[f'drop_edge_prob{view_id}'])
-        if aug_name == 'EA':
-            return A.EdgeAdding(pe=param[f'add_edge_prob{view_id}'])
-        if aug_name == 'ND':
-            return A.NodeDropping(pn=param[f'drop_node_prob{view_id}'])
-        if aug_name == 'RWS':
-            return A.RWSampling(num_seeds=param['num_seeds'], walk_length=param['walk_length'])
-        if aug_name == 'PPR':
-            return A.PPRDiffusion(eps=param['sp_eps'], use_cache=True)
-        if aug_name == 'MKD':
-            return A.MarkovDiffusion(sp_eps=param['sp_eps'])
-        if aug_name == 'ORI':
-            return A.Identity()
-        if aug_name == 'FM':
-            return A.FeatureMasking(pf=param[f'drop_feat_prob{view_id}'])
-        if aug_name == 'FD':
-            return A.FeatureDropout(pf=param[f'drop_feat_prob{view_id}'])
+    aug1 = get_compositional_augmentor(param['augmentor1'])
+    aug2 = get_compositional_augmentor(param['augmentor2'])
+    loss = get_loss(param['loss'], 'G2L')
 
-        raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
-
-    def compile_aug_schema(schema: str, view_id: int) -> A.Augmentor:
-        augs = schema.split('+')
-        augs = [get_aug(x, view_id) for x in augs]
-
-        ret = augs[0]
-        for a in augs[1:]:
-            ret = ret >> a
-        return ret
-
-    aug1 = compile_aug_schema(args.aug1, view_id=1)
-    aug2 = compile_aug_schema(args.aug2, view_id=2)
-
-    model = MVGRL(
-        gnn1=GCN(input_dim, hidden_dim, num_GCN_layers, torch.nn.PReLU, 'mean'),
-        gnn2=GCN(input_dim, hidden_dim, num_GCN_layers, torch.nn.PReLU, 'mean'),
+    model = G2L(
+        gnn1=GCN(input_dim, hidden_dim, num_GCN_layers, torch.nn.PReLU, 'mean', base_conv='GINConv'),
+        gnn2=GCN(input_dim, hidden_dim, num_GCN_layers, torch.nn.PReLU, 'mean', base_conv='GINConv'),
         mlp1=MLP(hidden_dim, hidden_dim, num_MLP_layers, torch.nn.PReLU),
         mlp2=MLP(num_GCN_layers * hidden_dim, hidden_dim, num_MLP_layers, torch.nn.PReLU),
-        sample_size=0,
-        augmentations=(
-            aug1, aug2
-        ),
+        augmentor=(aug1, aug2),
+        loss=loss
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     train_loader = DataLoader(dataset, batch_size=batch_size)
     test_loader = DataLoader(dataset, batch_size=len(dataset))
 
-    for i in range(param['num_epochs']):
-        tic = perf_counter()
-        epoch_loss = train(model, optimizer, train_loader, device, batch_size=2000)
-        toc = perf_counter()
-        print(f'(T) | Epoch={i:03d}, loss={epoch_loss:.4f}, time={toc - tic:.6f}')
+    best_loss = 1e3
+    wait_window = 0
+    model_save_path = f'intermediate/{time_ns()}-{param["augmentor1"]["scheme"]}-{param["augmentor2"]["scheme"]}.pkl'
 
-        # if (i + 1) % 100 == 0:
-        #     test_result = test(model, test_loader, device, seed=1234)
-        #     print(f'(E) | Best test F1Mi={test_result["F1Mi"]:.4f}, F1Ma={test_result["F1Ma"]:.4f}')
+    with tqdm(total=param['num_epochs'], desc='(T)') as pbar:
+        for epoch in range(param['num_epochs']):
+            loss = train(model, optimizer, train_loader, device, param[param['loss']])
+            pbar.set_postfix({'loss': loss})
+            pbar.update()
+
+            if loss < best_loss:
+                best_loss = loss
+                best_epoch = epoch
+                wait_window = 0
+                torch.save(model.state_dict(), model_save_path)
+            else:
+                wait_window += 1
+
+            if wait_window >= param['patience']:
+                print()
+                break
 
     print("=== Final ===")
+    print(f'(T) | Best epoch={best_epoch}, best loss={best_loss:.4f}')
+    model.load_state_dict(torch.load(model_save_path))
+
     test_result = test(model, test_loader, device, seed=1234)
-    # test_result = test(model, data)
     print(f'(E) | Best test F1Mi={test_result["F1Mi"][0]:.4f}, F1Ma={test_result["F1Ma"][0]:.4f}')
 
     if args.param_path == 'nni':
@@ -187,51 +145,4 @@ def main():
 
 
 if __name__ == '__main__':
-    default_param = {
-        'seed': 39788,
-        'learning_rate': 0.001,
-        'hidden_dim': 256,
-        'proj_dim': 256,
-        'weight_decay': 1e-5,
-        'activation': 'prelu',
-        'batch_norm': False,
-        'base_model': 'GCNConv',
-        'num_layers': 2,
-        'drop_edge_prob1': 0.2,
-        'drop_edge_prob2': 0.1,
-        'add_edge_prob1': 0.1,
-        'add_edge_prob2': 0.1,
-        'drop_node_prob1': 0.1,
-        'drop_node_prob2': 0.1,
-        'drop_feat_prob1': 0.3,
-        'drop_feat_prob2': 0.2,
-        'patience': 50,
-        'num_epochs': 10,
-        'batch_size': 10,
-        'tau': 0.8,
-        'sp_eps': 0.01,
-        'num_seeds': 1000,
-        'walk_length': 10,
-    }
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='IMDB-MULTI')
-    parser.add_argument('--param_path', type=str, default='None')
-    parser.add_argument('--aug1', type=str, default='FM+ER')
-    parser.add_argument('--aug2', type=str, default='FM+ER')
-    parser.add_argument('--loss', type=str, default='triplet', choices=['nt_xent', 'jsd', 'triplet'])
-    parser.add_argument('--save_split', type=str, nargs='?')
-    parser.add_argument('--load_split', type=str, nargs='?')
-    for k, v in default_param.items():
-        parser.add_argument(f'--{k}', type=type(v), nargs='?')
-    args = parser.parse_args()
-    sp = SP.SimpleParam(default=default_param)
-    param = sp(args.param_path, preprocess_nni=False)
-    # param = sp()
-
-    param = SP.SimpleParam.merge_args(list(default_param.keys()), args, param)
-
-    seed_everything(param['seed'])
-    device = torch.device(args.device)
-
     main()

@@ -113,6 +113,9 @@ def get_loss(loss, mode):
             return L.JSDLossG2LEN(discriminator=lambda x, y: x @ y.t())
         elif loss == 'triplet':
             return L.TripletLossG2LEN()
+    elif mode == 'G2L':
+        if loss == 'infonce':
+            return L.InfoNCELossG2L()
     else:  # mode is L2L or G2G
         if loss == 'infonce':
             return L.InfoNCELoss(loss_fn=L.nt_xent_loss)

@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
+from torch_scatter import scatter
 
 
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
@@ -88,7 +89,7 @@ def nt_xent_loss_en(anchor: torch.FloatTensor,
     assert sim.size() == pos_mask.size()  # sanity check
 
     neg_mask = 1 - pos_mask
-    pos = sim * pos_mask
+    pos = (sim * pos_mask).sum(dim=1)
     neg = (sim * neg_mask).sum(dim=1)
 
     loss = pos / (pos + neg)
@@ -112,9 +113,25 @@ class InfoNCELoss(torch.nn.Module):
         return ret
 
 
+class InfoNCELossG2L(torch.nn.Module):
+    def __init__(self):
+        super(InfoNCELossG2L, self).__init__()
+
+    def forward(self,
+                h1: torch.FloatTensor, g1: torch.FloatTensor,
+                h2: torch.FloatTensor, g2: torch.FloatTensor,
+                batch: torch.LongTensor, tau: float, *args, **kwargs):
+        num_nodes = h1.size()[0]  # M := num_nodes
+        ones = torch.eye(num_nodes, dtype=torch.float32, device=h1.device)  # [M, M]
+        pos_mask = scatter(ones, batch, dim=0, reduce='sum')  # [M, N]
+        l1 = nt_xent_loss_en(g1, h2, pos_mask=pos_mask, tau=tau)
+        l2 = nt_xent_loss_en(g2, h1, pos_mask=pos_mask, tau=tau)
+        return l1 + l2
+
+
 class InfoNCELossG2LEN(torch.nn.Module):
     def __init__(self):
-        super(InfoNCELossG2LEN, self).__init__()
+        super(InfoNCELossG2L, self).__init__()
 
     def forward(self,
                 h1: torch.FloatTensor, g1: torch.FloatTensor,
