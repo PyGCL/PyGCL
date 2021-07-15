@@ -199,6 +199,8 @@ def main():
             return A.FeatureDropout(pf=param[f'drop_feat_prob{view_id}'])
         if aug_name == 'EAM':
             return A.EdgeAttrMasking(pf=param[f'drop_feat_prob{view_id}'])
+        if aug_name == 'EAD':
+            return A.EdgeAttrDropout(pf=param[f'drop_feat_prob{view_id}'])
 
         raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
 
