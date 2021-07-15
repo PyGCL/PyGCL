@@ -33,7 +33,7 @@ Our PyGCL implements four main components of graph contrastive learning algorith
 * graph augmentation: transforms input graphs into congruent graph views.
 * contrasting modes: specifies positive and negative pairs.
 * contrastive objectives: computes the likelihood score for positive and negative pairs.
-* negative mining strategies: improves the negative sample set by considering hardness of negative sample.
+* negative mining strategies: improves the negative sample set by considering the relative similarity (the hardness) of negative sample.
 
 We also implement utilities for loading datasets, training models, and running experiments.
 
@@ -88,16 +88,16 @@ In `GCL.losses`, PyGCL implements the following contrastive objectives:
 
 All these objectives are for contrasting positive and negative pairs at the same scale (i.e. local-local and global-global modes). For global-local modes, we offer `G2L` variants except for Barlow Twins and VICReg losses. Moreover, for InfoNCE, JSD, and Triplet losses, we further provide `G2LEN` variants, primarily for node-level tasks, which involve explicit construction of negative samples. You can find their examples in the root folder.
 
-### Hard Negative Mining Strategies
+### Negative Mining Strategies
 
-In `GCL.losses`, PyGCL further implements four hard negative mining strategies that are build upon the InfoNCE contrastive objective:
+In `GCL.losses`, PyGCL further implements four negative mining strategies that are build upon the InfoNCE contrastive objective:
 
-| Hard negative mining strategies  | Class name                           |
-| -------------------------------- | ------------------------------------ |
-| Hard negative mixing             | `HardMixingLoss`                     |
-| Conditional negative sampling    | `RingLoss`                           |
-| Debiased contrastive objective   | `InfoNCELoss(debiased_nt_xent_loss)` |
-| Hardness-aware negative sampling | `InfoNCELoss(hardness_nt_xent_loss)` |
+| Hard negative mining strategies   | Class name                           |
+| --------------------------------- | ------------------------------------ |
+| Hard negative mixing              | `HardMixingLoss`                     |
+| Conditional negative sampling     | `RingLoss`                           |
+| Debiased contrastive objective    | `InfoNCELoss(debiased_nt_xent_loss)` |
+| Hardness-biased negative sampling | `InfoNCELoss(hardness_nt_xent_loss)` |
 
 ## Utilities
 
