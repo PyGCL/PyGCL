@@ -737,6 +737,29 @@ def pcqm4m_augmentation_ablation():
 
 
 @register_runner
+def eam_molhiv_pcqm4m():
+    jobs = []
+
+    for i in range(10):
+        job = GCLJob(
+            'ogbg-molhiv',
+            Mode.GlobalGlobal, Objective.InfoNCE,
+            'EAM', 'ORI',
+            i, exp_name='eam-molhiv-pcqm4m'
+        )
+        jobs.append(job)
+        job = GCLJob(
+            'PCQM4M',
+            Mode.GlobalGlobal, Objective.InfoNCE,
+            'EAM', 'ORI',
+            i, exp_name='eam-molhiv-pcqm4m'
+        )
+        jobs.append(job)
+
+    return jobs
+
+
+@register_runner
 def molhiv_contrastive_ablation():
     jobs = []
 

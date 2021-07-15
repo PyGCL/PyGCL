@@ -193,6 +193,8 @@ def main():
             return A.Identity()
         if aug_name == 'FM':
             return A.FeatureMasking(pf=param[f'drop_feat_prob{view_id}'])
+        if aug_name == 'EAM':
+            return A.EdgeAttrMasking(pf=param[f'drop_feat_prob{view_id}'])
         if aug_name == 'FD':
             return A.FeatureDropout(pf=param[f'drop_feat_prob{view_id}'])
 
@@ -217,9 +219,6 @@ def main():
                       num_layers=param['num_layers']),
                   augmentation=(
                       aug1, aug2
-                      # A.FeatureMasking(pf=param['drop_feat_prob1']) >> A.EdgeRemoving(pe=param['drop_edge_prob1']),
-                      # A.FeatureMasking(pf=param['drop_feat_prob2']) >> A.EdgeRemoving(pe=param['drop_edge_prob2']),
-                      # A.FeatureMasking(pf=param['drop_feat_prob2']) >> A.PPRDiffusion(eps=0.1),
                   ),
                   hidden_dim=param['hidden_dim'],
                   proj_dim=param['proj_dim'],

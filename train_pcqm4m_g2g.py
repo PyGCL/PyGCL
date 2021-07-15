@@ -163,8 +163,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/pcqm4m.json')
-    parser.add_argument('--aug1', type=str, default='FM+ER')
-    parser.add_argument('--aug2', type=str, default='FM+ER')
+    parser.add_argument('--aug1', type=str, default='FM+EAM')
+    parser.add_argument('--aug2', type=str, default='FM+EAM')
     parser.add_argument('--loss', type=str, default='nt_xent', choices=['nt_xent', 'jsd', 'triplet', 'mixup'])
     parser.add_argument('--subset_size', type=int, default=10000)
     for k, v in default_param.items():
@@ -238,6 +238,8 @@ def main():
             return A.FeatureMasking(pf=param[f'drop_feat_prob{view_id}'])
         if aug_name == 'FD':
             return A.FeatureDropout(pf=param[f'drop_feat_prob{view_id}'])
+        if aug_name == 'EAM':
+            return A.EdgeAttrMasking(pf=param[f'drop_feat_prob{view_id}'])
 
         raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
 
