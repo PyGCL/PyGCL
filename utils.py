@@ -89,6 +89,8 @@ def get_augmentor(aug_name: str, param: dict):
         return A.Identity()
     if aug_name == 'FM':
         return A.FeatureMasking(pf=param['drop_feat_prob'])
+    if aug_name == 'EAM':
+        return A.EdgeAttrMasking(pf=param['drop_feat_prob'])
     if aug_name == 'FD':
         return A.FeatureDropout(pf=param['drop_feat_prob'])
 
