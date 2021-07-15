@@ -3,13 +3,23 @@
     "weight_decay": 0.001,
     "hidden_dim": 128,
     "proj_dim": 32,
-    "batch_size": 4,
+    "batch_size": 300,
     "num_layers": 5,
     "activation": "leakyrelu",
-    "drop_edge_prob1": 0.2,
-    "drop_edge_prob2": 0.3,
-    "drop_feat_prob1": 0.4,
-    "drop_feat_prob2": 0.3,
-    "tau": 0.7,
-    "num_epochs": 100
+    "augmentor1": {
+        "scheme": "ER+FM",
+        "drop_edge_prob": 0.2,
+        "drop_feat_prob": 0.4
+    },
+    "augmentor2": {
+        "scheme": "ER+FM",
+        "drop_edge_prob": 0.3,
+        "drop_feat_prob": 0.3
+    },
+    "loss": "infonce",
+    "infonce": {
+        "tau": 0.7
+    },
+    "num_epochs": 100,
+    "patience": 100
 }

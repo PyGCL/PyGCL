@@ -6,10 +6,22 @@
     "batch_size": 2,
     "num_layers": 4,
     "activation": "elu",
-    "drop_edge_prob1": 0,
-    "drop_edge_prob2": 0.2,
-    "drop_feat_prob1": 0.1,
-    "drop_feat_prob2": 0.1,
-    "tau": 0.3,
+    "augmentor1": {
+        "scheme": "ER+FM",
+        "drop_edge_prob": 0.0,
+        "drop_feat_prob": 0.1
+    },
+    "augmentor2": {
+        "scheme": "ER+FM",
+        "drop_edge_prob": 0.2,
+        "drop_feat_prob": 0.1
+    },
+    "loss": "infonce",
+    "infonce": {
+        "tau": 0.3
+    },
+    "jsd": {},
+    "triplet": {},
+    "patience": 200,
     "num_epochs": 200
 }
