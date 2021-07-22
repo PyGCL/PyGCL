@@ -58,7 +58,7 @@ def main():
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='Coauthor-CS')
+    parser.add_argument('--dataset', type=str, default='ogbn-arxiv')
     parser.add_argument('--param_path', type=str, default='params/GRACE/coauthor_cs@current.json')
     parser.add_argument('--tensorboard', nargs='?')
     for k, v in default_param.items():
