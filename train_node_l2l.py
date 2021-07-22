@@ -50,12 +50,16 @@ def main():
         'batch_norm': False,
         'base_model': 'GCNConv',
         'loss': 'infonce',
+        'subsampling_infonce': {
+            'tau': 0.4,
+            'negative_size': 1000
+        },
         'num_epochs': 100
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='WikiCS')
-    parser.add_argument('--param_path', type=str, default='params/GRACE/wikics@current.json')
+    parser.add_argument('--dataset', type=str, default='Coauthor-CS')
+    parser.add_argument('--param_path', type=str, default='params/GRACE/coauthor_cs@current.json')
     parser.add_argument('--tensorboard', nargs='?')
     for k, v in default_param.items():
         if type(v) is dict:

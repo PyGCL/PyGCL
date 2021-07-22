@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from torch_scatter import scatter
+from torch.distributions import Categorical
 
 
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
@@ -21,6 +22,31 @@ def nt_xent_loss(h1: torch.FloatTensor, h2: torch.FloatTensor,
     loss = pos / neg
     loss = -torch.log(loss)
     return loss
+
+
+def subsampling_nt_xent_loss(h1: torch.FloatTensor, h2: torch.FloatTensor,
+                             tau: float, negative_size: int, *args, **kwargs):
+    device = h1.device
+    num_nodes = h1.size()[0]
+
+    sample_probs = torch.ones((num_nodes,), dtype=torch.float32, device=device)
+    distribution = Categorical(probs=sample_probs)
+    neg_indices = distribution.sample(sample_shape=[negative_size])
+
+    f = lambda x: torch.exp(x / tau)
+
+    def sim(h1: torch.FloatTensor, h2: torch.FloatTensor):
+        h1 = F.normalize(h1)
+        h2 = F.normalize(h2)
+        return (h1 * h2).sum(dim=1)
+
+    pos = f(sim(h1, h2))
+
+    neg_h = h2[neg_indices]
+    neg = f(_similarity(h1, neg_h))
+    neg = neg.sum(dim=1)
+
+    return -torch.log(pos / (pos + neg))
 
 
 def debiased_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
@@ -60,24 +86,24 @@ def hardness_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
     return -torch.log(pos / (pos + neg))
 
 
-def subsampling_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
-                             tau: float, sample_size: int, *args, **kwargs):
-    f = lambda x: torch.exp(x / tau)
-    cos = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
-
-    device = h1.device
-    num_nodes = h1.size(0)
-    neg_indices = torch.randint(low=0, high=num_nodes * 2, size=(sample_size,), device=device)
-
-    z_pool = torch.cat([h1, h2], dim=0)
-    negatives = z_pool[neg_indices]
-
-    pos = f(cos(h1, h2))
-    neg = f(_similarity(h1, negatives)).sum(dim=1)
-
-    loss = -torch.log(pos / (pos + neg))
-
-    return loss
+# def subsampling_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
+#                              tau: float, sample_size: int, *args, **kwargs):
+#     f = lambda x: torch.exp(x / tau)
+#     cos = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
+#
+#     device = h1.device
+#     num_nodes = h1.size(0)
+#     neg_indices = torch.randint(low=0, high=num_nodes * 2, size=(sample_size,), device=device)
+#
+#     z_pool = torch.cat([h1, h2], dim=0)
+#     negatives = z_pool[neg_indices]
+#
+#     pos = f(cos(h1, h2))
+#     neg = f(_similarity(h1, negatives)).sum(dim=1)
+#
+#     loss = -torch.log(pos / (pos + neg))
+#
+#     return loss
 
 
 def nt_xent_loss_en(anchor: torch.FloatTensor,

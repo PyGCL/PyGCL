@@ -17,7 +17,7 @@
         "drop_edge_prob": 0.2,
         "drop_feat_prob": 0.4
     },
-    "loss": "",
+    "loss": "subsampling_infonce",
     "infonce": {
         "tau": 0.4
     },
@@ -29,6 +29,10 @@
         "tau": 0.4,
         "tau_plus": 0.2,
         "beta": 10.0
+    },
+    "subsampling_infonce": {
+        "tau": 0.4,
+        "negative_size": 1000
     },
     "ring_loss": {
         "tau": 0.4
