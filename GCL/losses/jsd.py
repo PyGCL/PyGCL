@@ -4,33 +4,55 @@ import numpy as np
 import torch.nn.functional as F
 
 
-def jsd_loss(z1, z2, discriminator, pos_mask, neg_mask=None, *args, **kwargs):
+def jsd_loss(anchor, sample, discriminator, pos_mask, neg_mask=None,
+             include_intraview_negs=False, *args, **kwargs):
     if neg_mask is None:
         neg_mask = 1 - pos_mask
     num_neg = neg_mask.int().sum()
     num_pos = pos_mask.int().sum()
-    similarity = discriminator(z1, z2)
+    similarity = discriminator(anchor, sample)
 
     E_pos = (np.log(2) - F.softplus(- similarity * pos_mask)).sum()
     E_pos /= num_pos
+
     neg_similarity = similarity * neg_mask
     E_neg = (F.softplus(- neg_similarity) + neg_similarity - np.log(2)).sum()
+    if include_intraview_negs:
+        intra_similarity = discriminator(anchor, anchor)
+        intra_neg_mask = 1 - torch.eye(anchor.shape[0], device=intra_similarity.device)
+        intra_neg_similarity = intra_similarity * intra_neg_mask
+        E_neg += (F.softplus(- intra_neg_similarity) + intra_neg_similarity - np.log(2)).sum()
+        num_neg += intra_neg_mask.int().sum()
     E_neg /= num_neg
 
     return E_neg - E_pos
 
 
 class JSDLoss(torch.nn.Module):
-    def __init__(self, discriminator):
+    def __init__(self, discriminator, sampler, include_intraview_negs=True):
         super(JSDLoss, self).__init__()
         self.discriminator = discriminator
+        self.sampler = sampler
+        self.include_intraview_negs = include_intraview_negs
 
-    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
-        num_nodes = h1.size(0)
-        device = h1.device
-        pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
+    def forward(self, h1, h2, g1=None, g2=None, batch=None, h3=None, h4=None, *args, **kwargs):
+        if batch is None:
+            if h3 is None and h4 is None:  # same-scale contrasting
+                anchor, sample, pos_mask, neg_mask = self.sampler(anchor=h1, sample=h2)
+                return jsd_loss(anchor, sample, discriminator=self.discriminator, pos_mask=pos_mask, neg_mask=neg_mask,
+                                include_intraview_negs=self.include_intraview_negs, *args, **kwargs)
+            else:  # global to local, only one graph
+                anchor1, sample1, pos_mask1, neg_mask1 = self.sampler(anchor=g1, sample=h2, neg_sample=h4)
+                anchor2, sample2, pos_mask2, neg_mask2 = self.sampler(anchor=g2, sample=h1, neg_sample=h3)
+        else:  # global to local, multiple graphs
+            anchor1, sample1, pos_mask1, neg_mask1 = self.sampler(anchor=g1, sample=h2, batch=batch)
+            anchor2, sample2, pos_mask2, neg_mask2 = self.sampler(anchor=g2, sample=h1, batch=batch)
 
-        return jsd_loss(h1, h2, discriminator=self.discriminator, pos_mask=pos_mask, *args, **kwargs)
+        l1 = jsd_loss(anchor1, sample1, self.discriminator, pos_mask=pos_mask1, neg_mask=neg_mask1,
+                      include_intraview_negs=self.include_intraview_negs, *args, **kwargs)
+        l2 = jsd_loss(anchor2, sample2, self.discriminator, pos_mask=pos_mask2, neg_mask=neg_mask2,
+                      include_intraview_negs=self.include_intraview_negs, *args, **kwargs)
+        return l1 + l2
 
 
 class JSDLossG2L(torch.nn.Module):
@@ -49,31 +71,5 @@ class JSDLossG2L(torch.nn.Module):
 
         l1 = jsd_loss(g2, h1, self.discriminator, pos_mask=pos_mask.t(), *args, **kwargs)
         l2 = jsd_loss(g1, h2, self.discriminator, pos_mask=pos_mask.t(), *args, **kwargs)
-
-        return l1 + l2
-
-
-class JSDLossG2LEN(torch.nn.Module):
-    def __init__(self, discriminator):
-        super(JSDLossG2LEN, self).__init__()
-        self.discriminator = discriminator
-
-    def forward(self,
-                h1: torch.FloatTensor, g1: torch.FloatTensor,
-                h2: torch.FloatTensor, g2: torch.FloatTensor,
-                h3: torch.FloatTensor, h4: torch.FloatTensor,
-                *args, **kwargs):
-        num_nodes = h1.size(0)
-        device = h1.device
-
-        pos_mask1 = torch.ones((1, num_nodes), dtype=torch.float32, device=device)
-        pos_mask0 = torch.zeros((1, num_nodes), dtype=torch.float32, device=device)
-        pos_mask = torch.cat([pos_mask1, pos_mask0], dim=1)
-
-        samples1 = torch.cat([h2, h4], dim=0)
-        samples2 = torch.cat([h1, h3], dim=0)
-
-        l1 = jsd_loss(g1, samples1, self.discriminator, pos_mask=pos_mask, *args, **kwargs)
-        l2 = jsd_loss(g2, samples2, self.discriminator, pos_mask=pos_mask, *args, **kwargs)
 
         return l1 + l2

@@ -25,7 +25,8 @@ class CrossScaleSampler(torch.nn.Module):
         device = sample.device
 
         if neg_sample is not None:
-            assert num_graphs == 1  # for node-level tasks
+            assert num_graphs == 1  # only one graph, explicit negative samples are needed
+            assert sample.shape == neg_sample.shape
             pos_mask1 = torch.ones((num_graphs, num_nodes), dtype=torch.float32, device=device)
             pos_mask0 = torch.zeros((num_graphs, num_nodes), dtype=torch.float32, device=device)
             pos_mask = torch.cat([pos_mask1, pos_mask0], dim=1)     # M * 2N
