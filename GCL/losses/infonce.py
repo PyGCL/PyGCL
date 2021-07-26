@@ -2,6 +2,8 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
+from .losses import Loss
+
 
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
     h1 = F.normalize(h1)
@@ -9,13 +11,18 @@ def _similarity(h1: torch.Tensor, h2: torch.Tensor):
     return h1 @ h2.t()
 
 
-def infonce_loss(anchor, sample, temperature, pos_mask, neg_mask=None, *args, **kwargs):
-    sim = _similarity(anchor, sample) / temperature
-    exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
-    log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
-    loss = log_prob * pos_mask
-    loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
-    return loss.mean()
+class InfoNCELoss(Loss):
+    def __init__(self, temperature):
+        super(InfoNCELoss, self).__init__()
+        self.temperature = temperature
+
+    def __compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
+        sim = _similarity(anchor, sample) / self.temperature
+        exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
+        log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
+        loss = log_prob * pos_mask
+        loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
+        return loss.mean()
 
 
 def debiased_infonce_loss(h1: torch.Tensor, h2: torch.Tensor,
