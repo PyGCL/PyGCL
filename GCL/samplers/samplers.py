@@ -63,4 +63,3 @@ class CrossScaleSampler(Sampler):
 
         neg_mask = 1. - pos_mask
         return anchor, sample, pos_mask, neg_mask
-

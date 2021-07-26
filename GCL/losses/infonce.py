@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
-from torch_scatter import scatter
 
 
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
@@ -10,20 +9,16 @@ def _similarity(h1: torch.Tensor, h2: torch.Tensor):
     return h1 @ h2.t()
 
 
-def nt_xent_loss(h1: torch.FloatTensor, h2: torch.FloatTensor,
-                 tau: float, *args, **kwargs):
-    f = lambda x: torch.exp(x / tau)
-    inter_sim = f(_similarity(h1, h1))
-    intra_sim = f(_similarity(h1, h2))
-    pos = intra_sim.diag()
-    neg = inter_sim.sum(dim=1) + intra_sim.sum(dim=1) - inter_sim.diag()
-
-    loss = pos / neg
-    loss = -torch.log(loss)
-    return loss
+def infonce_loss(anchor, sample, temperature, pos_mask, neg_mask=None, *args, **kwargs):
+    sim = _similarity(anchor, sample) / temperature
+    exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
+    log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
+    loss = log_prob * pos_mask
+    loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
+    return loss.mean()
 
 
-def debiased_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
+def debiased_infonce_loss(h1: torch.Tensor, h2: torch.Tensor,
                           tau: float, tau_plus: float, *args, **kwargs):
     f = lambda x: torch.exp(x / tau)
     intra_sim = f(_similarity(h1, h1))
@@ -40,7 +35,7 @@ def debiased_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
     return -torch.log(pos / (pos + ng))
 
 
-def hardness_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
+def hardness_infonce_loss(h1: torch.Tensor, h2: torch.Tensor,
                           tau: float, tau_plus: float, beta: float, *args, **kwargs):
     f = lambda x: torch.exp(x / tau)
     intra_sim = f(_similarity(h1, h1))
@@ -58,99 +53,6 @@ def hardness_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
     neg = torch.clamp(neg, min=num_neg * np.e ** (-1. / tau))
 
     return -torch.log(pos / (pos + neg))
-
-
-def subsampling_nt_xent_loss(h1: torch.Tensor, h2: torch.Tensor,
-                             tau: float, sample_size: int, *args, **kwargs):
-    f = lambda x: torch.exp(x / tau)
-    cos = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
-
-    device = h1.device
-    num_nodes = h1.size(0)
-    neg_indices = torch.randint(low=0, high=num_nodes * 2, size=(sample_size,), device=device)
-
-    z_pool = torch.cat([h1, h2], dim=0)
-    negatives = z_pool[neg_indices]
-
-    pos = f(cos(h1, h2))
-    neg = f(_similarity(h1, negatives)).sum(dim=1)
-
-    loss = -torch.log(pos / (pos + neg))
-
-    return loss
-
-
-def nt_xent_loss_en(anchor: torch.FloatTensor,
-                    samples: torch.FloatTensor,
-                    pos_mask: torch.FloatTensor,
-                    tau: float, *args, **kwargs):
-    f = lambda x: torch.exp(x / tau)
-    sim = f(_similarity(anchor, samples))  # anchor x sample
-    assert sim.size() == pos_mask.size()  # sanity check
-
-    neg_mask = 1 - pos_mask
-    pos = (sim * pos_mask).sum(dim=1)
-    neg = (sim * neg_mask).sum(dim=1)
-
-    loss = pos / (pos + neg)
-    loss = -torch.log(loss)
-
-    return loss.mean()
-
-
-class InfoNCELoss(torch.nn.Module):
-    def __init__(self, loss_fn=nt_xent_loss):
-        super(InfoNCELoss, self).__init__()
-        self.loss_fn = loss_fn
-
-    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, *args, **kwargs):
-        l1 = self.loss_fn(h1, h2, *args, **kwargs)
-        l2 = self.loss_fn(h2, h1, *args, **kwargs)
-
-        ret = (l1 + l2) * 0.5
-        ret = ret.mean()
-
-        return ret
-
-
-class InfoNCELossG2L(torch.nn.Module):
-    def __init__(self):
-        super(InfoNCELossG2L, self).__init__()
-
-    def forward(self,
-                h1: torch.FloatTensor, g1: torch.FloatTensor,
-                h2: torch.FloatTensor, g2: torch.FloatTensor,
-                batch: torch.LongTensor, tau: float, *args, **kwargs):
-        num_nodes = h1.size()[0]  # M := num_nodes
-        ones = torch.eye(num_nodes, dtype=torch.float32, device=h1.device)  # [M, M]
-        pos_mask = scatter(ones, batch, dim=0, reduce='sum')  # [M, N]
-        l1 = nt_xent_loss_en(g1, h2, pos_mask=pos_mask, tau=tau)
-        l2 = nt_xent_loss_en(g2, h1, pos_mask=pos_mask, tau=tau)
-        return l1 + l2
-
-
-class InfoNCELossG2LEN(torch.nn.Module):
-    def __init__(self):
-        super(InfoNCELossG2LEN, self).__init__()
-
-    def forward(self,
-                h1: torch.FloatTensor, g1: torch.FloatTensor,
-                h2: torch.FloatTensor, g2: torch.FloatTensor,
-                h3: torch.FloatTensor, h4: torch.FloatTensor,
-                *args, **kwargs):
-        num_nodes = h1.size()[0]
-        device = h1.device
-        pos_mask1 = torch.ones((1, num_nodes), dtype=torch.float32, device=device)
-        pos_mask0 = torch.zeros((1, num_nodes), dtype=torch.float32, device=device)
-        pos_mask = torch.cat([pos_mask1, pos_mask0], dim=1)
-
-        samples1 = torch.cat([h2, h4], dim=0)
-        samples2 = torch.cat([h1, h3], dim=0)
-
-        l1 = nt_xent_loss_en(g1, samples1, pos_mask=pos_mask, *args, **kwargs)
-        l2 = nt_xent_loss_en(g2, samples2, pos_mask=pos_mask, *args, **kwargs)
-
-        return l1 + l2
 
 
 class HardMixingLoss(torch.nn.Module):
