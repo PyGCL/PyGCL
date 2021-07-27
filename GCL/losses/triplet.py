@@ -5,9 +5,9 @@ from .losses import Loss
 
 
 class TripletLoss(Loss):
-    def __init__(self, margin: float = 1.0):
+    def __init__(self, margin: float = 1.0, p: float = 2):
         super(TripletLoss, self).__init__()
-        self.loss_fn = torch.nn.TripletMarginLoss(margin=margin, reduction='none')
+        self.loss_fn = torch.nn.TripletMarginLoss(margin=margin, p=p, reduction='none')
 
     def __compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
         num_anchors = anchor.size()[0]

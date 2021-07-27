@@ -69,7 +69,7 @@ class HardnessJSDLoss(Loss):
 
         reweight = -2 * neg_sim / max(neg_sim.max(), neg_sim.min().abs())
         reweight = (self.beta * reweight).exp()
-        reweight = reweight / reweight.mean(dim=1, keepdim=True)
+        reweight /= reweight.mean(dim=1, keepdim=True)
 
         E_neg = (reweight * E_neg) / (1 - self.tau_plus) - np.log(2)
         E_neg = E_neg.sum() / num_neg
