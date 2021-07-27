@@ -12,12 +12,12 @@ def _similarity(h1: torch.Tensor, h2: torch.Tensor):
 
 
 class InfoNCELoss(Loss):
-    def __init__(self, temperature):
+    def __init__(self, tau):
         super(InfoNCELoss, self).__init__()
-        self.temperature = temperature
+        self.tau = tau
 
     def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
-        sim = _similarity(anchor, sample) / self.temperature
+        sim = _similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
         loss = log_prob * pos_mask
@@ -25,21 +25,27 @@ class InfoNCELoss(Loss):
         return loss.mean()
 
 
-def debiased_infonce_loss(h1: torch.Tensor, h2: torch.Tensor,
-                          tau: float, tau_plus: float, *args, **kwargs):
-    f = lambda x: torch.exp(x / tau)
-    intra_sim = f(_similarity(h1, h1))
-    inter_sim = f(_similarity(h1, h2))
+class DebiasedInfoNCELoss(Loss):
+    def __init__(self, tau, tau_plus=0.1):
+        super(DebiasedInfoNCELoss, self).__init__()
+        self.tau = tau
+        self.tau_plus = tau_plus
 
-    pos = inter_sim.diag()
-    neg = intra_sim.sum(dim=1) - intra_sim.diag() \
-          + inter_sim.sum(dim=1) - inter_sim.diag()
+    def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+        num_neg = neg_mask.int().sum()
+        sim = _similarity(anchor, sample) / self.tau
+        exp_sim = torch.exp(sim)
 
-    num_neg = h1.size()[0] * 2 - 2
-    ng = (-num_neg * tau_plus * pos + neg) / (1 - tau_plus)
-    ng = torch.clamp(ng, min=num_neg * np.e ** (-1. / tau))
+        pos_sum = (exp_sim * pos_mask).sum(dim=1)
+        pos = pos_sum / pos_mask.int().sum(dim=1)
+        neg_sum = (exp_sim * neg_mask).sum(dim=1)
+        ng = (-num_neg * self.tau_plus * pos + neg_sum) / (1 - self.tau_plus)
+        ng = torch.clamp(ng, min=num_neg * np.e ** (-1. / self.tau))
 
-    return -torch.log(pos / (pos + ng))
+        log_prob = sim - torch.log((pos + ng).sum(dim=1, keepdim=True))
+        loss = log_prob * pos_mask
+        loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
+        return loss.mean()
 
 
 def hardness_infonce_loss(h1: torch.Tensor, h2: torch.Tensor,
