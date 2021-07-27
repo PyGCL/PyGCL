@@ -1,6 +1,52 @@
 import torch
 from torch_scatter import scatter
 
+from .losses import Loss
+
+
+class TripletLoss(Loss):
+    def __init__(self, margin: float = 1.0):
+        super(TripletLoss, self).__init__()
+        self.loss_fn = torch.nn.TripletMarginLoss(margin=margin, reduction='none')
+
+    def __compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
+        num_anchors = anchor.size()[0]
+        num_samples = sample.size()[0]
+
+        # compute negative mask
+        neg_mask = 1. - pos_mask if neg_mask is None else neg_mask
+
+        anchor = torch.unsqueeze(anchor, dim=1)  # [N, 1, D]
+        anchor = torch.unsqueeze(anchor, dim=1)  # [N, 1, 1, D]
+        anchor = anchor.expand(-1, num_samples, num_samples, -1)  # [N, M, M, D]
+        anchor = torch.flatten(anchor, end_dim=1)  # [N * M * M, D]
+
+        pos_sample = torch.unsqueeze(sample, dim=0)  # [1, M, D]
+        pos_sample = torch.unsqueeze(pos_sample, dim=2)  # [1, M, 1, D]
+        pos_sample = pos_sample.expand(num_anchors, -1, num_samples, -1)  # [N, M, M, D]
+        pos_sample = torch.flatten(pos_sample, end_dim=1)  # [N * M * M, D]
+
+        neg_sample = torch.unsqueeze(sample, dim=0)  # [1, M, D]
+        neg_sample = torch.unsqueeze(neg_sample, dim=0)  # [1, 1, M, D]
+        neg_sample = neg_sample.expand(num_anchors, -1, num_samples, -1)  # [N, M, M, D]
+        neg_sample = torch.flatten(neg_sample, end_dim=1)  # [N * M * M, D]
+
+        loss = self.loss_fn(anchor, pos_sample, neg_sample)  # [N, M, M]
+        loss = loss.view(num_anchors, num_samples, num_samples)
+
+        pos_mask1 = torch.unsqueeze(pos_mask, dim=2)  # [N, M, 1]
+        pos_mask1 = pos_mask1.expand(-1, -1, num_samples)  # [N, M, M]
+        neg_mask1 = torch.unsqueeze(neg_mask, dim=1)  # [N, 1, M]
+        neg_mask1 = neg_mask1.expand(-1, num_samples, -1)  # [N, M, M]
+
+        pair_mask = pos_mask1 * neg_mask1  # [N, M, M]
+        num_pairs = pair_mask.sum()
+
+        loss = loss * pair_mask
+        loss = loss.sum()
+        
+        return loss / num_pairs
+
 
 def triplet_loss(anchor: torch.FloatTensor, samples: torch.FloatTensor,
                  pos_mask: torch.FloatTensor, eps: float, *args, **kwargs):
