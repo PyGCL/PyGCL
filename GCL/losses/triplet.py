@@ -13,6 +13,15 @@ class TripletLoss(Loss):
         num_anchors = anchor.size()[0]
         num_samples = sample.size()[0]
 
+        # Key idea here:
+        #  (1) Use all possible triples (will be num_anchors * num_positives * num_negatives triples in total)
+        #  (2) Use PyTorch's TripletMarginLoss to compute the marginal loss for each triple
+        #  (3) Since TripletMarginLoss accepts input tensors of shape (B, D), where B is the batch size,
+        #        we have to manually construct all triples and flatten them as an input tensor in the
+        #        shape of (num_triples, D).
+        #  (4) We first compute loss for all triples (including those that are not anchor - positive - negative), which
+        #        will be num_anchors * num_samples * num_samples triples, and then filter them with masks.
+
         # compute negative mask
         neg_mask = 1. - pos_mask if neg_mask is None else neg_mask
 
@@ -44,7 +53,7 @@ class TripletLoss(Loss):
 
         loss = loss * pair_mask
         loss = loss.sum()
-        
+
         return loss / num_pairs
 
 
