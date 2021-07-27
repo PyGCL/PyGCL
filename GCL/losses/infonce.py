@@ -16,7 +16,7 @@ class InfoNCELoss(Loss):
         super(InfoNCELoss, self).__init__()
         self.temperature = temperature
 
-    def __compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
+    def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
         sim = _similarity(anchor, sample) / self.temperature
         exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
