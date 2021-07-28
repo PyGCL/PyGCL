@@ -9,6 +9,15 @@ from ogb.nodeproppred import PygNodePropPredDataset
 from torch_geometric.datasets import Coauthor, WikiCS, Amazon, CitationFull, Planetoid, TUDataset
 
 
+def load_dataset(path: str, name: str, to_sparse_tensor: bool = True, to_dense: bool = False):
+    node_datasets = {'Cora', 'CiteSeer', 'PubMed', 'DBLP', 'Karate', 'WikiCS', 'Coauthor-CS', 'Coauthor-Phy',
+                     'Amazon-Computers', 'Amazon-Photo', 'ogbn-arxiv', 'ogbg-code'}
+    if name in node_datasets:
+        return load_node_dataset(path, name, to_sparse_tensor, to_dense)
+    else:
+        return load_graph_dataset(path, name, to_sparse_tensor, to_dense)
+
+
 def load_node_dataset(path, name, to_sparse_tensor=True, to_dense=False):
     assert name in ['Cora', 'CiteSeer', 'PubMed', 'DBLP', 'Karate', 'WikiCS', 'Coauthor-CS', 'Coauthor-Phy',
                     'Amazon-Computers', 'Amazon-Photo', 'ogbn-arxiv', 'ogbg-code']
