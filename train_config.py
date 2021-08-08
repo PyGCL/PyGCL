@@ -3,6 +3,12 @@ from dataclasses import dataclass
 from happy_config.param_tuning import with_search_space
 
 
+class ContrastMode(Enum):
+    L2L = 'L2L'
+    G2L = 'G2L'
+    G2G = 'G2G'
+
+
 @dataclass
 class OptConfig:
     learning_rate: float = with_search_space(0.001,
@@ -11,6 +17,7 @@ class OptConfig:
                                             space_type='choice', space_value=[1 / (10 ** i) for i in range(3, 9)])
     num_epochs: int = with_search_space(1000,
                                         space_type='choice', space_value=[50, 100, 200, 500, 1000, 2000, 5000])
+    batch_size: int = 32
     patience: int = 200
 
 
@@ -82,6 +89,8 @@ class ExpConfig:
     opt: OptConfig = OptConfig()
     encoder: EncoderConfig = EncoderConfig()
     obj: ObjConfig = ObjConfig()
+
+    mode: ContrastMode = ContrastMode.L2L
 
     augmentor1: AugmentorConfig = AugmentorConfig()
     augmentor2: AugmentorConfig = AugmentorConfig()

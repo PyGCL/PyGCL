@@ -2,6 +2,9 @@ import torch
 from abc import ABC, abstractmethod
 
 
+__all__ = ['Loss']
+
+
 class Loss(ABC):
     @abstractmethod
     def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs) -> torch.FloatTensor:

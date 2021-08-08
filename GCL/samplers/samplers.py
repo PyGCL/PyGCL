@@ -2,6 +2,9 @@ import torch
 from torch_scatter import scatter
 
 
+__all__ = ['Sampler', 'SameScaleSampler', 'CrossScaleSampler']
+
+
 class Sampler:
     def __init__(self, intraview_negs=False):
         self.intraview_negs = intraview_negs
@@ -41,6 +44,8 @@ class CrossScaleSampler(Sampler):
         super(CrossScaleSampler, self).__init__()
 
     def sample(self, anchor, sample, batch=None, neg_sample=None, use_gpu=True, *args, **kwargs):
+        assert batch is not None, 'batch must be supplied to CrossScaleSampler'
+
         num_graphs = anchor.shape[0]  # M
         num_nodes = sample.shape[0]   # N
         device = sample.device

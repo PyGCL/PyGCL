@@ -116,7 +116,24 @@ def get_compositional_augmentor(param: dict) -> A.Augmentor:
     return aug
 
 
-def get_loss(loss, mode):
+def get_loss(loss: str, **params) -> L.Loss:
+    if loss == 'infonce':
+        return L.InfoNCELoss(**params)
+    elif loss == 'jsd':
+        return L.JSDLoss(**params)
+    elif loss == 'triplet':
+        return L.TripletLoss(**params)
+    else:
+        raise ValueError(f'invalid loss type: {loss}')
+
+
+def is_node_dataset(name: str) -> bool:
+    node_datasets = {'Cora', 'CiteSeer', 'PubMed', 'DBLP', 'Karate', 'WikiCS', 'Coauthor-CS', 'Coauthor-Phy',
+                     'Amazon-Computers', 'Amazon-Photo', 'ogbn-arxiv', 'ogbg-code'}
+    return name in node_datasets or name.startswith('ogbn')
+
+
+def get_loss_legacy(loss, mode):
     if mode == 'G2LEN':
         if loss == 'infonce':
             return L.InfoNCELossG2LEN()

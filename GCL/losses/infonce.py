@@ -5,6 +5,9 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
+__all__ = ['InfoNCELoss', 'DebiasedInfoNCELoss', 'HardnessInfoNCELoss']
+
+
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
     h1 = F.normalize(h1)
     h2 = F.normalize(h2)

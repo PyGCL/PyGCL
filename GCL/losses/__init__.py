@@ -4,3 +4,4 @@ from .infonce import *
 from .triplet import *
 from .bootstrap import *
 from .barlow_twins import *
+from .losses import *

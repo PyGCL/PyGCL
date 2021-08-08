@@ -4,6 +4,9 @@ from torch_scatter import scatter
 from .losses import Loss
 
 
+__all__ = ['TripletLoss']
+
+
 class TripletLoss(Loss):
     def __init__(self, margin: float = 1.0, p: float = 2):
         super(TripletLoss, self).__init__()
@@ -92,49 +95,49 @@ def triplet_loss_en(anchor: torch.FloatTensor,  # [N, D]
     return loss.mean(dim=1).sum()
 
 
-class TripletLoss(torch.nn.Module):
-    def __init__(self):
-        super(TripletLoss, self).__init__()
-
-    def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, eps, *args, **kwargs):
-        num_nodes = h1.size(0)
-        device = h1.device
-
-        pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
-
-        l1 = triplet_loss(h1, h2, pos_mask=pos_mask, eps=eps, *args, **kwargs)
-        l2 = triplet_loss(h2, h1, pos_mask=pos_mask, eps=eps, *args, **kwargs)
-
-        return ((l1 + l2) * 0.5).mean()
-
-
-class TripletLossG2L(torch.nn.Module):
-    def __init__(self):
-        super(TripletLossG2L, self).__init__()
-
-    def forward(self, h1: torch.FloatTensor, g1: torch.FloatTensor,
-                      h2: torch.FloatTensor, g2: torch.FloatTensor,
-                      batch: torch.LongTensor, eps: float, *args, **kwargs):
-        num_nodes = h1.size()[0]  # M := num_nodes
-        ones = torch.eye(num_nodes, dtype=torch.float32, device=h1.device)  # [M, M]
-        pos_mask = scatter(ones, batch, dim=0, reduce='sum')  # [M, N]
-        l1 = triplet_loss(g1, h2, pos_mask=pos_mask, eps=eps, *args, **kwargs)
-        l2 = triplet_loss(g2, h1, pos_mask=pos_mask, eps=eps, *args, **kwargs)
-
-        return ((l1 + l2) * 0.5).mean()
-
-
-class TripletLossG2LEN(torch.nn.Module):
-    def __init__(self):
-        super(TripletLossG2LEN, self).__init__()
-
-    def forward(self,
-                h1: torch.FloatTensor, g1: torch.FloatTensor,
-                h2: torch.FloatTensor, g2: torch.FloatTensor,
-                h3: torch.FloatTensor, h4: torch.FloatTensor,
-                eps, *args, **kwargs):
-        anchor = torch.cat([g1, g2], dim=0)
-        pos_samples = torch.stack([h2, h1], dim=0)
-        neg_samples = torch.stack([h4, h3], dim=0)
-
-        return triplet_loss_en(anchor, pos_samples, neg_samples, eps=eps, *args, **kwargs)
+# class TripletLoss(torch.nn.Module):
+#     def __init__(self):
+#         super(TripletLoss, self).__init__()
+#
+#     def forward(self, h1: torch.FloatTensor, h2: torch.FloatTensor, eps, *args, **kwargs):
+#         num_nodes = h1.size(0)
+#         device = h1.device
+#
+#         pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
+#
+#         l1 = triplet_loss(h1, h2, pos_mask=pos_mask, eps=eps, *args, **kwargs)
+#         l2 = triplet_loss(h2, h1, pos_mask=pos_mask, eps=eps, *args, **kwargs)
+#
+#         return ((l1 + l2) * 0.5).mean()
+#
+#
+# class TripletLossG2L(torch.nn.Module):
+#     def __init__(self):
+#         super(TripletLossG2L, self).__init__()
+#
+#     def forward(self, h1: torch.FloatTensor, g1: torch.FloatTensor,
+#                       h2: torch.FloatTensor, g2: torch.FloatTensor,
+#                       batch: torch.LongTensor, eps: float, *args, **kwargs):
+#         num_nodes = h1.size()[0]  # M := num_nodes
+#         ones = torch.eye(num_nodes, dtype=torch.float32, device=h1.device)  # [M, M]
+#         pos_mask = scatter(ones, batch, dim=0, reduce='sum')  # [M, N]
+#         l1 = triplet_loss(g1, h2, pos_mask=pos_mask, eps=eps, *args, **kwargs)
+#         l2 = triplet_loss(g2, h1, pos_mask=pos_mask, eps=eps, *args, **kwargs)
+#
+#         return ((l1 + l2) * 0.5).mean()
+#
+#
+# class TripletLossG2LEN(torch.nn.Module):
+#     def __init__(self):
+#         super(TripletLossG2LEN, self).__init__()
+#
+#     def forward(self,
+#                 h1: torch.FloatTensor, g1: torch.FloatTensor,
+#                 h2: torch.FloatTensor, g2: torch.FloatTensor,
+#                 h3: torch.FloatTensor, h4: torch.FloatTensor,
+#                 eps, *args, **kwargs):
+#         anchor = torch.cat([g1, g2], dim=0)
+#         pos_samples = torch.stack([h2, h1], dim=0)
+#         neg_samples = torch.stack([h4, h3], dim=0)
+#
+#         return triplet_loss_en(anchor, pos_samples, neg_samples, eps=eps, *args, **kwargs)
