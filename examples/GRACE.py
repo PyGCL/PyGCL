@@ -96,7 +96,7 @@ def main():
             pbar.update()
 
     test_result = test(encoder_model, data)
-    print(f'(E) | Best test F1Mi={test_result["F1Mi"]:.4f}, F1Ma={test_result["F1Ma"]:.4f}')
+    print(f'(E): Best test F1Mi={test_result["F1Mi"]:.4f}, F1Ma={test_result["F1Ma"]:.4f}')
 
 
 if __name__ == '__main__':

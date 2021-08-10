@@ -1,6 +1,7 @@
-from time import time_ns
 import torch
 
+from tqdm import tqdm
+from time import time_ns
 from GCL.eval import LR_classification
 from GCL.utils import seed_everything
 from GCL.models import EncoderModel, ContrastModel
@@ -92,28 +93,31 @@ def main(config: ExpConfig):
     best_loss = 1e20
     best_epoch = 0
     wait_window = 0
-    for epoch in range(1, config.opt.num_epochs + 1):
-        loss = train(encoder_model, contrast_model, train_loader, optimizer, config)
+    with tqdm(total=config.opt.num_epochs, desc='(T)') as pbar:
+        for epoch in range(1, config.opt.num_epochs + 1):
+            loss = train(encoder_model, contrast_model, train_loader, optimizer, config)
+            pbar.set_postfix({'loss': loss})
+            pbar.update()
 
-        print(f'epoch {epoch:04d}, loss {loss}')
-        if loss < best_loss:
-            best_loss = loss
-            best_epoch = epoch
-            wait_window = 0
-            torch.save(encoder_model.state_dict(), model_path)
-        else:
-            wait_window += 1
+            if loss < best_loss:
+                best_loss = loss
+                best_epoch = epoch
+                wait_window = 0
+                torch.save(encoder_model.state_dict(), model_path)
+            else:
+                wait_window += 1
 
-        if wait_window > config.opt.patience:
-            break
+            if wait_window > config.opt.patience:
+                break
 
+    print("=== Final ===")
+    print(f'(T): Best epoch={best_epoch}, best loss={best_loss:.4f}')
     encoder_model.load_state_dict(model_path)
     test_result = evaluate(encoder_model, test_loader, dataset, config)
-    print(test_result)
+    print(f'(E): Best test F1Mi={test_result["F1Mi"][0]:.4f}, F1Ma={test_result["F1Ma"][0]:.4f}')
 
 
 if __name__ == '__main__':
     loader = ConfigLoader(model=ExpConfig, default_param_path='params/GRACE/wikics@bad.json')
     config = loader()
 
-    # main(config)
