@@ -1,14 +1,14 @@
 from time import time_ns
 import torch
-from torch_geometric.data import DataLoader
 
-from GCL.utils import seed_everything
 from GCL.eval import LR_classification
+from GCL.utils import seed_everything
 from GCL.models import EncoderModel, ContrastModel
+from HC.config_loader import ConfigLoader
+from torch_geometric.data import DataLoader
 
 from utils import load_dataset, get_compositional_augmentor, get_activation, get_loss, is_node_dataset
 from models.GConv import Encoder
-from HC.config_loader import ConfigLoader
 
 from train_config import *
 
