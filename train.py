@@ -4,7 +4,7 @@ from torch_geometric.data import DataLoader
 
 from GCL.utils import seed_everything
 from GCL.eval import LR_classification
-from GCL import EncoderModel, ContrastModel
+from GCL.models import EncoderModel, ContrastModel
 
 from utils import load_dataset, get_compositional_augmentor, get_activation, get_loss, is_node_dataset
 from models.GConv import Encoder
@@ -42,19 +42,13 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
     encoder_model.eval()
 
     x = []
-    y = []
     for data in test_loader:
         data = data.to(config.device)
-
         z, g, z1, z2, g1, g2, z3, z4 = encoder_model(data.x, data.batch, data.edge_index, data.edge_attr)
-
         x.append(z if is_node_dataset(config.dataset) else g)
-        y.append(data.y)
     x = torch.cat(x, dim=0)
-    y = torch.cat(y, dim=0)
 
     test_result = LR_classification(x, dataset, train_ratio=0.1, test_ratio=0.8)
-
     return test_result
 
 
