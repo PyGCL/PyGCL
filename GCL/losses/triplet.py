@@ -12,7 +12,7 @@ class TripletLoss(Loss):
         super(TripletLoss, self).__init__()
         self.loss_fn = torch.nn.TripletMarginLoss(margin=margin, p=p, reduction='none')
 
-    def __compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
+    def compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
         num_anchors = anchor.size()[0]
         num_samples = sample.size()[0]
 

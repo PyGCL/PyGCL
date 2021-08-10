@@ -12,7 +12,7 @@ class JSDLoss(Loss):
         super(JSDLoss, self).__init__()
         self.discriminator = discriminator
 
-    def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
         num_neg = neg_mask.int().sum()
         num_pos = pos_mask.int().sum()
         similarity = self.discriminator(anchor, sample)
@@ -33,7 +33,7 @@ class DebiasedJSDLoss(Loss):
         self.discriminator = discriminator
         self.tau_plus = tau_plus
 
-    def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
         num_neg = neg_mask.int().sum()
         num_pos = pos_mask.int().sum()
         similarity = self.discriminator(anchor, sample)
@@ -57,7 +57,7 @@ class HardnessJSDLoss(Loss):
         self.tau_plus = tau_plus
         self.beta = beta
 
-    def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
         num_neg = neg_mask.int().sum()
         num_pos = pos_mask.int().sum()
         similarity = self.discriminator(anchor, sample)
