@@ -8,7 +8,7 @@ from GCL import EncoderModel, ContrastModel
 
 from utils import load_dataset, get_compositional_augmentor, get_activation, get_loss, is_node_dataset
 from models.GConv import Encoder
-from happy_config.config_loader import ConfigLoader
+from HC.config_loader import ConfigLoader
 
 from train_config import *
 

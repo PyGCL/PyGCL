@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, TypeVar, Callable
 from abc import ABC
 from dataclasses import dataclass
-from happy_config.typechecking.types import Type, show_type, StructuralType
+from HC.typechecking.types import Type, show_type, StructuralType
 
 X = TypeVar('X')
 

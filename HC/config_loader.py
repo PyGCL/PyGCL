@@ -5,7 +5,7 @@ import json
 import yaml
 import nni
 
-from happy_config.typechecking import *
+from HC.typechecking import *
 
 
 class ConfigLoader(object):

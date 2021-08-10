@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from happy_config.typechecking.types import *
+from HC.typechecking.types import *
 from dataclasses import is_dataclass, fields
 
 

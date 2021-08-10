@@ -1,6 +1,6 @@
 from pydoc import locate
 
-from happy_config.param_tuning import extract_search_space
+from HC.param_tuning import extract_search_space
 
 
 def gen_search_space(model: type, output_path: str, **kwargs):
