@@ -1,4 +1,4 @@
-from GCL.augmentors.Augmentor import Graph, Augmentor
+from GCL.augmentors.augmentor import Graph, Augmentor
 from GCL.augmentors.functional import permute
 
 
