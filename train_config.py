@@ -33,6 +33,7 @@ class ActivationType(Enum):
     RReLU = 'rrelu'
     ELU = 'elu'
     LeakyReLU = 'leakyrelu'
+    HardTanh = 'hardtanh'
 
 
 @dataclass
@@ -83,7 +84,7 @@ class AugmentorConfig:
 @dataclass
 class ExpConfig:
     device: str = 'cuda:0'
-    dataset: str = 'WikiCS'
+    dataset: str = 'IMDB-MULTI'
 
     seed: int = 39788
     opt: OptConfig = OptConfig()

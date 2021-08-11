@@ -11,10 +11,10 @@ from HC.typechecking import *
 class ConfigLoader(object):
     T = TypeVar('T')
 
-    def __init__(self, model: T, default_param_path: str):
+    def __init__(self, model: T, config: str):
         self.config_type = from_python_type(model)
         self.config_raw_type = model
-        self.default_param_path = default_param_path
+        self.config = config
         self.arg_parser = self.construct_arg_parser()
 
     @staticmethod
@@ -106,7 +106,7 @@ class ConfigLoader(object):
     def construct_arg_parser(self) -> ArgumentParser:
         paths = extract_valid_paths(self.config_type)
         parser = ArgumentParser()
-        parser.add_argument('--config', type=str, default=self.default_param_path)
+        parser.add_argument('--config', type=str, default=self.config)
 
         for k, v in paths:
             parser.add_argument(f'--{k}', type=v, nargs='?')
