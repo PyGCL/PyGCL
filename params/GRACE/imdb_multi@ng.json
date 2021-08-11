@@ -1,0 +1,26 @@
+{
+    "opt": {
+        "learning_rate": 0.0001,
+        "weight_decay": 0.00001,
+        "num_epochs": 100,
+        "batch_size": 200
+    },
+    "encoder": {
+        "hidden_dim": 512,
+        "proj_dim": 128,
+        "activation": "hardtanh",
+        "num_layers": 3
+    },
+    "augmentor1": {
+        "drop_edge_prob": 0.3,
+        "drop_feat_prob": 0.4
+    },
+    "augmentor2": {
+        "drop_edge_prob": 0.1,
+        "drop_feat_prob": 0.5
+    },
+    "obj": {
+        "loss": "infonce",
+        "infonce:tau": 0.2
+    }
+}
