@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional, List
-from happy_config.typechecking.types import Type, StructuralType, PrimitiveType
-from happy_config.typechecking.typecheck_error import TypeCheckError, TypeMismatch, InvalidField, InvalidEnumValue
+from HC.typechecking.types import Type, StructuralType, PrimitiveType
+from HC.typechecking.typecheck_error import TypeCheckError, TypeMismatch, InvalidField, InvalidEnumValue
 
 
 def check_type(x, tp: Type) -> Optional[TypeCheckError]:
@@ -52,8 +52,8 @@ def check_type(x, tp: Type) -> Optional[TypeCheckError]:
 if __name__ == '__main__':
     from dataclasses import dataclass
     from enum import Enum
-    from happy_config.typechecking.utils import from_python_type, extract_valid_paths
-    from happy_config.typechecking.types import show_type
+    from HC.typechecking.utils import from_python_type, extract_valid_paths
+    from HC.typechecking.types import show_type
 
     class Loss(Enum):
         InfoNCE = 'infonce'

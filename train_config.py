@@ -1,6 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass
-from happy_config.param_tuning import with_search_space
+from HC.param_tuning import with_search_space
 
 
 class ContrastMode(Enum):

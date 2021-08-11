@@ -24,7 +24,10 @@ class Encoder(nn.Module):
             # add batch norm layer if batch norm is used
             if self.batch_norms is not None:
                 self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
-            self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
+            if base_conv == 'GINConv':
+                self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
+            else:
+                self.layers.append(GCNConv(hidden_dim, hidden_dim, cached=False))
 
     def forward(self, x, edge_index, edge_weight=None):
         z = x

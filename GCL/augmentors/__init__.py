@@ -1,4 +1,4 @@
-from .Augmentor import Augmentor, Graph
+from .augmentor import Augmentor, Graph
 from .edge_adding import EdgeAdding
 from .edge_removing import EdgeRemoving
 from .feature_masking import FeatureMasking

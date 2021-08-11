@@ -1,15 +1,17 @@
 from dataclasses import asdict
 from time import time_ns
 import torch
-from torch_geometric.data import DataLoader
 
-from GCL.utils import seed_everything
+from tqdm import tqdm
+from time import time_ns
 from GCL.eval import LR_classification
-from GCL import EncoderModel, ContrastModel
+from GCL.utils import seed_everything
+from GCL.models import EncoderModel, ContrastModel
+from HC.config_loader import ConfigLoader
+from torch_geometric.data import DataLoader
 
 from utils import load_dataset, get_compositional_augmentor, get_activation, get_loss, is_node_dataset
 from models.GConv import Encoder
-from happy_config.config_loader import ConfigLoader
 
 from train_config import *
 
@@ -43,19 +45,13 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
     encoder_model.eval()
 
     x = []
-    y = []
     for data in test_loader:
         data = data.to(config.device)
-
         z, g, z1, z2, g1, g2, z3, z4 = encoder_model(data.x, data.batch, data.edge_index, data.edge_attr)
-
         x.append(z if is_node_dataset(config.dataset) else g)
-        y.append(data.y)
     x = torch.cat(x, dim=0)
-    y = torch.cat(y, dim=0)
 
     test_result = LR_classification(x, dataset, train_ratio=0.1, test_ratio=0.8)
-
     return test_result
 
 
@@ -99,24 +95,28 @@ def main(config: ExpConfig):
     best_loss = 1e20
     best_epoch = 0
     wait_window = 0
-    for epoch in range(1, config.opt.num_epochs + 1):
-        loss = train(encoder_model, contrast_model, train_loader, optimizer, config)
+    with tqdm(total=config.opt.num_epochs, desc='(T)') as pbar:
+        for epoch in range(1, config.opt.num_epochs + 1):
+            loss = train(encoder_model, contrast_model, train_loader, optimizer, config)
+            pbar.set_postfix({'loss': loss})
+            pbar.update()
 
-        print(f'epoch {epoch:04d}, loss {loss}')
-        if loss < best_loss:
-            best_loss = loss
-            best_epoch = epoch
-            wait_window = 0
-            torch.save(encoder_model.state_dict(), model_path)
-        else:
-            wait_window += 1
+            if loss < best_loss:
+                best_loss = loss
+                best_epoch = epoch
+                wait_window = 0
+                torch.save(encoder_model.state_dict(), model_path)
+            else:
+                wait_window += 1
 
-        if wait_window > config.opt.patience:
-            break
+            if wait_window > config.opt.patience:
+                break
 
+    print("=== Final ===")
+    print(f'(T): Best epoch={best_epoch}, best loss={best_loss:.4f}')
     encoder_model.load_state_dict(model_path)
     test_result = evaluate(encoder_model, test_loader, dataset, config)
-    print(test_result)
+    print(f'(E): Best test F1Mi={test_result["F1Mi"][0]:.4f}, F1Ma={test_result["F1Ma"][0]:.4f}')
 
 
 if __name__ == '__main__':

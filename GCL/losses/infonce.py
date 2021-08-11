@@ -19,7 +19,7 @@ class InfoNCELoss(Loss):
         super(InfoNCELoss, self).__init__()
         self.tau = tau
 
-    def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
         sim = _similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
@@ -34,7 +34,7 @@ class DebiasedInfoNCELoss(Loss):
         self.tau = tau
         self.tau_plus = tau_plus
 
-    def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
         num_neg = neg_mask.int().sum()
         sim = _similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim)
@@ -58,7 +58,7 @@ class HardnessInfoNCELoss(Loss):
         self.tau_plus = tau_plus
         self.beta = beta
 
-    def __compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
         num_neg = neg_mask.int().sum()
         sim = _similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim)

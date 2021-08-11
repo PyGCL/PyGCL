@@ -3,6 +3,8 @@ import torch
 from GCL.samplers import Sampler, CrossScaleSampler, SameScaleSampler
 from GCL.losses import Loss
 
+__all__ = ['ContrastModel']
+
 
 def get_sampler(mode: str) -> Sampler:
     if mode in {'L2L', 'G2G'}:
