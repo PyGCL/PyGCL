@@ -4,7 +4,7 @@ import torch
 
 from tqdm import tqdm
 from time import time_ns
-from GCL.eval import LR_classification
+from GCL.eval import LREvaluator, get_split
 from GCL.utils import seed_everything
 from GCL.models import EncoderModel, ContrastModel
 from HC.config_loader import ConfigLoader
@@ -45,14 +45,20 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
     encoder_model.eval()
 
     x = []
+    y = []
     for data in test_loader:
         data = data.to(config.device)
         z, g, z1, z2, g1, g2, z3, z4 = encoder_model(data.x, data.batch, data.edge_index, data.edge_attr)
         x.append(z if is_node_dataset(config.dataset) else g)
+        y.append(data.y)
     x = torch.cat(x, dim=0)
+    y = torch.cat(y, dim=0)
 
-    test_result = LR_classification(x, dataset, train_ratio=0.1, test_ratio=0.8)
-    return test_result
+    split = get_split(name=config.dataset, num_samples=x.size()[0], dataset=dataset)
+    evaluator = LREvaluator()
+    result = evaluator.evaluate(x, y, split)
+
+    return result
 
 
 def main(config: ExpConfig):
@@ -114,9 +120,14 @@ def main(config: ExpConfig):
 
     print("=== Final ===")
     print(f'(T): Best epoch={best_epoch}, best loss={best_loss:.4f}')
-    encoder_model.load_state_dict(model_path)
+    saved_model = torch.load(model_path)
+    encoder_model.load_state_dict(saved_model)
     test_result = evaluate(encoder_model, test_loader, dataset, config)
-    print(f'(E): Best test F1Mi={test_result["F1Mi"][0]:.4f}, F1Ma={test_result["F1Ma"][0]:.4f}')
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+
+    return {
+        'evaluation': test_result
+    }
 
 
 if __name__ == '__main__':

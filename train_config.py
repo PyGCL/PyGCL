@@ -83,7 +83,7 @@ class AugmentorConfig:
 @dataclass
 class ExpConfig:
     device: str = 'cuda:0'
-    dataset: str = 'Amazon-Computers'
+    dataset: str = 'WikiCS'
 
     seed: int = 39788
     opt: OptConfig = OptConfig()

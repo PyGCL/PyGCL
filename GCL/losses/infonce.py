@@ -25,7 +25,7 @@ class InfoNCELoss(Loss):
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
         loss = log_prob * pos_mask
         loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
-        return loss.mean()
+        return -loss.mean()
 
 
 class DebiasedInfoNCELoss(Loss):

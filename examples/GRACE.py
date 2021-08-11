@@ -78,7 +78,7 @@ def main():
     device = torch.device('cuda')
     path = osp.join(osp.expanduser('~'), 'datasets')
     dataset = Planetoid(path, name='Cora', transform=T.NormalizeFeatures())
-    data = dataset[0].to('cuda')
+    data = dataset[0].to(device)
 
     aug1 = A.EdgeRemoving(pe=0.3) >> A.FeatureMasking(pf=0.3)
     aug2 = A.EdgeRemoving(pe=0.3) >> A.FeatureMasking(pf=0.3)

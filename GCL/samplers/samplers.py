@@ -2,9 +2,6 @@ import torch
 from torch_scatter import scatter
 
 
-__all__ = ['Sampler', 'SameScaleSampler', 'CrossScaleSampler']
-
-
 class Sampler:
     def __init__(self, intraview_negs=False):
         self.intraview_negs = intraview_negs
