@@ -1,2 +1,2 @@
-from ContrastModel import ContrastModel
-from EncoderModel import EncoderModel
+from .ContrastModel import ContrastModel
+from .EncoderModel import EncoderModel

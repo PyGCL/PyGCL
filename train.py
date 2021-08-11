@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from time import time_ns
 import torch
 from torch_geometric.data import DataLoader
@@ -68,8 +69,8 @@ def main(config: ExpConfig):
 
     input_dim = 1 if dataset.num_features == 0 else dataset.num_features
 
-    aug1 = get_compositional_augmentor(config.augmentor1.asdict())
-    aug2 = get_compositional_augmentor(config.augmentor2.asdict())
+    aug1 = get_compositional_augmentor(asdict(config.augmentor1))
+    aug2 = get_compositional_augmentor(asdict(config.augmentor2))
 
     encoder = Encoder(
         input_dim=input_dim,
@@ -80,7 +81,7 @@ def main(config: ExpConfig):
     ).to(device)
 
     loss_name = config.obj.loss.value
-    loss_params = config.obj.asdict()[loss_name].asdict()
+    loss_params = asdict(config.obj)[loss_name]
     encoder_model = EncoderModel(
         encoder=encoder,
         augmentor=(aug1, aug2),
@@ -119,7 +120,7 @@ def main(config: ExpConfig):
 
 
 if __name__ == '__main__':
-    loader = ConfigLoader(model=ExpConfig, default_param_path='params/GRACE/wikics@bad.json')
+    loader = ConfigLoader(model=ExpConfig, default_param_path='params/GRACE/wikics@ng.json')
     config = loader()
 
-    # main(config)
+    main(config)
