@@ -150,5 +150,6 @@ def main(config: ExpConfig):
 if __name__ == '__main__':
     loader = ConfigLoader(model=ExpConfig, config='params/GRACE/proteins@ng.json')
     config = loader()
+    print(config)
 
     main(config)
