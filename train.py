@@ -4,7 +4,7 @@ import torch
 
 from tqdm import tqdm
 from time import time_ns
-from GCL.eval import LREvaluator, get_split
+from GCL.eval import LREvaluator, get_split, SVM_classification
 from GCL.utils import seed_everything
 from GCL.models import EncoderModel, ContrastModel
 from HC.config_loader import ConfigLoader
@@ -71,6 +71,8 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
     evaluator = LREvaluator()
     result = evaluator.evaluate(x, y, split)
 
+    # result = SVM_classification(x.detach().cpu().numpy(), y.detach().cpu().numpy(), config.seed)
+
     return result
 
 
@@ -136,7 +138,9 @@ def main(config: ExpConfig):
     saved_model = torch.load(model_path)
     encoder_model.load_state_dict(saved_model)
     test_result = evaluate(encoder_model, test_loader, dataset, config)
-    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+
+    # print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    print(f'(E): {test_result}')
 
     return {
         'evaluation': test_result
@@ -144,7 +148,7 @@ def main(config: ExpConfig):
 
 
 if __name__ == '__main__':
-    loader = ConfigLoader(model=ExpConfig, config='params/GRACE/imdb_multi@ng.json')
+    loader = ConfigLoader(model=ExpConfig, config='params/GRACE/proteins@ng.json')
     config = loader()
 
     main(config)
