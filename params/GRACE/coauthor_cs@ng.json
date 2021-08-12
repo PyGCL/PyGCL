@@ -1,0 +1,26 @@
+{
+    "opt": {
+        "learning_rate": 0.0005,
+        "num_epochs": 1000,
+        "patience": 1000
+    },
+    "encoder": {
+        "hidden_dim": 256,
+        "proj_dim": 256,
+        "activation": "rrelu"
+    },
+    "augmentor1": {
+        "drop_edge_prob": 0.3,
+        "drop_feat_prob": 0.3
+    },
+    "augmentor2": {
+        "drop_edge_prob": 0.2,
+        "drop_feat_prob": 0.4
+    },
+    "obj": {
+        "loss": "infonce",
+        "infonce": {
+            "tau": 0.4
+        }
+    }
+}
