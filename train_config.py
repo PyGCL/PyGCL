@@ -83,6 +83,7 @@ class AugmentorConfig:
 
 @dataclass
 class ExpConfig:
+    visualdl: str = None
     device: str = 'cuda:0'
     dataset: str = 'IMDB-MULTI'
 

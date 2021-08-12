@@ -1,10 +1,12 @@
+from pprint import PrettyPrinter
 from dataclasses import asdict
 from time import time_ns
 import torch
+from visualdl import LogWriter
 
 from tqdm import tqdm
 from time import time_ns
-from GCL.eval import LREvaluator, get_split, SVM_classification
+from GCL.eval import LREvaluator, get_split
 from GCL.utils import seed_everything
 from GCL.models import EncoderModel, ContrastModel
 from HC.config_loader import ConfigLoader
@@ -71,14 +73,17 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
     evaluator = LREvaluator()
     result = evaluator.evaluate(x, y, split)
 
-    # result = SVM_classification(x.detach().cpu().numpy(), y.detach().cpu().numpy(), config.seed)
-
     return result
 
 
 def main(config: ExpConfig):
     seed_everything(config.seed)
     device = torch.device(config.device)
+
+    if config.visualdl is not None:
+        writer = LogWriter(logdir=f'./log/{config.visualdl}/train')
+    else:
+        writer = None
 
     dataset = load_dataset('datasets', config.dataset, to_sparse_tensor=False)
     train_loader = DataLoader(dataset, batch_size=config.opt.batch_size)
@@ -122,6 +127,9 @@ def main(config: ExpConfig):
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
+            if writer is not None:
+                writer.add_scalar('loss', step=epoch, value=loss)
+
             if loss < best_loss:
                 best_loss = loss
                 best_epoch = epoch
@@ -139,6 +147,9 @@ def main(config: ExpConfig):
     encoder_model.load_state_dict(saved_model)
     test_result = evaluate(encoder_model, test_loader, dataset, config)
 
+    if writer is not None:
+        writer.close()
+
     # print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
     print(f'(E): {test_result}')
 
@@ -150,6 +161,8 @@ def main(config: ExpConfig):
 if __name__ == '__main__':
     loader = ConfigLoader(model=ExpConfig, config='params/GRACE/proteins@ng.json')
     config = loader()
-    print(config)
+
+    printer = PrettyPrinter(indent=2)
+    printer.pprint(asdict(config))
 
     main(config)
