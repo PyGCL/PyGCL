@@ -50,11 +50,23 @@ def main():
         'batch_norm': False,
         'base_model': 'GCNConv',
         'loss': 'infonce',
+        'num_layers': 2,
+        'augmentor1': {
+            'scheme': 'FM+ER',
+            'drop_edge_prob': 0.2,
+            'drop_feat_prob': 0.3
+        },
+        'augmentor2': {
+            'scheme': 'FM+ER',
+            'drop_edge_prob': 0.2,
+            'drop_feat_prob': 0.3
+        },
         'subsampling_infonce': {
             'tau': 0.4,
             'negative_size': 1000
         },
-        'num_epochs': 100
+        'num_epochs': 100,
+        'patience': 200,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:0')
