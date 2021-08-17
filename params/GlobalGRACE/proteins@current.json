@@ -20,6 +20,12 @@
     "infonce": {
         "tau": 0.2
     },
+    "bootstrap": {
+        "encoder_norm": "batch",
+        "projector_norm": "batch",
+        "predictor_norm": "none",
+        "momentum": 0.9
+    },
     "num_epochs": 200,
     "patience": 100
 }

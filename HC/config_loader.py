@@ -11,11 +11,11 @@ from HC.typechecking import *
 class ConfigLoader(object):
     T = TypeVar('T')
 
-    def __init__(self, model: T, config: str):
+    def __init__(self, model: T, config: str, disable_argparse: bool = False):
         self.config_type = from_python_type(model)
         self.config_raw_type = model
         self.config = config
-        self.arg_parser = self.construct_arg_parser()
+        self.arg_parser = self.construct_arg_parser() if not disable_argparse else None
 
     @staticmethod
     def _parse_yaml(path: str):
@@ -69,8 +69,11 @@ class ConfigLoader(object):
         return recur(data, self.config_raw_type)
 
     def get_config(self) -> T:
-        args = self.arg_parser.parse_args()
-        config_path = args.config
+        if self.arg_parser is not None:
+            args = self.arg_parser.parse_args()
+            config_path = args.config
+        else:
+            config_path = self.config
 
         def load_dict() -> dict:
             if config_path == 'nni':
@@ -85,9 +88,10 @@ class ConfigLoader(object):
             return loaded
 
         loaded = load_dict()
-        args_dict = args.__dict__
-        args_dict = {k: v for k, v in args_dict.items() if v is not None}
-        loaded = {**loaded, **args_dict}
+        if self.arg_parser is not None:
+            args_dict = args.__dict__
+            args_dict = {k: v for k, v in args_dict.items() if v is not None}
+            loaded = {**loaded, **args_dict}
 
         if 'config' in loaded:
             loaded.pop('config')

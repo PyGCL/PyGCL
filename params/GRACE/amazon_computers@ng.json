@@ -1,4 +1,5 @@
 {
+    "dataset": "Amazon-Computers",
     "opt": {
         "learning_rate": 0.01,
         "patience": 200,

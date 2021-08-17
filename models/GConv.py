@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from torch_geometric.nn import GINConv, GCNConv
+from torch_geometric.nn import GCNConv, GINConv
 
 
 def make_gin_conv(input_dim: int, out_dim: int) -> GINConv:
@@ -14,6 +14,7 @@ class Encoder(nn.Module):
         self.activation = activation()
         self.layers = torch.nn.ModuleList()
         self.batch_norms = torch.nn.ModuleList() if batch_norm else None
+        self.base_conv = base_conv
 
         if base_conv == 'GINConv':
             self.layers.append(make_gin_conv(input_dim, hidden_dim))
@@ -33,7 +34,10 @@ class Encoder(nn.Module):
         z = x
         num_layers = len(self.layers)
         for i, conv in enumerate(self.layers):
-            z = conv(z, edge_index, edge_weight)
+            if self.base_conv == 'GINConv':
+                z = conv(z, edge_index)
+            else:
+                z = conv(z, edge_index, edge_weight)
             z = self.activation(z)
             if self.batch_norms is not None and i != num_layers - 1:
                 z = self.batch_norms[i](z)

@@ -7,7 +7,7 @@ from visualdl import LogWriter
 from tqdm import tqdm
 from time import time_ns
 from GCL.eval import LREvaluator, get_split
-from GCL.utils import seed_everything
+from GCL.utils import seed_everything, batchify_dict
 from GCL.models import EncoderModel, ContrastModel
 from HC.config_loader import ConfigLoader
 from torch_geometric.data import DataLoader
@@ -22,7 +22,7 @@ def train(encoder_model: EncoderModel, contrast_model: ContrastModel,
           train_loader: DataLoader,
           optimizer: torch.optim.Optimizer, config: ExpConfig):
     encoder_model.train()
-    epoch_loss = 0.0
+    epoch_losses = []
     device = torch.device(config.device)
 
     for data in train_loader:
@@ -44,9 +44,9 @@ def train(encoder_model: EncoderModel, contrast_model: ContrastModel,
         loss.backward()
         optimizer.step()
 
-        epoch_loss += loss.item()
+        epoch_losses.append(loss.item())
 
-    return epoch_loss
+    return sum(epoch_losses) / len(epoch_losses)
 
 
 def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, config: ExpConfig):
@@ -70,8 +70,16 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
     y = torch.cat(y, dim=0)
 
     split = get_split(name=config.dataset, num_samples=x.size()[0], dataset=dataset)
-    evaluator = LREvaluator()
-    result = evaluator.evaluate(x, y, split)
+    if isinstance(split, list):
+        results = []
+        for sp in split:
+            evaluator = LREvaluator()
+            result = evaluator.evaluate(x, y, sp)
+            results.append(result)
+        result = batchify_dict(results, aggr_func=lambda xs: sum(xs) / len(xs))
+    else:
+        evaluator = LREvaluator()
+        result = evaluator.evaluate(x, y, split)
 
     return result
 
@@ -115,7 +123,12 @@ def main(config: ExpConfig):
         mode=config.mode.value
     )
 
+    def get_first_lr(optimizer: torch.optim.Optimizer) -> float:
+        for param_group in optimizer.param_groups:
+            return param_group['lr']
+
     optimizer = torch.optim.Adam(encoder_model.parameters(), lr=config.opt.learning_rate)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=config.opt.reduce_lr_patience)
 
     model_path = f'intermediate/{time_ns()}.pkl'
     best_loss = 1e20
@@ -124,11 +137,13 @@ def main(config: ExpConfig):
     with tqdm(total=config.opt.num_epochs, desc='(T)') as pbar:
         for epoch in range(1, config.opt.num_epochs + 1):
             loss = train(encoder_model, contrast_model, train_loader, optimizer, config)
-            pbar.set_postfix({'loss': loss})
+            lr_scheduler.step(loss)
+            pbar.set_postfix({'loss': f'{loss:.4f}', 'wait': wait_window, 'lr': get_first_lr(optimizer)})
             pbar.update()
 
             if writer is not None:
                 writer.add_scalar('loss', step=epoch, value=loss)
+                writer.add_scalar('lr', step=epoch, value=get_first_lr(optimizer))
 
             if loss < best_loss:
                 best_loss = loss
@@ -150,7 +165,6 @@ def main(config: ExpConfig):
     if writer is not None:
         writer.close()
 
-    # print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
     print(f'(E): {test_result}')
 
     return {
@@ -159,7 +173,7 @@ def main(config: ExpConfig):
 
 
 if __name__ == '__main__':
-    loader = ConfigLoader(model=ExpConfig, config='params/GRACE/proteins@ng.json')
+    loader = ConfigLoader(model=ExpConfig, config='params/GRACE/wikics@ng.json')
     config = loader()
 
     printer = PrettyPrinter(indent=2)

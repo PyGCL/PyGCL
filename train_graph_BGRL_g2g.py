@@ -82,9 +82,9 @@ def main():
         'dropout': 0.2
     }
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cuda:2')
-    parser.add_argument('--dataset', type=str, default='IMDB-MULTI')
-    parser.add_argument('--param_path', type=str, default='params/BGRL/imdb_multi.json')
+    parser.add_argument('--device', type=str, default='cuda:0')
+    parser.add_argument('--dataset', type=str, default='PROTEINS')
+    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/proteins@current.json')
     for k, v in default_param.items():
         if type(v) is dict:
             for subk, subv in v.items():

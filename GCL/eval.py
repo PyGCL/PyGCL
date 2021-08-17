@@ -18,13 +18,31 @@ def get_split(name, dataset, num_samples: int, train_ratio: float = 0.1, test_ra
             split['val'] = split['valid']
         return split
 
+    if name == 'WikiCS':
+        data = dataset[0]
+        train_mask = data['train_mask']
+        val_mask = data['val_mask']
+        test_mask = data['test_mask']
+        num_folds = train_mask.size()[1]
+
+        splits = [
+            {
+                'train': train_mask[:, i],
+                'val': val_mask[:, i],
+                'test': test_mask
+            }
+            for i in range(num_folds)
+        ]
+
+        return splits
+
     train_size = int(num_samples * train_ratio)
     test_size = int(num_samples * test_ratio)
     indices = torch.randperm(num_samples)
     return {
         'train': indices[:train_size],
-        'val': indices[train_size: test_size + train_size],
-        'test': indices[test_size + train_size:]
+        'test': indices[train_size: test_size + train_size],
+        'val': indices[test_size + train_size:]
     }
 
 
@@ -85,6 +103,8 @@ class LREvaluator(object):
                     y_val = y[split['val']].detach().cpu().numpy()
                     y_pred = classifier(x[split['val']]).argmax(-1).detach().cpu().numpy()
                     val_micro = f1_score(y_val, y_pred, average='micro')
+
+                    breakpoint()
 
                     if val_micro > best_val_micro:
                         best_val_micro = val_micro
