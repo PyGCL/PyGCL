@@ -6,8 +6,8 @@ import torch.nn.functional as F
 import torch_geometric.transforms as T
 
 from tqdm import tqdm
-from GCL.eval import LR_classification
-from GCL.models import ContrastModel
+from GCL.eval import get_split, LREvaluator
+from GCL.models import DualBranchContrastModel
 from torch_geometric.nn import GCNConv
 from torch_geometric.datasets import Planetoid
 
@@ -70,8 +70,10 @@ def test(encoder_model, data):
     z, _, _ = encoder_model(data.x, data.edge_index, data.edge_attr)
     x.append(z)
     x = torch.cat(x, dim=0)
-    test_result = LR_classification(x, data, train_ratio=0.1, test_ratio=0.8)
-    return test_result
+
+    split = get_split(num_samples=x.size()[0], train_ratio=0.1, test_ratio=0.8)
+    result = LREvaluator()(x, data.y, split)
+    return result
 
 
 def main():
@@ -85,7 +87,7 @@ def main():
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=32, proj_dim=32).to(device)
-    contrast_model = ContrastModel(loss=L.InfoNCELoss(tau=0.2), mode='L2L')
+    contrast_model = DualBranchContrastModel(loss=L.InfoNCELoss(tau=0.2), mode='L2L')
 
     optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.01)
 
@@ -96,7 +98,7 @@ def main():
             pbar.update()
 
     test_result = test(encoder_model, data)
-    print(f'(E): Best test F1Mi={test_result["F1Mi"]:.4f}, F1Ma={test_result["F1Ma"]:.4f}')
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
 
 
 if __name__ == '__main__':
