@@ -25,7 +25,7 @@ class GCLTrial(object):
         self.config = config
         self.device = torch.device(config.device)
         self.writer = LogWriter(logdir=f'./log/{config.visualdl}/train')
-        self.dataset = load_dataset('datasets', config.dataset, to_sparse_tensor=False)
+        self.dataset = load_dataset('~/datasets', config.dataset, to_sparse_tensor=False)
         self.train_loader = DataLoader(self.dataset, batch_size=config.opt.batch_size)
         self.test_loader = DataLoader(self.dataset, batch_size=config.opt.batch_size, shuffle=False)
 
