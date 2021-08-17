@@ -75,6 +75,6 @@ class LREvaluator(BaseEvaluator):
                     pbar.update(self.test_interval)
 
         return {
-            'micro_f1_avg': best_test_micro,
-            'macro_f1_avg': best_val_micro
+            'micro_f1': best_test_micro,
+            'macro_f1': best_val_micro
         }
