@@ -11,7 +11,7 @@ from torch_geometric.datasets import Coauthor, WikiCS, Amazon, CitationFull, Pla
 
 def load_dataset(path: str, name: str, to_sparse_tensor: bool = True, to_dense: bool = False):
     node_datasets = {'Cora', 'CiteSeer', 'PubMed', 'DBLP', 'Karate', 'WikiCS', 'Coauthor-CS', 'Coauthor-Phy',
-                     'Amazon-Computers', 'Amazon-Photo', 'ogbn-arxiv', 'ogbg-code'}
+                     'Amazon-Computers', 'Amazon-Photo', 'ogbn-arxiv'}
     if name in node_datasets:
         return load_node_dataset(path, name, to_sparse_tensor, to_dense)
     else:
