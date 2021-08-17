@@ -8,11 +8,16 @@ __all__ = ['TripletLoss']
 
 
 class TripletLoss(Loss):
-    def __init__(self, margin: float = 1.0, p: float = 2):
+    def __init__(self, margin: float = 1.0, p: float = 2, single_positive: bool = True):
         super(TripletLoss, self).__init__()
         self.loss_fn = torch.nn.TripletMarginLoss(margin=margin, p=p, reduction='none')
+        self.single_positive = single_positive
+        self.margin = margin
 
     def compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
+        if self.single_positive:
+            return triplet_loss(anchor, sample, pos_mask, self.margin)
+
         num_anchors = anchor.size()[0]
         num_samples = sample.size()[0]
 

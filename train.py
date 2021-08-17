@@ -1,6 +1,5 @@
 from pprint import PrettyPrinter
 from dataclasses import asdict
-from time import time_ns
 import torch
 from visualdl import LogWriter
 
@@ -56,9 +55,32 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
 
     if config.dataset.startswith('ogb'):
         split = dataset.get_idx_split()
+    elif config.dataset == 'WikiCS':
+        data = dataset[0]
+        train_mask = data['train_mask']
+        val_mask = data['val_mask']
+        test_mask = data['test_mask']
+        num_folds = train_mask.size()[1]
+
+        split = [
+            {
+                'train': train_mask[:, i],
+                'valid': val_mask[:, i],
+                'test': test_mask
+            }
+            for i in range(num_folds)
+        ]
     else:
         split = get_split(num_samples=x.size()[0])
-    result = LREvaluator()(x, y, split)
+
+    if isinstance(split, list):
+        results = []
+        for sp in split:
+            result = LREvaluator()(x, y, sp)
+            results.append(result)
+        result = batchify_dict(results, aggr_func=lambda xs: sum(xs) / len(xs))
+    else:
+        result = LREvaluator()(x, y, split)
 
     return result
 

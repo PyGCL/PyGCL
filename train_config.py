@@ -19,6 +19,7 @@ class OptConfig:
                                         space_type='choice', space_value=[50, 100, 200, 500, 1000, 2000, 5000])
     batch_size: int = 32
     patience: int = 200
+    reduce_lr_patience: int = 100
 
 
 class ConvType(Enum):
@@ -75,10 +76,39 @@ class ObjConfig:
 
 
 @dataclass
+class ProbAugConfig:
+    prob: float = 0.2
+
+
+@dataclass
+class DiffAugConfig:
+    sp_eps: float = 0.001
+
+
+@dataclass
+class IdentityAugConfig:
+    pass
+
+
+@dataclass
+class RWAugConfig:
+    num_seeds: int = 1000
+    walk_length: int = 10
+
+
+@dataclass
 class AugmentorConfig:
     scheme: str = 'FM+ER'
-    drop_edge_prob: float = 0.2
-    drop_feat_prob: float = 0.2
+    ER: ProbAugConfig = ProbAugConfig()
+    EA: ProbAugConfig = ProbAugConfig()
+    FM: ProbAugConfig = ProbAugConfig()
+    ND: ProbAugConfig = ProbAugConfig()
+    FD: ProbAugConfig = ProbAugConfig()
+    EAM: ProbAugConfig = ProbAugConfig()
+    PPR: DiffAugConfig = DiffAugConfig()
+    MKD: DiffAugConfig = DiffAugConfig()
+    ORI: IdentityAugConfig = IdentityAugConfig()
+    RWS: RWAugConfig = RWAugConfig()
 
 
 @dataclass

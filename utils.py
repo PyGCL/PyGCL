@@ -88,6 +88,31 @@ def get_activation(name: str):
 
 def get_augmentor(aug_name: str, param: dict):
     if aug_name == 'ER':
+        return A.EdgeRemoving(pe=param['prob'])
+    if aug_name == 'EA':
+        return A.EdgeAdding(pe=param['prob'])
+    if aug_name == 'ND':
+        return A.NodeDropping(pn=param['prob'])
+    if aug_name == 'RWS':
+        return A.RWSampling(num_seeds=param['num_seeds'], walk_length=param['walk_length'])
+    if aug_name == 'PPR':
+        return A.PPRDiffusion(eps=param['sp_eps'], use_cache=False)
+    if aug_name == 'MKD':
+        return A.MarkovDiffusion(sp_eps=param['sp_eps'], use_cache=False)
+    if aug_name == 'ORI':
+        return A.Identity()
+    if aug_name == 'FM':
+        return A.FeatureMasking(pf=param['prob'])
+    if aug_name == 'EAM':
+        return A.EdgeAttrMasking(pf=param['prob'])
+    if aug_name == 'FD':
+        return A.FeatureDropout(pf=param['prob'])
+
+    raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
+
+
+def get_augmentor_legacy(aug_name: str, param: dict):
+    if aug_name == 'ER':
         return A.EdgeRemoving(pe=param['drop_edge_prob'])
     if aug_name == 'EA':
         return A.EdgeAdding(pe=param['add_edge_prob'])
@@ -111,9 +136,10 @@ def get_augmentor(aug_name: str, param: dict):
     raise NotImplementedError(f'unsupported augmentation name: {aug_name}')
 
 
+
 def get_compositional_augmentor(param: dict) -> A.Augmentor:
     augs = param['scheme'].split('+')
-    augs = [get_augmentor(x, param) for x in augs]
+    augs = [get_augmentor_legacy(x, param) for x in augs]
 
     aug = augs[0]
     for a in augs[1:]:
