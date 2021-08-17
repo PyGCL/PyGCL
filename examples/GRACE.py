@@ -48,7 +48,7 @@ class Encoder(torch.nn.Module):
         z2 = self.encoder(x2, edge_index2, edge_weight2)
         return z, z1, z2
 
-    def projection(self, z: torch.Tensor) -> torch.Tensor:
+    def project(self, z: torch.Tensor) -> torch.Tensor:
         z = F.elu(self.fc1(z))
         return self.fc2(z)
 
@@ -57,7 +57,7 @@ def train(encoder_model, contrast_model, data, optimizer):
     encoder_model.train()
     optimizer.zero_grad()
     z, z1, z2 = encoder_model(data.x, data.edge_index, data.edge_attr)
-    h1, h2 = [encoder_model.projection(x) for x in [z1, z2]]
+    h1, h2 = [encoder_model.project(x) for x in [z1, z2]]
     loss = contrast_model(h1, h2)
     loss.backward()
     optimizer.step()

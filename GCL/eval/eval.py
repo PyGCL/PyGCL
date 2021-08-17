@@ -7,6 +7,7 @@ from sklearn.model_selection import PredefinedSplit, GridSearchCV
 
 
 def get_split(num_samples: int, train_ratio: float = 0.1, test_ratio: float = 0.8):
+    assert train_ratio + test_ratio < 1
     train_size = int(num_samples * train_ratio)
     test_size = int(num_samples * test_ratio)
     indices = torch.randperm(num_samples)
