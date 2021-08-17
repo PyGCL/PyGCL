@@ -59,12 +59,17 @@ def load_node_dataset(path, name, to_sparse_tensor=True, to_dense=False):
 def load_graph_dataset(path, name, to_sparse_tensor=True, to_dense=False):
     root_path = osp.expanduser('~')
     path = osp.join(root_path, path)
+
+    transform = []
     if to_sparse_tensor:
-        transform = T.ToSparseTensor(remove_edge_index=False)
+        transform.append(T.ToSparseTensor())
     elif to_dense:
-        transform = T.ToDense()
-    else:
-        transform = None
+        transform.append(T.ToDense())
+    dataset = TUDataset(path, name=name)
+    if dataset[0].x is None:
+        transform.append(T.Constant())
+    transform = T.Compose(transform)
+
     return TUDataset(path, name=name, transform=transform)
 
 

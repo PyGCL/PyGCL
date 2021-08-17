@@ -55,6 +55,7 @@ def seed_everything(seed):
 def normalize(s):
     return (s.max() - s) / (s.max() - s.mean())
 
+
 def build_dgl_graph(edge_index: torch.Tensor) -> dgl.DGLGraph:
     row, col = edge_index
     return dgl.graph((row, col))

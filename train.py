@@ -27,20 +27,12 @@ def train(encoder_model: EncoderModel, contrast_model: DualBranchContrastModel,
 
     for data in train_loader:
         data = data.to(device)
-
         optimizer.zero_grad()
 
-        if data.x is None:
-            num_nodes = data.batch.size()[0]
-            x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
-        else:
-            x = data.x
-
-        z, g, z1, z2, g1, g2, z3, z4 = encoder_model(x, data.batch, data.edge_index, data.edge_attr)
+        z, g, z1, z2, g1, g2, z3, z4 = encoder_model(data.x, data.batch, data.edge_index, data.edge_attr)
         h1, h2, h3, h4 = [encoder_model.projection(x) for x in [z1, z2, z3, z4]]
 
         loss = contrast_model(h1, h2, g1, g2, data.batch, h3, h4)
-
         loss.backward()
         optimizer.step()
 
@@ -56,14 +48,7 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
     y = []
     for data in test_loader:
         data = data.to(config.device)
-
-        if data.x is None:
-            num_nodes = data.batch.size()[0]
-            input_x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
-        else:
-            input_x = data.x
-
-        z, g, z1, z2, g1, g2, z3, z4 = encoder_model(input_x, data.batch, data.edge_index, data.edge_attr)
+        z, g, z1, z2, g1, g2, z3, z4 = encoder_model(data.x, data.batch, data.edge_index, data.edge_attr)
         x.append(z if is_node_dataset(config.dataset) else g)
         y.append(data.y)
     x = torch.cat(x, dim=0)
