@@ -61,8 +61,8 @@ class LREvaluator(BaseEvaluator):
                     test_micro = f1_score(y_test, y_pred, average='micro')
                     test_macro = f1_score(y_test, y_pred, average='macro')
 
-                    y_val = y[split['val']].detach().cpu().numpy()
-                    y_pred = classifier(x[split['val']]).argmax(-1).detach().cpu().numpy()
+                    y_val = y[split['valid']].detach().cpu().numpy()
+                    y_pred = classifier(x[split['valid']]).argmax(-1).detach().cpu().numpy()
                     val_micro = f1_score(y_val, y_pred, average='micro')
 
                     if val_micro > best_val_micro:

@@ -6,25 +6,19 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import PredefinedSplit, GridSearchCV
 
 
-def get_split(name, dataset, num_samples: int, train_ratio: float = 0.1, test_ratio: float = 0.8):
-    if name.startswith('ogb'):
-        split = dataset.get_idx_split()
-        if 'valid' in split:
-            split['val'] = split['valid']
-        return split
-
+def get_split(num_samples: int, train_ratio: float = 0.1, test_ratio: float = 0.8):
     train_size = int(num_samples * train_ratio)
     test_size = int(num_samples * test_ratio)
     indices = torch.randperm(num_samples)
     return {
         'train': indices[:train_size],
-        'val': indices[train_size: test_size + train_size],
+        'valid': indices[train_size: test_size + train_size],
         'test': indices[test_size + train_size:]
     }
 
 
 def split_to_numpy(x, y, split):
-    keys = ['train', 'test', 'val']
+    keys = ['train', 'test', 'valid']
     objs = [x, y]
     return [obj[split[key]].detach().cpu().numpy() for obj in objs for key in keys]
 
@@ -45,7 +39,7 @@ class BaseEvaluator(ABC):
         pass
 
     def __call__(self, x: torch.FloatTensor, y: torch.LongTensor, split: dict) -> dict:
-        for key in ['train', 'test', 'val']:
+        for key in ['train', 'test', 'valid']:
             assert key in split
 
         result = self.evaluate(x, y, split)

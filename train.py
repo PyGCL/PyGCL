@@ -8,7 +8,7 @@ from tqdm import tqdm
 from time import time_ns
 from GCL.eval import LREvaluator, get_split
 from GCL.utils import seed_everything
-from GCL.models import EncoderModel, ContrastModel
+from GCL.models import EncoderModel, DualBranchContrastModel
 from HC.config_loader import ConfigLoader
 from torch_geometric.data import DataLoader
 
@@ -18,7 +18,7 @@ from models.GConv import Encoder
 from train_config import *
 
 
-def train(encoder_model: EncoderModel, contrast_model: ContrastModel,
+def train(encoder_model: EncoderModel, contrast_model: DualBranchContrastModel,
           train_loader: DataLoader,
           optimizer: torch.optim.Optimizer, config: ExpConfig):
     encoder_model.train()
@@ -69,9 +69,11 @@ def evaluate(encoder_model: EncoderModel, test_loader: DataLoader, dataset, conf
     x = torch.cat(x, dim=0)
     y = torch.cat(y, dim=0)
 
-    split = get_split(name=config.dataset, num_samples=x.size()[0], dataset=dataset)
-    evaluator = LREvaluator()
-    result = evaluator.evaluate(x, y, split)
+    if config.dataset.startswith('ogb'):
+        split = dataset.get_idx_split()
+    else:
+        split = get_split(num_samples=x.size()[0])
+    result = LREvaluator()(x, y, split)
 
     return result
 
@@ -110,7 +112,7 @@ def main(config: ExpConfig):
         hidden_dim=config.encoder.hidden_dim,
         proj_dim=config.encoder.proj_dim
     ).to(device)
-    contrast_model = ContrastModel(
+    contrast_model = DualBranchContrastModel(
         loss=get_loss(loss_name, **loss_params),
         mode=config.mode.value
     )
