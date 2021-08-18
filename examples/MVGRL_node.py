@@ -4,10 +4,11 @@ import GCL.losses as L
 import GCL.augmentors as A
 import torch_geometric.transforms as T
 
-from tqdm import tqdm
 from torch import nn
+from tqdm import tqdm
+from torch.optim import Adam
 from GCL.eval import get_split, LREvaluator
-from GCL.models import DualBranchContrastModel
+from GCL.models import DualBranchContrast
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.inits import uniform
 from torch_geometric.datasets import Planetoid
@@ -23,7 +24,6 @@ class GConv(nn.Module):
                 self.layers.append(GCNConv(input_dim, hidden_dim))
             else:
                 self.layers.append(GCNConv(hidden_dim, hidden_dim))
-            self.activations.append(nn.PReLU(hidden_dim))
 
     def forward(self, x, edge_index, edge_weight=None):
         z = x
@@ -89,9 +89,9 @@ def main():
     gconv1 = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=2).to(device)
     gconv2 = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=2).to(device)
     encoder_model = Encoder(encoder1=gconv1, encoder2=gconv2, augmentor=(aug1, aug2), hidden_dim=512).to(device)
-    contrast_model = DualBranchContrastModel(loss=L.JSDLoss(), mode='G2L')
+    contrast_model = DualBranchContrast(loss=L.JSDLoss(), mode='G2L').to(device)
 
-    optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.001)
+    optimizer = Adam(encoder_model.parameters(), lr=0.001)
 
     with tqdm(total=200, desc='(T)') as pbar:
         for epoch in range(1, 201):

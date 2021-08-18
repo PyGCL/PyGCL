@@ -2,42 +2,38 @@ import torch
 import os.path as osp
 import GCL.losses as L
 import GCL.augmentors as A
-import torch.nn.functional as F
 import torch_geometric.transforms as T
 
 from tqdm import tqdm
 from torch.optim import Adam
 from GCL.eval import get_split, LREvaluator
-from GCL.models import DualBranchContrast
+from GCL.models.contrast_model import WithinEmbedContrast
 from torch_geometric.nn import GCNConv
-from torch_geometric.datasets import Planetoid
+from torch_geometric.datasets import WikiCS
+from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
 
 
 class GConv(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, activation, num_layers):
+    def __init__(self, input_dim, hidden_dim):
         super(GConv, self).__init__()
-        self.activation = activation()
-        self.layers = torch.nn.ModuleList()
-        self.layers.append(GCNConv(input_dim, hidden_dim, cached=False))
-        for _ in range(num_layers - 1):
-            self.layers.append(GCNConv(hidden_dim, hidden_dim, cached=False))
+        self.act = torch.nn.PReLU()
+        self.bn = torch.nn.BatchNorm1d(2 * hidden_dim, momentum=0.01)
+        self.conv1 = GCNConv(input_dim, 2 * hidden_dim, cached=False)
+        self.conv2 = GCNConv(2 * hidden_dim, hidden_dim, cached=False)
 
     def forward(self, x, edge_index, edge_weight=None):
-        z = x
-        for i, conv in enumerate(self.layers):
-            z = conv(z, edge_index, edge_weight)
-            z = self.activation(z)
+        z = self.conv1(x, edge_index, edge_weight)
+        z = self.bn(z)
+        z = self.act(z)
+        z = self.conv2(z, edge_index, edge_weight)
         return z
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, encoder, augmentor, hidden_dim, proj_dim):
+    def __init__(self, encoder, augmentor):
         super(Encoder, self).__init__()
         self.encoder = encoder
         self.augmentor = augmentor
-
-        self.fc1 = torch.nn.Linear(hidden_dim, proj_dim)
-        self.fc2 = torch.nn.Linear(proj_dim, hidden_dim)
 
     def forward(self, x, edge_index, edge_weight=None):
         aug1, aug2 = self.augmentor
@@ -48,17 +44,12 @@ class Encoder(torch.nn.Module):
         z2 = self.encoder(x2, edge_index2, edge_weight2)
         return z, z1, z2
 
-    def project(self, z: torch.Tensor) -> torch.Tensor:
-        z = F.elu(self.fc1(z))
-        return self.fc2(z)
-
 
 def train(encoder_model, contrast_model, data, optimizer):
     encoder_model.train()
     optimizer.zero_grad()
-    z, z1, z2 = encoder_model(data.x, data.edge_index, data.edge_attr)
-    h1, h2 = [encoder_model.project(x) for x in [z1, z2]]
-    loss = contrast_model(h1, h2)
+    _, z1, z2 = encoder_model(data.x, data.edge_index, data.edge_attr)
+    loss = contrast_model(z1, z2)
     loss.backward()
     optimizer.step()
     return loss.item()
@@ -74,22 +65,27 @@ def test(encoder_model, data):
 
 def main():
     device = torch.device('cuda')
-    path = osp.join(osp.expanduser('~'), 'datasets')
-    dataset = Planetoid(path, name='Cora', transform=T.NormalizeFeatures())
+    path = osp.join(osp.expanduser('~'), 'datasets', 'WikiCS')
+    dataset = WikiCS(path, transform=T.NormalizeFeatures())
     data = dataset[0].to(device)
 
-    aug1 = A.EdgeRemoving(pe=0.3) >> A.FeatureMasking(pf=0.3)
-    aug2 = A.EdgeRemoving(pe=0.3) >> A.FeatureMasking(pf=0.3)
+    aug1 = A.EdgeRemoving(pe=0.5) >> A.FeatureMasking(pf=0.1)
+    aug2 = A.EdgeRemoving(pe=0.5) >> A.FeatureMasking(pf=0.1)
 
-    gconv = GConv(input_dim=dataset.num_features, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
-    encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=32, proj_dim=32).to(device)
-    contrast_model = DualBranchContrast(loss=L.InfoNCELoss(tau=0.2), mode='L2L', intraview_negs=True).to(device)
+    gconv = GConv(input_dim=dataset.num_features, hidden_dim=256).to(device)
+    encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2)).to(device)
+    contrast_model = WithinEmbedContrast(loss=L.BarlowTwinsLoss()).to(device)
 
-    optimizer = Adam(encoder_model.parameters(), lr=0.01)
+    optimizer = Adam(encoder_model.parameters(), lr=5e-4)
+    scheduler = LinearWarmupCosineAnnealingLR(
+        optimizer=optimizer,
+        warmup_epochs=400,
+        max_epochs=4000)
 
-    with tqdm(total=1000, desc='(T)') as pbar:
-        for epoch in range(1, 1001):
+    with tqdm(total=4000, desc='(T)') as pbar:
+        for epoch in range(1, 4001):
             loss = train(encoder_model, contrast_model, data, optimizer)
+            scheduler.step()
             pbar.set_postfix({'loss': loss})
             pbar.update()
 

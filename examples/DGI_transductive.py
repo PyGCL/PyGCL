@@ -3,10 +3,11 @@ import os.path as osp
 import GCL.losses as L
 import torch_geometric.transforms as T
 
-from tqdm import tqdm
 from torch import nn
+from tqdm import tqdm
+from torch.optim import Adam
 from GCL.eval import get_split, LREvaluator
-from GCL.models import SingleBranchContrastModel
+from GCL.models import SingleBranchContrast
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.inits import uniform
 from torch_geometric.datasets import Planetoid
@@ -76,9 +77,9 @@ def main():
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, hidden_dim=512).to(device)
-    contrast_model = SingleBranchContrastModel(loss=L.JSDLoss(), mode='G2L')
+    contrast_model = SingleBranchContrast(loss=L.JSDLoss(), mode='G2L').to(device)
 
-    optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.01)
+    optimizer = Adam(encoder_model.parameters(), lr=0.01)
 
     with tqdm(total=300, desc='(T)') as pbar:
         for epoch in range(1, 301):
