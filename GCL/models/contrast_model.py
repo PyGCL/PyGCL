@@ -1,25 +1,25 @@
 import torch
 
-from GCL.samplers import Sampler, CrossScaleSampler, SameScaleSampler
 from GCL.losses import Loss
+from GCL.samplers import Sampler, CrossScaleSampler, SameScaleSampler
 
 
-def get_sampler(mode: str) -> Sampler:
+def get_sampler(mode: str, intraview_negs: bool) -> Sampler:
     if mode in {'L2L', 'G2G'}:
-        return SameScaleSampler()
+        return SameScaleSampler(intraview_negs=intraview_negs)
     elif mode == 'G2L':
-        return CrossScaleSampler()
+        return CrossScaleSampler(intraview_negs=intraview_negs)
     else:
         raise RuntimeError(f'unsupported mode: {mode}')
 
 
 class SingleBranchContrastModel(torch.nn.Module):
-    def __init__(self, loss: Loss, mode: str, *args, **kwargs):
+    def __init__(self, loss: Loss, mode: str, intraview_negs: bool = False, *args, **kwargs):
         super(SingleBranchContrastModel, self).__init__()
         assert mode == 'G2L'  # only global-local pairs allowed in single-branch contrastive learning
         self.loss = loss
         self.mode = mode
-        self.sampler = get_sampler(mode)
+        self.sampler = get_sampler(mode, intraview_negs=intraview_negs)
         self.kwargs = kwargs
 
     def forward(self, h, g, batch=None, hn=None):
@@ -35,11 +35,11 @@ class SingleBranchContrastModel(torch.nn.Module):
 
 
 class DualBranchContrastModel(torch.nn.Module):
-    def __init__(self, loss: Loss, mode: str, *args, **kwargs):
+    def __init__(self, loss: Loss, mode: str, intraview_negs: bool = False, *args, **kwargs):
         super(DualBranchContrastModel, self).__init__()
         self.loss = loss
         self.mode = mode
-        self.sampler = get_sampler(mode)
+        self.sampler = get_sampler(mode, intraview_negs=intraview_negs)
         self.kwargs = kwargs
 
     def forward(self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None):
