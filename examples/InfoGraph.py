@@ -42,28 +42,28 @@ class GConv(nn.Module):
 
 
 class FC(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, hidden_dim):
         super(FC, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(input_dim, input_dim),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(input_dim, input_dim),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(input_dim, input_dim),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU()
         )
-        self.linear = nn.Linear(input_dim, input_dim)
+        self.linear = nn.Linear(hidden_dim, hidden_dim)
 
     def forward(self, x):
         return self.fc(x) + self.linear(x)
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, encoder, hidden_dim):
+    def __init__(self, encoder, local_fc, global_fc):
         super(Encoder, self).__init__()
         self.encoder = encoder
-        self.local_fc = FC(hidden_dim)
-        self.global_fc = FC(hidden_dim)
+        self.local_fc = local_fc
+        self.global_fc = global_fc
 
     def forward(self, x, edge_index, batch):
         z, g = self.encoder(x, edge_index, batch)
@@ -126,7 +126,9 @@ def main():
     input_dim = max(dataset.num_features, 1)
 
     gconv = GConv(input_dim=input_dim, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
-    encoder_model = Encoder(encoder=gconv, hidden_dim=32 * 2).to(device)
+    fc1 = FC(hidden_dim=32 * 2)
+    fc2 = FC(hidden_dim=32 * 2)
+    encoder_model = Encoder(encoder=gconv, local_fc=fc1, global_fc=fc2).to(device)
     contrast_model = SingleBranchContrastModel(loss=L.JSDLoss(), mode='G2L')
 
     optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.01)
