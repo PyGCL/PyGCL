@@ -23,7 +23,6 @@ class GConv(nn.Module):
                 self.layers.append(GCNConv(input_dim, hidden_dim))
             else:
                 self.layers.append(GCNConv(hidden_dim, hidden_dim))
-            self.activations.append(nn.PReLU(hidden_dim))
 
     def forward(self, x, edge_index, edge_weight=None):
         z = x
