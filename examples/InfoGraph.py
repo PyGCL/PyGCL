@@ -15,7 +15,6 @@ def make_gin_conv(input_dim, out_dim):
     return GINConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
 
 
-
 class GConv(nn.Module):
     def __init__(self, input_dim, hidden_dim, activation, num_layers):
         super(GConv, self).__init__()
