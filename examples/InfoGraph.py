@@ -2,10 +2,11 @@ import torch
 import os.path as osp
 import GCL.losses as L
 
-from tqdm import tqdm
 from torch import nn
+from tqdm import tqdm
+from torch.optim import Adam
 from GCL.eval import get_split, SVMEvaluator
-from GCL.models import SingleBranchContrastModel
+from GCL.models import SingleBranchContrast
 from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.data import DataLoader
 from torch_geometric.datasets import TUDataset
@@ -81,12 +82,10 @@ def train(encoder_model, contrast_model, dataloader, optimizer):
         optimizer.zero_grad()
 
         if data.x is None:
-            num_nodes = data.batch.size()[0]
-            x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
-        else:
-            x = data.x
+            num_nodes = data.batch.size(0)
+            data.x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
 
-        z, g = encoder_model(x, data.edge_index, data.batch)
+        z, g = encoder_model(data.x, data.edge_index, data.batch)
         z, g = encoder_model.project(z, g)
         loss = contrast_model(h=z, g=g, batch=data.batch)
         loss.backward()
@@ -103,11 +102,9 @@ def test(encoder_model, dataloader):
     for data in dataloader:
         data = data.to('cuda')
         if data.x is None:
-            num_nodes = data.batch.size()[0]
-            input_x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
-        else:
-            input_x = data.x
-        z, g = encoder_model(input_x, data.edge_index, data.batch)
+            num_nodes = data.batch.size(0)
+            data.x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
+        z, g = encoder_model(data.x, data.edge_index, data.batch)
         x.append(g)
         y.append(data.y)
     x = torch.cat(x, dim=0)
@@ -129,9 +126,9 @@ def main():
     fc1 = FC(hidden_dim=32 * 2)
     fc2 = FC(hidden_dim=32 * 2)
     encoder_model = Encoder(encoder=gconv, local_fc=fc1, global_fc=fc2).to(device)
-    contrast_model = SingleBranchContrastModel(loss=L.JSDLoss(), mode='G2L')
+    contrast_model = SingleBranchContrast(loss=L.JSDLoss(), mode='G2L').to(device)
 
-    optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.01)
+    optimizer = Adam(encoder_model.parameters(), lr=0.01)
 
     with tqdm(total=100, desc='(T)') as pbar:
         for epoch in range(1, 101):
