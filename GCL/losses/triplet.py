@@ -1,10 +1,5 @@
 import torch
-from torch_scatter import scatter
-
 from .losses import Loss
-
-
-__all__ = ['TripletLoss']
 
 
 class TripletLoss(Loss):
