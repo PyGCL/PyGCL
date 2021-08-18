@@ -13,9 +13,9 @@ def get_sampler(mode: str, intraview_negs: bool) -> Sampler:
         raise RuntimeError(f'unsupported mode: {mode}')
 
 
-class SingleBranchContrastModel(torch.nn.Module):
-    def __init__(self, loss: Loss, mode: str, intraview_negs: bool = False, *args, **kwargs):
-        super(SingleBranchContrastModel, self).__init__()
+class SingleBranchContrast(torch.nn.Module):
+    def __init__(self, loss: Loss, mode: str, intraview_negs: bool = False, **kwargs):
+        super(SingleBranchContrast, self).__init__()
         assert mode == 'G2L'  # only global-local pairs allowed in single-branch contrastive learning
         self.loss = loss
         self.mode = mode
@@ -34,9 +34,9 @@ class SingleBranchContrastModel(torch.nn.Module):
         return loss
 
 
-class DualBranchContrastModel(torch.nn.Module):
-    def __init__(self, loss: Loss, mode: str, intraview_negs: bool = False, *args, **kwargs):
-        super(DualBranchContrastModel, self).__init__()
+class DualBranchContrast(torch.nn.Module):
+    def __init__(self, loss: Loss, mode: str, intraview_negs: bool = False, **kwargs):
+        super(DualBranchContrast, self).__init__()
         self.loss = loss
         self.mode = mode
         self.sampler = get_sampler(mode, intraview_negs=intraview_negs)
@@ -64,4 +64,16 @@ class DualBranchContrastModel(torch.nn.Module):
         l1 = self.loss(anchor=anchor1, sample=sample1, pos_mask=pos_mask1, neg_mask=neg_mask1, **self.kwargs)
         l2 = self.loss(anchor=anchor2, sample=sample2, pos_mask=pos_mask2, neg_mask=neg_mask2, **self.kwargs)
 
+        return (l1 + l2) * 0.5
+
+
+class WithinEmbedContrast(torch.nn.Module):
+    def __init__(self, loss: Loss, **kwargs):
+        super(WithinEmbedContrast, self).__init__()
+        self.loss = loss
+        self.kwargs = kwargs
+
+    def forward(self, h1, h2):
+        l1 = self.loss(anchor=h1, sample=h2, **self.kwargs)
+        l2 = self.loss(anchor=h2, sample=h1, **self.kwargs)
         return (l1 + l2) * 0.5
