@@ -60,12 +60,11 @@ class FC(nn.Module):
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, encoder, hidden_dim, embedding_dim):
+    def __init__(self, encoder, hidden_dim):
         super(Encoder, self).__init__()
         self.encoder = encoder
-        self.num_hidden = hidden_dim
-        self.local_fc = FC(embedding_dim)
-        self.global_fc = FC(embedding_dim)
+        self.local_fc = FC(hidden_dim)
+        self.global_fc = FC(hidden_dim)
 
     def forward(self, x, edge_index, batch):
         z, g = self.encoder(x, edge_index, batch)
@@ -128,7 +127,7 @@ def main():
     input_dim = max(dataset.num_features, 1)
 
     gconv = GConv(input_dim=input_dim, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
-    encoder_model = Encoder(encoder=gconv, hidden_dim=32, embedding_dim=32 * 2).to(device)
+    encoder_model = Encoder(encoder=gconv, hidden_dim=32 * 2).to(device)
     contrast_model = SingleBranchContrastModel(loss=L.JSDLoss(), mode='G2L')
 
     optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.01)

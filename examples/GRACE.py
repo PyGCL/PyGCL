@@ -34,7 +34,6 @@ class Encoder(torch.nn.Module):
         super(Encoder, self).__init__()
         self.encoder = encoder
         self.augmentor = augmentor
-        self.num_hidden = hidden_dim
 
         self.fc1 = torch.nn.Linear(hidden_dim, proj_dim)
         self.fc2 = torch.nn.Linear(proj_dim, hidden_dim)
