@@ -17,18 +17,19 @@ class GConv(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers):
         super(GConv, self).__init__()
         self.layers = torch.nn.ModuleList()
-        self.activations = torch.nn.ModuleList()
+        self.activation = nn.PReLU(hidden_dim)
         for i in range(num_layers):
             if i == 0:
                 self.layers.append(GCNConv(input_dim, hidden_dim))
-            self.layers.append(GCNConv(hidden_dim, hidden_dim))
+            else:
+                self.layers.append(GCNConv(hidden_dim, hidden_dim))
             self.activations.append(nn.PReLU(hidden_dim))
 
     def forward(self, x, edge_index, edge_weight=None):
         z = x
-        for conv, act in zip(self.layers, self.activations):
+        for conv in self.layers:
             z = conv(z, edge_index, edge_weight)
-            z = act(z)
+            z = self.activation(z)
         return z
 
 
@@ -85,7 +86,6 @@ def main():
 
     aug1 = A.Identity()
     aug2 = A.PPRDiffusion(alpha=0.2)
-
     gconv1 = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=2).to(device)
     gconv2 = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=2).to(device)
     encoder_model = Encoder(encoder1=gconv1, encoder2=gconv2, augmentor=(aug1, aug2), hidden_dim=512).to(device)
