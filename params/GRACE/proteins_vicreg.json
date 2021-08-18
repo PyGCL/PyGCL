@@ -1,0 +1,17 @@
+{
+    "learning_rate": 0.1,
+    "weight_decay": 0.000001,
+    "hidden_dim": 32,
+    "proj_dim": 256,
+    "num_layers": 4,
+    "activation": "rrelu",
+    "drop_edge_prob1": 0.1,
+    "drop_edge_prob2": 0.3,
+    "drop_feat_prob1": 0.4,
+    "drop_feat_prob2": 0.4,
+    "tau": 0.7,
+    "num_epochs": 1800,
+    "warmup_epochs": 500,
+    "vicreg_sim_loss_weight": 50,
+    "vicreg_var_loss_weight": 50
+}

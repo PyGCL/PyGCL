@@ -1,0 +1,60 @@
+experimentName: G--G on PCQM4M-1M
+searchSpace:
+  learning_rate:
+    _type: choice
+    _value: [0.1, 0.01, 0.001, 0.0005, 0.0001]
+  weight_decay:
+    _type: choice
+    _value: [1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 5e-8, 1e-8]
+  hidden_dim:
+    _type: choice
+    _value: [32, 64, 128, 256, 512]
+  proj_dim:
+    _type: choice
+    _value: [32, 64, 128, 256, 512]
+  num_layers:
+    _type: choice
+    _value: [2, 3, 4, 5]
+  activation:
+    _type: choice
+    _value: ["relu", "hardtanh", "elu", "leakyrelu", "prelu", "rrelu"]
+  drop_edge_prob1:
+    _type: choice
+    _value: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+  drop_edge_prob2:
+    _type: choice
+    _value: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+  drop_feat_prob1:
+    _type: choice
+    _value: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+  drop_feat_prob2:
+    _type: choice
+    _value: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+  tau:
+    _type: choice
+    _value: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+  num_epochs:
+    _type: choice
+    _value: [50, 100, 200, 300, 500, 800, 1000, 1200, 1500, 1800, 2000]
+#  warmup_epochs:
+#    _type: choice
+#    _value: [100, 200, 300, 400, 500]
+#  vicreg_sim_loss_weight:
+#    _type: choice
+#    _value: [10.0, 15.0, 20.0, 25.0, 30.0, 40.0, 50.0]
+#  vicreg_var_loss_weight:
+#    _type: choice
+#    _value: [10.0, 15.0, 20.0, 25.0, 30.0, 40.0, 50.0]
+trialCommand: python train_pcqm4m_g2g.py --aug1 FM+ER --aug2 FM+ER --param_path nni
+trialCodeDirectory: .
+trialGpuNumber: 1
+trialConcurrency: 16
+maxExperimentDuration: 72h
+maxTrialNumber: 10000
+tuner:
+  name: TPE
+  classArgs:
+    optimize_mode: minimize
+trainingService:
+  platform: local
+  useActiveGpu: True

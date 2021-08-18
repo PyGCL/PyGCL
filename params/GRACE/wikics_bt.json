@@ -1,0 +1,15 @@
+{
+    "learning_rate": 0.01,
+    "weight_decay": 1e-7,
+    "hidden_dim": 512,
+    "proj_dim": 128,
+    "num_layers": 3,
+    "activation": "elu",
+    "drop_edge_prob1": 0.5,
+    "drop_edge_prob2": 0.3,
+    "drop_feat_prob1": 0.1,
+    "drop_feat_prob2": 0,
+    "tau": 0.1,
+    "num_epochs": 1000,
+    "warmup_epochs": 500
+}

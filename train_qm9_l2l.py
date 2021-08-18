@@ -1,29 +1,36 @@
 import nni
 import math
-from time import perf_counter
 import torch
+import torch.nn as nn
 import argparse
 import pretty_errors
 from time import time_ns
+from tqdm import tqdm
+from time import perf_counter
 
 import GCL.augmentations as A
+import GCL.augmentations.functional as AF
 import GCL.utils.simple_param as SP
-from GCL.eval import SVM_classification
-
-from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
+from GCL.eval import MLP_regression
 
 from torch import nn
 from torch.optim import Adam
+from GCL.eval import LR_classification
 from GCL.utils import seed_everything
-from torch_geometric.nn import global_add_pool, GINConv
+from torch_geometric.nn import global_add_pool, GINEConv
 from torch_geometric.data import DataLoader
+
+from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
 from utils import load_graph_dataset, get_activation
 from models.GRACE import GRACE
 
 
-def make_gin_conv(input_dim: int, out_dim: int) -> GINConv:
-    return GINConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
+QM9_TARGETS = ['mu', 'alpha', 'humo', 'lumo', 'delta', 'r2', 'zpve', 'U0', 'U', 'H', 'G', 'Cv']
+
+
+def make_gin_conv(input_dim: int, out_dim: int) -> GINEConv:
+    return GINEConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
 
 
 class Encoder(nn.Module):
@@ -51,41 +58,34 @@ class Encoder(nn.Module):
         return z
 
 
-def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args, params):
+def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args, epoch: int, num_graphs: int):
     model.train()
     tot_loss = 0.0
-    # pbar = tqdm(totallen(loader))
+    pbar = tqdm(total=num_graphs)
+    pbar.set_description(f'epoch {epoch}')
     for data in loader:
         data = data.to(device)
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
         optimizer.zero_grad()
-        _, z1, z2 = model(data.x, data.edge_index)
-
-        g1 = global_add_pool(z1, data.batch)
-        g2 = global_add_pool(z2, data.batch)
+        _, z1, z2 = model(data.x, data.edge_index, data.edge_attr)
 
         if args.loss == 'nt_xent':
-            loss = model.loss(g1, g2)
+            loss = model.loss(z1, z2)
         elif args.loss == 'jsd':
-            loss = model.jsd_loss(g1, g2)
+            loss = model.jsd_loss(z1, z2)
         elif args.loss == 'triplet':
-            loss = model.triplet_loss(g1, g2)
-        elif args.loss == 'mixup':
-            loss = model.hard_mixing_loss(g1, g2, threshold=params['mixup_threshold'], s=params['mixup_s'])
-        elif args.loss == 'barlow_twins':
-            loss = model.bt_loss(z1, z2)
-        elif args.loss == 'vicreg':
-            loss = model.vicreg_loss(z1, z2,
-                                     sim_loss_weight=params['vicreg_sim_loss_weight'],
-                                     var_loss_weight=params['vicreg_var_loss_weight'],
-                                     cov_loss_weight=params['vicreg_cov_loss_weight'])
+            loss = model.triplet_loss(z1, z2)
         else:
             raise NotImplementedError(f'Unknown loss type: {args.loss}')
 
+        # loss = model.loss(z1, z2)
         loss.backward()
         optimizer.step()
         tot_loss += loss.item()
+
+        pbar.update(data.batch.max().item() + 1)
+    pbar.close()
     return tot_loss
 
 
@@ -97,20 +97,32 @@ def test(model, loader, device, seed):
         data = data.to(device)
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
-        z, _, _ = model(data.x, data.edge_index)
+        z, _, _ = model(data.x, data.edge_index, data.edge_attr)
 
         g = global_add_pool(z, data.batch)
 
-        x.append(g.detach().cpu())
-        y.append(data.y.cpu())
+        x.append(g.detach())
+        y.append(data.y)
 
-    x = torch.cat(x, dim=0).numpy()
-    y = torch.cat(y, dim=0).numpy()
+    x = torch.cat(x, dim=0)
+    y = torch.cat(y, dim=0)
 
-    res = SVM_classification(x, y, seed)
-    # print(f'(E) | Accuracy: {accuracy[0]:.4f} +- {accuracy[1]:.4f}')
+    meV_list = [2, 3, 4, 6, 7, 8, 9, 10]
+    results = dict()
 
-    return res
+    for i, target in enumerate(QM9_TARGETS):
+        y_target = y[:, i]
+        mean, std = y_target.mean(), y_target.std()
+        y_target = (y_target - mean) / std
+        res = MLP_regression(x, y_target, target=(i, target))
+
+        error = res['error'] * std
+        if i in meV_list:
+            error *= 1000
+
+        results[target] = error
+
+    return results
 
 
 def main():
@@ -137,22 +149,14 @@ def main():
         'tau': 0.8,
         'sp_eps': 0.001,
         'num_seeds': 1000,
-        'walk_length': 10,
-        'mixup_threshold': 0.2,
-        'mixup_s': 100,
-        'warmup_epochs': 200,
-        'vicreg_sim_loss_weight': 25.0,
-        'vicreg_var_loss_weight': 25.0,
-        'vicreg_cov_loss_weight': 1.0,
+        'walk_length': 10
     }
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='PROTEINS')
-    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/proteins.json')
+    parser.add_argument('--device', type=str, default='cuda:3')
+    parser.add_argument('--param_path', type=str, default='params/GRACE/qm9.json')
     parser.add_argument('--aug1', type=str, default='FM+ER')
     parser.add_argument('--aug2', type=str, default='FM+ER')
-    parser.add_argument('--loss', type=str, default='vicreg',
-                        choices=['nt_xent', 'jsd', 'triplet', 'mixup', 'barlow_twins', 'vicreg'])
+    parser.add_argument('--loss', type=str, default='nt_xent', choices=['nt_xent', 'jsd', 'triplet', 'mixup'])
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
     for k, v in default_param.items():
@@ -169,10 +173,10 @@ def main():
     seed_everything(param['seed'])
     device = torch.device(args.device if args.param_path != 'nni' else 'cuda')
 
-    dataset = load_graph_dataset('datasets', args.dataset)
+    dataset = load_graph_dataset('datasets', 'QM9')
     input_dim = dataset.num_features if dataset.num_features > 0 else 1
-    train_loader = DataLoader(dataset, batch_size=param['batch_size'])
-    test_loader = DataLoader(dataset, batch_size=math.ceil(len(dataset) / 2))
+    train_loader = DataLoader(dataset, batch_size=param['batch_size'], num_workers=16)
+    test_loader = DataLoader(dataset, batch_size=param['batch_size'], num_workers=16)
 
     print(param)
     print(args.__dict__)
@@ -228,26 +232,22 @@ def main():
         model.parameters(),
         lr=param['learning_rate'],
         weight_decay=param['weight_decay'])
-    scheduler = LinearWarmupCosineAnnealingLR(
-        optimizer=optimizer,
-        warmup_epochs=param['warmup_epochs'],
-        max_epochs=param['num_epochs'])
 
     best_loss = 1e10
     wait_window = 0
 
     model_save_path = f'intermediate/{time_ns()}-{args.aug1}-{args.aug2}.pkl'
-    print()
     for epoch in range(param['num_epochs']):
-        # if epoch % 20 == 0:
         tic = perf_counter()
-        loss = train(model, optimizer, train_loader, device=device, args=args, params=param)
-        if args.loss == 'barlow_twins':
-            scheduler.step()
+        loss = train(model, optimizer, train_loader, device=device, args=args, epoch=epoch, num_graphs=len(dataset))
         toc = perf_counter()
-        # else:
-            # loss = train(model, optimizer, data)
-        print(f'\r(T) | Epoch={epoch:03d}, loss={loss:.4f}, time={toc - tic:.4f}', end='')
+        print(f'(T) | Epoch={epoch:03d}, loss={loss:.4f}, time={toc - tic:.4f}')
+
+        if epoch % 20 == 0:
+            test_result = test(model, test_loader, device, param['seed'])
+            print(f'(T) | evaluation {test_result}')
+            for target in QM9_TARGETS:
+                print(f'{target}\t{test_result[target]:.4f}')
 
         if loss < best_loss:
             best_loss = loss
@@ -265,7 +265,11 @@ def main():
     model.load_state_dict(torch.load(model_save_path))
 
     test_result = test(model, test_loader, device, param['seed'])
-    print(f'(E) | Best test F1Mi={test_result["F1Mi"][0]:.4f}, F1Ma={test_result["F1Ma"][0]:.4f}')
+    print(f'(E) | test results {test_result}')
+
+    print('=== Results ===')
+    for target in QM9_TARGETS:
+        print(f'{target}\t{test_result[target]:.4f}')
 
     if nni_mode:
         nni.report_final_result(test_result["F1Mi"][0])

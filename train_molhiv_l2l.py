@@ -1,95 +1,99 @@
 import nni
 import math
-from time import perf_counter
 import torch
+import torch.nn as nn
 import argparse
 import pretty_errors
 from time import time_ns
+from tqdm import tqdm
+from time import perf_counter
 
 import GCL.augmentations as A
+import GCL.augmentations.functional as AF
 import GCL.utils.simple_param as SP
-from GCL.eval import SVM_classification
-
-from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR
+from GCL.eval import LR_binary_classification
+from GCL.utils import seed_everything
 
 from torch import nn
 from torch.optim import Adam
-from GCL.utils import seed_everything
-from torch_geometric.nn import global_add_pool, GINConv
+from torch_geometric.nn import global_mean_pool, GINEConv
 from torch_geometric.data import DataLoader
+from ogb.graphproppred import Evaluator
+from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
 from utils import load_graph_dataset, get_activation
 from models.GRACE import GRACE
 
 
-def make_gin_conv(input_dim: int, out_dim: int) -> GINConv:
-    return GINConv(nn.Sequential(nn.Linear(input_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)))
+def make_gin_conv(input_dim: int, out_dim: int) -> GINEConv:
+    return GINEConv(nn.Sequential(nn.Linear(input_dim, 2 * input_dim), nn.BatchNorm1d(2 * input_dim), nn.ReLU(),
+                                  nn.Linear(2 * input_dim, out_dim)))
 
 
 class Encoder(nn.Module):
     def __init__(self, input_dim: int, hidden_dim: int, activation, num_layers: int, batch_norm: bool = False):
         super(Encoder, self).__init__()
         self.activation = activation()
+
+        self.atom_encoder = AtomEncoder(hidden_dim)
+        self.bond_encoder = BondEncoder(hidden_dim)
+
         self.layers = torch.nn.ModuleList()
         self.batch_norms = torch.nn.ModuleList() if batch_norm else None
-        self.layers.append(make_gin_conv(input_dim, hidden_dim))
 
-        for _ in range(num_layers - 1):
+        for _ in range(num_layers):
             # add batch norm layer if batch norm is used
             if self.batch_norms is not None:
                 self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
             self.layers.append(make_gin_conv(hidden_dim, hidden_dim))
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, x, edge_index, edge_attr):
+        # z = self.atom_encoder(x)
+        # edge_attr = self.bond_encoder(edge_attr)
         z = x
         num_layers = len(self.layers)
         for i, conv in enumerate(self.layers):
-            z = conv(z, edge_index, edge_weight)
+            z = conv(z, edge_index, edge_attr)
             z = self.activation(z)
             if self.batch_norms is not None and i != num_layers - 1:
                 z = self.batch_norms[i](z)
         return z
 
 
-def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args, params):
+def train(model: GRACE, optimizer: Adam, loader: DataLoader, device, args, epoch: int, num_graphs: int):
     model.train()
     tot_loss = 0.0
-    # pbar = tqdm(totallen(loader))
+    pbar = tqdm(total=num_graphs)
+    pbar.set_description(f'epoch {epoch}')
     for data in loader:
         data = data.to(device)
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
         optimizer.zero_grad()
-        _, z1, z2 = model(data.x, data.edge_index)
-
-        g1 = global_add_pool(z1, data.batch)
-        g2 = global_add_pool(z2, data.batch)
+        x = model.encoder.atom_encoder(data.x)
+        edge_attr = model.encoder.bond_encoder(data.edge_attr)
+        _, z1, z2 = model(x, data.edge_index, edge_attr)
 
         if args.loss == 'nt_xent':
-            loss = model.loss(g1, g2)
+            loss = model.loss(z1, z2)
         elif args.loss == 'jsd':
-            loss = model.jsd_loss(g1, g2)
+            loss = model.jsd_loss(z1, z2)
         elif args.loss == 'triplet':
-            loss = model.triplet_loss(g1, g2)
-        elif args.loss == 'mixup':
-            loss = model.hard_mixing_loss(g1, g2, threshold=params['mixup_threshold'], s=params['mixup_s'])
-        elif args.loss == 'barlow_twins':
-            loss = model.bt_loss(z1, z2)
-        elif args.loss == 'vicreg':
-            loss = model.vicreg_loss(z1, z2,
-                                     sim_loss_weight=params['vicreg_sim_loss_weight'],
-                                     var_loss_weight=params['vicreg_var_loss_weight'],
-                                     cov_loss_weight=params['vicreg_cov_loss_weight'])
+            loss = model.triplet_loss(z1, z2)
         else:
             raise NotImplementedError(f'Unknown loss type: {args.loss}')
 
+        # loss = model.loss(z1, z2)
         loss.backward()
         optimizer.step()
         tot_loss += loss.item()
+
+        pbar.update(data.batch.max().item() + 1)
+    pbar.close()
     return tot_loss
 
 
-def test(model, loader, device, seed):
+def test(model, loader, device, dataset):
     model.eval()
     x = []
     y = []
@@ -97,20 +101,22 @@ def test(model, loader, device, seed):
         data = data.to(device)
         if data.x is None:
             data.x = torch.ones((data.batch.size(0), 1), dtype=torch.float32).to(device)
-        z, _, _ = model(data.x, data.edge_index)
+        dense_x = model.encoder.atom_encoder(data.x)
+        edge_attr = model.encoder.bond_encoder(data.edge_attr)
+        z, _, _ = model(dense_x, data.edge_index, edge_attr)
 
-        g = global_add_pool(z, data.batch)
+        g = global_mean_pool(z, data.batch)
 
-        x.append(g.detach().cpu())
-        y.append(data.y.cpu())
+        x.append(g.detach())
+        y.append(data.y)
 
-    x = torch.cat(x, dim=0).numpy()
-    y = torch.cat(y, dim=0).numpy()
+    x = torch.cat(x, dim=0)
+    y = torch.cat(y, dim=0)
 
-    res = SVM_classification(x, y, seed)
-    # print(f'(E) | Accuracy: {accuracy[0]:.4f} +- {accuracy[1]:.4f}')
+    evaluator = Evaluator(name='ogbg-molhiv')
+    results = LR_binary_classification(x, y, dataset, evaluator)
 
-    return res
+    return results
 
 
 def main():
@@ -121,7 +127,6 @@ def main():
         'proj_dim': 256,
         'weight_decay': 1e-5,
         'activation': 'prelu',
-        'base_model': 'GINConv',
         'num_layers': 2,
         'drop_edge_prob1': 0.2,
         'drop_edge_prob2': 0.1,
@@ -137,22 +142,15 @@ def main():
         'tau': 0.8,
         'sp_eps': 0.001,
         'num_seeds': 1000,
-        'walk_length': 10,
-        'mixup_threshold': 0.2,
-        'mixup_s': 100,
-        'warmup_epochs': 200,
-        'vicreg_sim_loss_weight': 25.0,
-        'vicreg_var_loss_weight': 25.0,
-        'vicreg_cov_loss_weight': 1.0,
+        'walk_length': 10
     }
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cuda:0')
-    parser.add_argument('--dataset', type=str, default='PROTEINS')
-    parser.add_argument('--param_path', type=str, default='params/GlobalGRACE/proteins.json')
+    parser.add_argument('--device', type=str, default='cuda:1')
+    parser.add_argument('--param_path', type=str, default='params/GRACE/ogbg_molhiv.json')
+    parser.add_argument('--dataset', type=str, default='ogbg-molhiv')
     parser.add_argument('--aug1', type=str, default='FM+ER')
     parser.add_argument('--aug2', type=str, default='FM+ER')
-    parser.add_argument('--loss', type=str, default='vicreg',
-                        choices=['nt_xent', 'jsd', 'triplet', 'mixup', 'barlow_twins', 'vicreg'])
+    parser.add_argument('--loss', type=str, default='nt_xent', choices=['nt_xent', 'jsd', 'triplet', 'mixup'])
     parser.add_argument('--save_split', type=str, nargs='?')
     parser.add_argument('--load_split', type=str, nargs='?')
     for k, v in default_param.items():
@@ -169,10 +167,10 @@ def main():
     seed_everything(param['seed'])
     device = torch.device(args.device if args.param_path != 'nni' else 'cuda')
 
-    dataset = load_graph_dataset('datasets', args.dataset)
+    dataset = load_graph_dataset('datasets', 'ogbg-molhiv')
     input_dim = dataset.num_features if dataset.num_features > 0 else 1
-    train_loader = DataLoader(dataset, batch_size=param['batch_size'])
-    test_loader = DataLoader(dataset, batch_size=math.ceil(len(dataset) / 2))
+    train_loader = DataLoader(dataset, batch_size=param['batch_size'], num_workers=16)
+    test_loader = DataLoader(dataset, batch_size=param['batch_size'], num_workers=16)
 
     print(param)
     print(args.__dict__)
@@ -186,10 +184,10 @@ def main():
             return A.NodeDropping(pn=param[f'drop_node_prob{view_id}'])
         if aug_name == 'RWS':
             return A.RWSampling(num_seeds=param['num_seeds'], walk_length=param['walk_length'])
-        if aug_name == 'PPR':
-            return A.PPRDiffusion(eps=param['sp_eps'], use_cache=False)
-        if aug_name == 'MKD':
-            return A.MarkovDiffusion(sp_eps=param['sp_eps'], use_cache=False)
+        # if aug_name == 'PPR':
+        #     return A.PPRDiffusion(eps=param['sp_eps'], use_cache=False)
+        # if aug_name == 'MKD':
+        #     return A.MarkovDiffusion(sp_eps=param['sp_eps'], use_cache=False)
         if aug_name == 'ORI':
             return A.Identity()
         if aug_name == 'FM':
@@ -211,43 +209,39 @@ def main():
     aug1 = compile_aug_schema(args.aug1, view_id=1)
     aug2 = compile_aug_schema(args.aug2, view_id=2)
 
-    model = GRACE(encoder=Encoder(
-                      input_dim, param['hidden_dim'],
-                      activation=get_activation(param['activation']),
-                      num_layers=param['num_layers']),
-                  augmentation=(
-                      aug1, aug2
-                      # A.FeatureMasking(pf=param['drop_feat_prob1']) >> A.EdgeRemoving(pe=param['drop_edge_prob1']),
-                      # A.FeatureMasking(pf=param['drop_feat_prob2']) >> A.EdgeRemoving(pe=param['drop_edge_prob2']),
-                      # A.FeatureMasking(pf=param['drop_feat_prob2']) >> A.PPRDiffusion(eps=0.1),
-                  ),
-                  hidden_dim=param['hidden_dim'],
-                  proj_dim=param['proj_dim'],
-                  tau=param['tau']).to(device)
+    encoder = Encoder(
+        input_dim, param['hidden_dim'],
+        activation=get_activation(param['activation']),
+        num_layers=param['num_layers'],
+        batch_norm=True
+    )
+    model = GRACE(
+        encoder=encoder,
+        augmentation=(
+            aug1, aug2
+        ),
+        hidden_dim=param['hidden_dim'],
+        proj_dim=param['proj_dim'],
+        tau=param['tau']).to(device)
     optimizer = Adam(
         model.parameters(),
         lr=param['learning_rate'],
         weight_decay=param['weight_decay'])
-    scheduler = LinearWarmupCosineAnnealingLR(
-        optimizer=optimizer,
-        warmup_epochs=param['warmup_epochs'],
-        max_epochs=param['num_epochs'])
 
     best_loss = 1e10
     wait_window = 0
 
     model_save_path = f'intermediate/{time_ns()}-{args.aug1}-{args.aug2}.pkl'
-    print()
     for epoch in range(param['num_epochs']):
-        # if epoch % 20 == 0:
         tic = perf_counter()
-        loss = train(model, optimizer, train_loader, device=device, args=args, params=param)
-        if args.loss == 'barlow_twins':
-            scheduler.step()
+        loss = train(model, optimizer, train_loader, device=device, args=args, epoch=epoch, num_graphs=len(dataset))
         toc = perf_counter()
-        # else:
-            # loss = train(model, optimizer, data)
-        print(f'\r(T) | Epoch={epoch:03d}, loss={loss:.4f}, time={toc - tic:.4f}', end='')
+        print(f'(T) | Epoch={epoch:03d}, loss={loss:.4f}, time={toc - tic:.4f}')
+
+        if (epoch + 1) % 20 == 0:
+            rocauc = test(model, test_loader, device, dataset)['rocauc']
+            print(f'(T) | Epoch={epoch:03d}, rocauc={rocauc}')
+            nni.report_intermediate_result(rocauc)
 
         if loss < best_loss:
             best_loss = loss
@@ -264,11 +258,11 @@ def main():
     print(f'(T) | Best epoch={best_epoch}, best loss={best_loss}')
     model.load_state_dict(torch.load(model_save_path))
 
-    test_result = test(model, test_loader, device, param['seed'])
-    print(f'(E) | Best test F1Mi={test_result["F1Mi"][0]:.4f}, F1Ma={test_result["F1Ma"][0]:.4f}')
+    test_result = test(model, test_loader, device, dataset)
+    print(f'(E) | rocauc={test_result["rocauc"]}')
 
     if nni_mode:
-        nni.report_final_result(test_result["F1Mi"][0])
+        nni.report_final_result(test_result["rocauc"])
 
 
 if __name__ == '__main__':

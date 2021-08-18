@@ -8,5 +8,6 @@ from .ppr_diffusion import PPRDiffusion
 from .markov_diffusion import MarkovDiffusion
 from .node_dropping import NodeDropping
 from .feature_dropout import FeatureDropout
+from .edge_attr_dropout import EdgeAttrDropout
 from .rw_sampling import RWSampling
 from .node_shuffling import NodeShuffling
