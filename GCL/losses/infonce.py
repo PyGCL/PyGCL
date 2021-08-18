@@ -5,9 +5,6 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
-__all__ = ['InfoNCELoss', 'LegacyInfoNCELoss', 'DebiasedInfoNCELoss', 'HardnessInfoNCELoss']
-
-
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
     h1 = F.normalize(h1)
     h2 = F.normalize(h2)
@@ -19,60 +16,13 @@ class InfoNCELoss(Loss):
         super(InfoNCELoss, self).__init__()
         self.tau = tau
 
-    def fast_mode(self, anchor, sample, pos_mask, neg_mask):
-        if anchor.size() != sample.size():
-            return False
-
-        expect_pos_mask = torch.eye(anchor.size()[0], dtype=pos_mask.dtype, device=pos_mask.device)
-        expect_neg_mask = 1. - expect_pos_mask
-
-        if (expect_pos_mask != pos_mask).any() or (expect_neg_mask != neg_mask).any():
-            return False
-
-        return True
-
     def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
-        if self.fast_mode(anchor, sample, pos_mask, neg_mask):
-            f = lambda x: torch.exp(x / self.tau)
-            sim = f(_similarity(anchor, sample))  # anchor x sample
-            assert sim.size() == pos_mask.size()  # sanity check
-
-            neg_mask = 1 - pos_mask
-            pos = (sim * pos_mask).sum(dim=1)
-            neg = (sim * neg_mask).sum(dim=1)
-
-            loss = pos / (pos + neg)
-            loss = -torch.log(loss)
-
-            return loss.mean()
-        else:
-            sim = _similarity(anchor, sample) / self.tau
-            exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
-            log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
-            loss = log_prob * pos_mask
-            loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
-            return -loss.mean()
-
-
-class LegacyInfoNCELoss(Loss):
-    def __init__(self, tau):
-        super(LegacyInfoNCELoss, self).__init__()
-        self.tau = tau
-
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs) -> torch.FloatTensor:
-        def nt_xent_loss(h1: torch.FloatTensor, h2: torch.FloatTensor,
-                         tau: float):
-            f = lambda x: torch.exp(x / tau)
-            inter_sim = f(_similarity(h1, h1))
-            intra_sim = f(_similarity(h1, h2))
-            pos = intra_sim.diag()
-            neg = inter_sim.sum(dim=1) + intra_sim.sum(dim=1) - inter_sim.diag()
-
-            loss = pos / neg
-            loss = -torch.log(loss)
-            return loss
-
-        return nt_xent_loss(anchor, sample, self.tau).mean()
+        sim = _similarity(anchor, sample) / self.tau
+        exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
+        log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
+        loss = log_prob * pos_mask
+        loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
+        return -loss.mean()
 
 
 class DebiasedInfoNCELoss(Loss):
