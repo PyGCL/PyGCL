@@ -1,18 +1,24 @@
 import torch
 from torch_scatter import scatter
+from abc import ABC, abstractmethod
 
 
-class Sampler:
+class Sampler(ABC):
     def __init__(self, intraview_negs=False):
         self.intraview_negs = intraview_negs
 
     def __call__(self, anchor, sample, *args, **kwargs):
-        return self.sample(anchor, sample, *args, **kwargs)
+        ret = self.sample(anchor, sample, *args, **kwargs)
+        if self.intraview_negs:
+            ret = self.add_intraview_negs(*ret)
+        return ret
 
+    @abstractmethod
     def sample(self, anchor, sample, *args, **kwargs):
         pass
 
-    def add_intraview_negs(self, anchor, sample, pos_mask, neg_mask):
+    @staticmethod
+    def add_intraview_negs(anchor, sample, pos_mask, neg_mask):
         num_nodes = anchor.size(0)
         device = anchor.device
         intraview_pos_mask = torch.zeros_like(pos_mask, device=device)
@@ -37,12 +43,10 @@ class SameScaleSampler(Sampler):
 
 
 class CrossScaleSampler(Sampler):
-    def __init__(self):
-        super(CrossScaleSampler, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(CrossScaleSampler, self).__init__(*args, **kwargs)
 
     def sample(self, anchor, sample, batch=None, neg_sample=None, use_gpu=True, *args, **kwargs):
-        assert batch is not None, 'batch must be supplied to CrossScaleSampler'
-
         num_graphs = anchor.shape[0]  # M
         num_nodes = sample.shape[0]   # N
         device = sample.device
@@ -55,6 +59,7 @@ class CrossScaleSampler(Sampler):
             pos_mask = torch.cat([pos_mask1, pos_mask0], dim=1)     # M * 2N
             sample = torch.cat([sample, neg_sample], dim=0)         # 2N * K
         else:
+            assert batch is not None
             if use_gpu:
                 ones = torch.eye(num_nodes, dtype=torch.float32, device=device)     # N * N
                 pos_mask = scatter(ones, batch, dim=0, reduce='sum')                # M * N

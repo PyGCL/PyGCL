@@ -6,8 +6,6 @@ import torch.nn.functional as F
 from typing import Optional, Tuple
 from torch_geometric.nn import global_add_pool
 
-__all__ = ['EncoderModel']
-
 
 class EncoderModel(nn.Module):
     def __init__(self, encoder: torch.nn.Module,
