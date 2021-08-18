@@ -66,13 +66,9 @@ def train(encoder_model, contrast_model, data, optimizer):
 
 def test(encoder_model, data):
     encoder_model.eval()
-    x = []
     z, _, _ = encoder_model(data.x, data.edge_index, data.edge_attr)
-    x.append(z)
-    x = torch.cat(x, dim=0)
-
-    split = get_split(num_samples=x.size()[0], train_ratio=0.1, test_ratio=0.8)
-    result = LREvaluator()(x, data.y, split)
+    split = get_split(num_samples=z.size()[0], train_ratio=0.1, test_ratio=0.8)
+    result = LREvaluator()(z, data.y, split)
     return result
 
 
@@ -87,7 +83,7 @@ def main():
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=32, proj_dim=32).to(device)
-    contrast_model = DualBranchContrastModel(loss=L.InfoNCELoss(tau=0.2), mode='L2L')
+    contrast_model = DualBranchContrastModel(loss=L.InfoNCELoss(tau=0.2), mode='L2L', intraview_negs=True)
 
     optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.01)
 
