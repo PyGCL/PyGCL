@@ -1,10 +1,11 @@
-from .contrast_model import SingleBranchContrast, DualBranchContrast, WithinEmbedContrast
+from .contrast_model import SingleBranchContrast, DualBranchContrast, WithinEmbedContrast, BootstrapContrast
 
 
 __all__ = [
     'SingleBranchContrast',
     'DualBranchContrast',
-    'WithinEmbedContrast'
+    'WithinEmbedContrast',
+    'BootstrapContrast'
 ]
 
 classes = __all__
