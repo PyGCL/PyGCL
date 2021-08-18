@@ -68,7 +68,7 @@ def test(encoder_model, data, dataloader):
     encoder_model.eval()
     zs = []
     for i, (batch_size, node_id, adjs) in enumerate(dataloader):
-        adjs = [adj.cuda() for adj in adjs]
+        adjs = [adj.to('cuda') for adj in adjs]
         z, _, _ = encoder_model(data.x[node_id], adjs)
         zs.append(z)
     x = torch.cat(zs, dim=0)
