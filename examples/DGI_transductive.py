@@ -13,19 +13,21 @@ from torch_geometric.datasets import Planetoid
 
 
 class GConv(nn.Module):
-    def __init__(self, input_dim, hidden_dim, activation, num_layers):
+    def __init__(self, input_dim, hidden_dim, num_layers):
         super(GConv, self).__init__()
-        self.activation = activation()
         self.layers = torch.nn.ModuleList()
-        self.layers.append(GCNConv(input_dim, hidden_dim))
-        for _ in range(num_layers - 1):
+        self.activations = torch.nn.ModuleList()
+        for i in range(num_layers):
+            if i == 0:
+                self.layers.append(GCNConv(input_dim, hidden_dim))
             self.layers.append(GCNConv(hidden_dim, hidden_dim))
+            self.activations.append(nn.PReLU(hidden_dim))
 
     def forward(self, x, edge_index, edge_weight=None):
         z = x
-        for i, conv in enumerate(self.layers):
+        for conv, act in zip(self.layers, self.activations):
             z = conv(z, edge_index, edge_weight)
-            z = self.activation(z)
+            z = act(z)
         return z
 
 
@@ -71,14 +73,14 @@ def main():
     dataset = Planetoid(path, name='Cora', transform=T.NormalizeFeatures())
     data = dataset[0].to(device)
 
-    gconv = GConv(input_dim=dataset.num_features, hidden_dim=32, activation=torch.nn.PReLU, num_layers=2).to(device)
-    encoder_model = Encoder(encoder=gconv, hidden_dim=32).to(device)
+    gconv = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=2).to(device)
+    encoder_model = Encoder(encoder=gconv, hidden_dim=512).to(device)
     contrast_model = SingleBranchContrastModel(loss=L.JSDLoss(), mode='G2L')
 
     optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.01)
 
-    with tqdm(total=1000, desc='(T)') as pbar:
-        for epoch in range(1, 1001):
+    with tqdm(total=300, desc='(T)') as pbar:
+        for epoch in range(1, 301):
             loss = train(encoder_model, contrast_model, data, optimizer)
             pbar.set_postfix({'loss': loss})
             pbar.update()
