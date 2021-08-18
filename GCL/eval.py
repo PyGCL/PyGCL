@@ -107,8 +107,6 @@ class LREvaluator(object):
                     y_pred = classifier(x[split['val']]).argmax(-1).detach().cpu().numpy()
                     val_micro = f1_score(y_val, y_pred, average='micro')
 
-                    breakpoint()
-
                     if val_micro > best_val_micro:
                         best_val_micro = val_micro
                         best_test_micro = test_micro
