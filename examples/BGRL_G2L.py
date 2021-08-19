@@ -164,8 +164,8 @@ def main():
     dataloader = DataLoader(dataset, batch_size=128)
     input_dim = max(dataset.num_features, 1)
 
-    aug1 = A.EdgeRemoving(pe=0.2) >> A.FeatureMasking(pf=0.1)
-    aug2 = A.EdgeRemoving(pe=0.2) >> A.FeatureMasking(pf=0.1)
+    aug1 = A.Compose([A.EdgeRemoving(pe=0.2), A.FeatureMasking(pf=0.1)])
+    aug2 = A.Compose([A.EdgeRemoving(pe=0.2), A.FeatureMasking(pf=0.1)])
 
     gconv = GConv(input_dim=input_dim, hidden_dim=32, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=32).to(device)

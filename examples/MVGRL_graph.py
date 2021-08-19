@@ -127,7 +127,7 @@ def main():
     mlp1 = FC(input_dim=512, output_dim=512)
     mlp2 = FC(input_dim=512 * 2, output_dim=512)
     encoder_model = Encoder(gcn1=gcn1, gcn2=gcn2, mlp1=mlp1, mlp2=mlp2, aug1=aug1, aug2=aug2).to(device)
-    contrast_model = DualBranchContrast(loss=L.JSDLoss(), mode='G2L').to(device)
+    contrast_model = DualBranchContrast(loss=L.JSD(), mode='G2L').to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
 
