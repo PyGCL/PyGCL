@@ -69,8 +69,8 @@ def main():
     dataset = WikiCS(path, transform=T.NormalizeFeatures())
     data = dataset[0].to(device)
 
-    aug1 = A.EdgeRemoving(pe=0.5) >> A.FeatureMasking(pf=0.1)
-    aug2 = A.EdgeRemoving(pe=0.5) >> A.FeatureMasking(pf=0.1)
+    aug1 = A.Compose([A.EdgeRemoving(pe=0.5), A.FeatureMasking(pf=0.1)])
+    aug2 = A.Compose([A.EdgeRemoving(pe=0.5), A.FeatureMasking(pf=0.1)])
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=256).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2)).to(device)
