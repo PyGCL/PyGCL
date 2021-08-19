@@ -126,7 +126,7 @@ def main():
     fc1 = FC(hidden_dim=32 * 2)
     fc2 = FC(hidden_dim=32 * 2)
     encoder_model = Encoder(encoder=gconv, local_fc=fc1, global_fc=fc2).to(device)
-    contrast_model = SingleBranchContrast(loss=L.JSDLoss(), mode='G2L').to(device)
+    contrast_model = SingleBranchContrast(loss=L.JSD(), mode='G2L').to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
 

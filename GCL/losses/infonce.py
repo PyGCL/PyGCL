@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
-__all__ = ['InfoNCELoss', 'InfoNCEForSP', 'DebiasedInfoNCELoss', 'HardnessInfoNCELoss']
+__all__ = ['InfoNCE', 'InfoNCEForSP', 'DebiasedInfoNCE', 'HardnessInfoNCE']
 
 
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
@@ -37,9 +37,9 @@ class InfoNCEForSP(Loss):
         return loss.mean()
 
 
-class InfoNCELoss(Loss):
+class InfoNCE(Loss):
     def __init__(self, tau):
-        super(InfoNCELoss, self).__init__()
+        super(InfoNCE, self).__init__()
         self.tau = tau
 
     def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
@@ -51,9 +51,9 @@ class InfoNCELoss(Loss):
         return -loss.mean()
 
 
-class DebiasedInfoNCELoss(Loss):
+class DebiasedInfoNCE(Loss):
     def __init__(self, tau, tau_plus=0.1):
-        super(DebiasedInfoNCELoss, self).__init__()
+        super(DebiasedInfoNCE, self).__init__()
         self.tau = tau
         self.tau_plus = tau_plus
 
@@ -74,9 +74,9 @@ class DebiasedInfoNCELoss(Loss):
         return loss.mean()
 
 
-class HardnessInfoNCELoss(Loss):
+class HardnessInfoNCE(Loss):
     def __init__(self, tau, tau_plus=0.1, beta=1.0):
-        super(HardnessInfoNCELoss, self).__init__()
+        super(HardnessInfoNCE, self).__init__()
         self.tau = tau
         self.tau_plus = tau_plus
         self.beta = beta
