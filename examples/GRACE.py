@@ -78,8 +78,8 @@ def main():
     dataset = Planetoid(path, name='Cora', transform=T.NormalizeFeatures())
     data = dataset[0].to(device)
 
-    aug1 = A.EdgeRemoving(pe=0.3) >> A.FeatureMasking(pf=0.3)
-    aug2 = A.EdgeRemoving(pe=0.3) >> A.FeatureMasking(pf=0.3)
+    aug1 = A.Compose([A.EdgeRemoving(pe=0.3), A.FeatureMasking(pf=0.3)])
+    aug2 = A.Compose([A.EdgeRemoving(pe=0.3), A.FeatureMasking(pf=0.3)])
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=32, proj_dim=32).to(device)
