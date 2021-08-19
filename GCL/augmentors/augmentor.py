@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Optional, Tuple, NamedTuple, Callable
-
 import torch
+from abc import ABC, abstractmethod
+from typing import Optional, Tuple, NamedTuple, List
 
 
 class Graph(NamedTuple):
@@ -30,15 +29,30 @@ class Augmentor(ABC):
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         return self.augment(Graph(x, edge_index, edge_weight)).unfold()
 
-    def __rshift__(self, other: Augmentor):
-        return CompositionalAugmentor(self, other)
 
-
-class CompositionalAugmentor(Augmentor):
-    def __init__(self, g1: Augmentor, g2: Augmentor):
-        super(CompositionalAugmentor, self).__init__()
-        self.g1 = g1
-        self.g2 = g2
+class Compose(Augmentor):
+    def __init__(self, augmentors: List[Augmentor]):
+        super(Compose, self).__init__()
+        self.augmentors = augmentors
 
     def augment(self, g: Graph) -> Graph:
-        return self.g2.augment(self.g1.augment(g))
+        for aug in self.augmentors:
+            g = aug.augment(g)
+        return g
+
+
+class RandomChoice(Augmentor):
+    def __init__(self, augmentors: List[Augmentor], num_choices: int):
+        super(RandomChoice, self).__init__()
+        assert num_choices <= len(augmentors)
+        self.augmentors = augmentors
+        self.num_choices = num_choices
+
+    def augment(self, g: Graph) -> Graph:
+        num_augmentors = len(self.augmentors)
+        perm = torch.randperm(num_augmentors)
+        idx = perm[:self.num_choices]
+        for i in idx:
+            aug = self.augmentors[i]
+            g = aug.augment(g)
+        return g
