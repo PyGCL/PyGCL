@@ -4,12 +4,12 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
-__all__ = ['JSDLoss', 'DebiasedJSDLoss', 'HardnessJSDLoss']
+__all__ = ['JSD', 'DebiasedJSD', 'HardnessJSD']
 
 
-class JSDLoss(Loss):
+class JSD(Loss):
     def __init__(self, discriminator=lambda x, y: x @ y.t()):
-        super(JSDLoss, self).__init__()
+        super(JSD, self).__init__()
         self.discriminator = discriminator
 
     def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
@@ -27,9 +27,9 @@ class JSDLoss(Loss):
         return E_neg - E_pos
 
 
-class DebiasedJSDLoss(Loss):
+class DebiasedJSD(Loss):
     def __init__(self, discriminator=lambda x, y: x @ y.t(), tau_plus=0.1):
-        super(DebiasedJSDLoss, self).__init__()
+        super(DebiasedJSD, self).__init__()
         self.discriminator = discriminator
         self.tau_plus = tau_plus
 
@@ -50,9 +50,9 @@ class DebiasedJSDLoss(Loss):
         return E_neg - E_pos
 
 
-class HardnessJSDLoss(Loss):
+class HardnessJSD(Loss):
     def __init__(self, discriminator=lambda x, y: x @ y.t(), tau_plus=0.1, beta=0.05):
-        super(HardnessJSDLoss, self).__init__()
+        super(HardnessJSD, self).__init__()
         self.discriminator = discriminator
         self.tau_plus = tau_plus
         self.beta = beta
