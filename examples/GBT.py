@@ -74,7 +74,7 @@ def main():
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=256).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2)).to(device)
-    contrast_model = WithinEmbedContrast(loss=L.BarlowTwinsLoss()).to(device)
+    contrast_model = WithinEmbedContrast(loss=L.BarlowTwins()).to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=5e-4)
     scheduler = LinearWarmupCosineAnnealingLR(

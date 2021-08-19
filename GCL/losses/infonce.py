@@ -5,21 +5,18 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
-__all__ = ['InfoNCE', 'InfoNCEForSP', 'DebiasedInfoNCE', 'HardnessInfoNCE']
-
-
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
     h1 = F.normalize(h1)
     h2 = F.normalize(h2)
     return h1 @ h2.t()
 
 
-class InfoNCEForSP(Loss):
+class InfoNCESP(Loss):
     """
     InfoNCE loss for single positive.
     """
     def __init__(self, tau):
-        super(InfoNCEForSP, self).__init__()
+        super(InfoNCESP, self).__init__()
         self.tau = tau
 
     def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):

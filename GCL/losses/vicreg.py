@@ -3,9 +3,9 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
-class VICRegLoss(Loss):
+class VICReg(Loss):
     def __init__(self, sim_weight=25.0, var_weight=25.0, cov_weight=1.0, eps=1e-4):
-        super(VICRegLoss, self).__init__()
+        super(VICReg, self).__init__()
         self.sim_weight = sim_weight
         self.var_weight = var_weight
         self.cov_weight = cov_weight

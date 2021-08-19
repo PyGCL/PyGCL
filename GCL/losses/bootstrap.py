@@ -3,9 +3,9 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
-class BootstrapLoss(Loss):
+class BootstrapLatent(Loss):
     def __init__(self):
-        super(BootstrapLoss, self).__init__()
+        super(BootstrapLatent, self).__init__()
 
     def compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs) -> torch.FloatTensor:
         anchor = F.normalize(anchor, dim=-1, p=2)

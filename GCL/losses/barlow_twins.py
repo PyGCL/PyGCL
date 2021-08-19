@@ -2,9 +2,9 @@ import torch
 from .losses import Loss
 
 
-class BarlowTwinsLoss(Loss):
+class BarlowTwins(Loss):
     def __init__(self, lambda_=None, batch_norm=True, eps=1e-15):
-        super(BarlowTwinsLoss, self).__init__()
+        super(BarlowTwins, self).__init__()
         self.lambda_ = lambda_
         self.batch_norm = batch_norm
         self.eps = eps

@@ -4,9 +4,6 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
-__all__ = ['JSD', 'DebiasedJSD', 'HardnessJSD']
-
-
 class JSD(Loss):
     def __init__(self, discriminator=lambda x, y: x @ y.t()):
         super(JSD, self).__init__()

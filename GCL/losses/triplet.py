@@ -2,36 +2,29 @@ import torch
 from .losses import Loss
 
 
-__all__ = ['TripletMargin', 'TripletMarginForSP']
-
-
-class TripletMarginForSP(Loss):
+class TripletMarginSP(Loss):
     def __init__(self, margin: float = 1.0, p: float = 2, *args, **kwargs):
-        super(TripletMarginForSP, self).__init__()
+        super(TripletMarginSP, self).__init__()
         self.loss_fn = torch.nn.TripletMarginLoss(margin=margin, p=p, reduction='none')
         self.margin = margin
 
     def compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
-        def triplet_loss(anchor: torch.FloatTensor, samples: torch.FloatTensor,
-                         pos_mask: torch.FloatTensor, eps: float, *args, **kwargs):
-            neg_mask = 1. - pos_mask
+        neg_mask = 1. - pos_mask
 
-            num_pos = pos_mask.to(torch.long).sum(dim=1)
-            num_neg = neg_mask.to(torch.long).sum(dim=1)
+        num_pos = pos_mask.to(torch.long).sum(dim=1)
+        num_neg = neg_mask.to(torch.long).sum(dim=1)
 
-            dist = torch.cdist(anchor, samples, p=2)  # [num_anchors, num_samples]
+        dist = torch.cdist(anchor, sample, p=2)  # [num_anchors, num_samples]
 
-            pos_dist = pos_mask * dist
-            neg_dist = neg_mask * dist
+        pos_dist = pos_mask * dist
+        neg_dist = neg_mask * dist
 
-            pos_dist, neg_dist = pos_dist.sum(dim=1), neg_dist.sum(dim=1)
+        pos_dist, neg_dist = pos_dist.sum(dim=1), neg_dist.sum(dim=1)
 
-            loss = pos_dist / num_pos - neg_dist / num_neg + eps
-            loss = torch.where(loss > 0, loss, torch.zeros_like(loss))
+        loss = pos_dist / num_pos - neg_dist / num_neg + self.margin
+        loss = torch.where(loss > 0, loss, torch.zeros_like(loss))
 
-            return loss.mean()
-
-        return triplet_loss(anchor, sample, pos_mask, self.margin)
+        return loss.mean()
 
 
 class TripletMargin(Loss):

@@ -131,7 +131,7 @@ def main():
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=256, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=256).to(device)
-    contrast_model = BootstrapContrast(loss=L.BootstrapLoss(), mode='L2L').to(device)
+    contrast_model = BootstrapContrast(loss=L.BootstrapLatent(), mode='L2L').to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
 
