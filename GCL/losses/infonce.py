@@ -5,10 +5,36 @@ import torch.nn.functional as F
 from .losses import Loss
 
 
+__all__ = ['InfoNCELoss', 'InfoNCEForSP', 'DebiasedInfoNCELoss', 'HardnessInfoNCELoss']
+
+
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
     h1 = F.normalize(h1)
     h2 = F.normalize(h2)
     return h1 @ h2.t()
+
+
+class InfoNCEForSP(Loss):
+    """
+    InfoNCE loss for single positive.
+    """
+    def __init__(self, tau):
+        super(InfoNCEForSP, self).__init__()
+        self.tau = tau
+
+    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+        f = lambda x: torch.exp(x / self.tau)
+        sim = f(_similarity(anchor, sample))  # anchor x sample
+        assert sim.size() == pos_mask.size()  # sanity check
+
+        neg_mask = 1 - pos_mask
+        pos = (sim * pos_mask).sum(dim=1)
+        neg = (sim * neg_mask).sum(dim=1)
+
+        loss = pos / (pos + neg)
+        loss = -torch.log(loss)
+
+        return loss.mean()
 
 
 class InfoNCELoss(Loss):
