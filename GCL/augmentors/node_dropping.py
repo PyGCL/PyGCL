@@ -1,8 +1,4 @@
-import torch
-from torch.distributions.bernoulli import Bernoulli
-from torch_geometric.utils import subgraph
-
-from GCL.augmentors.Augmentor import Graph, Augmentor
+from GCL.augmentors.augmentor import Graph, Augmentor
 from GCL.augmentors.functional import drop_node
 
 

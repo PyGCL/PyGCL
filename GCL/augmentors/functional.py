@@ -1,21 +1,16 @@
-from typing import Optional
 import torch
-import numpy as np
 import networkx as nx
-from torch_sparse import coalesce, SparseTensor
+import torch.nn.functional as F
 
+from typing import Optional
 from GCL.utils import normalize
+from torch_sparse import SparseTensor, coalesce
 from torch_scatter import scatter
-from torch_sparse import SparseTensor
 from torch_geometric.transforms import GDC
-from torch_geometric.utils.sparse import dense_to_sparse
-from torch_geometric.data import Data
 from torch.distributions import Uniform, Beta
 from torch_geometric.utils import dropout_adj, to_networkx, to_undirected, degree, to_scipy_sparse_matrix, \
-    from_scipy_sparse_matrix, sort_edge_index
+    from_scipy_sparse_matrix, sort_edge_index, add_self_loops, subgraph
 from torch.distributions.bernoulli import Bernoulli
-from torch_geometric.utils import subgraph
-import torch.nn.functional as F
 
 
 def permute(x: torch.Tensor) -> torch.Tensor:
@@ -213,12 +208,15 @@ def sample_nodes(x, edge_index, sample_size):
     return get_subgraph(x, edge_index, idx), idx
 
 
-def compute_ppr(edge_index, edge_weight=None, alpha=0.2, eps=0.1, ignore_edge_attr=True):
+def compute_ppr(edge_index, edge_weight=None, alpha=0.2, eps=0.1, ignore_edge_attr=True, add_self_loop=True):
     N = edge_index.max().item() + 1
     if ignore_edge_attr or edge_weight is None:
         edge_weight = torch.ones(
             edge_index.size(1), device=edge_index.device)
-
+    if add_self_loop:
+        edge_index, edge_weight = add_self_loops(
+            edge_index, edge_weight, fill_value=1, num_nodes=N)
+        edge_index, edge_weight = coalesce(edge_index, edge_weight, N, N)
     edge_index, edge_weight = coalesce(edge_index, edge_weight, N, N)
     edge_index, edge_weight = GDC().transition_matrix(
         edge_index, edge_weight, N, normalization='sym')
@@ -232,12 +230,18 @@ def compute_ppr(edge_index, edge_weight=None, alpha=0.2, eps=0.1, ignore_edge_at
     return edge_index, edge_weight
 
 
-def get_sparse_adj(edge_index: torch.LongTensor, edge_weight: torch.FloatTensor = None) -> torch.sparse.Tensor:
+def get_sparse_adj(edge_index: torch.LongTensor, edge_weight: torch.FloatTensor = None,
+                   add_self_loop: bool = True) -> torch.sparse.Tensor:
     num_nodes = edge_index.max().item() + 1
     num_edges = edge_index.size(1)
 
-    edge_weight = \
-        torch.ones((num_edges,), dtype=torch.float32, device=edge_index.device) if edge_weight is None else edge_weight
+    if edge_weight is None:
+        edge_weight = torch.ones((num_edges,), dtype=torch.float32, device=edge_index.device)
+
+    if add_self_loop:
+        edge_index, edge_weight = add_self_loops(
+            edge_index, edge_weight, fill_value=1, num_nodes=num_nodes)
+        edge_index, edge_weight = coalesce(edge_index, edge_weight, num_nodes, num_nodes)
 
     edge_index, edge_weight = GDC().transition_matrix(
         edge_index, edge_weight, num_nodes, normalization='sym')
@@ -250,9 +254,8 @@ def get_sparse_adj(edge_index: torch.LongTensor, edge_weight: torch.FloatTensor 
 def compute_markov_diffusion(
         edge_index: torch.LongTensor, edge_weight: torch.FloatTensor = None,
         alpha: float = 0.1, degree: int = 10,
-        sp_eps: float = 1e-3
-):
-    adj = get_sparse_adj(edge_index, edge_weight)
+        sp_eps: float = 1e-3, add_self_loop: bool = True):
+    adj = get_sparse_adj(edge_index, edge_weight, add_self_loop)
 
     z = adj.to_dense()
     t = adj.to_dense()
@@ -297,6 +300,7 @@ def drop_node(edge_index: torch.Tensor, edge_weight: Optional[torch.Tensor] = No
     edge_index, edge_weight = subgraph(subset, edge_index, edge_weight)
 
     return edge_index, edge_weight
+
 
 def random_walk_subgraph(edge_index: torch.LongTensor, edge_weight: Optional[torch.FloatTensor] = None, batch_size: int = 1000, length: int = 10):
     num_nodes = edge_index.max().item() + 1

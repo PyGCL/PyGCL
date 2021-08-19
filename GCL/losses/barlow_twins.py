@@ -1,35 +1,29 @@
 import torch
+from .losses import Loss
 
 
-def bt_loss(h1: torch.Tensor, h2: torch.Tensor, lambda_, batch_norm=True, eps=1e-15, *args, **kwargs):
-    batch_size = h1.size(0)
-    feature_dim = h1.size(1)
+class BarlowTwins(Loss):
+    def __init__(self, lambda_=None, batch_norm=True, eps=1e-15):
+        super(BarlowTwins, self).__init__()
+        self.lambda_ = lambda_
+        self.batch_norm = batch_norm
+        self.eps = eps
 
-    if batch_norm:
-        z1_norm = (h1 - h1.mean(dim=0)) / (h1.std(dim=0) + eps)
-        z2_norm = (h2 - h2.mean(dim=0)) / (h2.std(dim=0) + eps)
-        c = (z1_norm.T @ z2_norm) / batch_size
-    else:
-        c = h1.T @ h2 / batch_size
+    def compute(self, anchor, sample, pos_mask=None, neg_mask=None, *args, **kwargs):
+        batch_size = anchor.size(0)
+        feature_dim = anchor.size(1)
+        if self.lambda_ is None:
+            self.lambda_ = 1 / feature_dim
 
-    off_diagonal_mask = ~torch.eye(feature_dim).bool()
-    loss = (1 - c.diagonal()).pow(2).sum()
-    loss += lambda_ * c[off_diagonal_mask].pow(2).sum()
+        if self.batch_norm:
+            z1_norm = (anchor - anchor.mean(dim=0)) / (anchor.std(dim=0) + self.eps)
+            z2_norm = (sample - sample.mean(dim=0)) / (sample.std(dim=0) + self.eps)
+            c = (z1_norm.T @ z2_norm) / batch_size
+        else:
+            c = anchor.T @ sample / batch_size
 
-    return loss
+        off_diagonal_mask = ~torch.eye(feature_dim).bool()
+        loss = (1 - c.diagonal()).pow(2).sum()
+        loss += self.lambda_ * c[off_diagonal_mask].pow(2).sum()
 
-
-class BTLoss(torch.nn.Module):
-    def __init__(self):
-        super(BTLoss, self).__init__()
-
-    def forward(self, h1: torch.Tensor, h2: torch.Tensor,
-                lambda_, batch_norm=True, eps=1e-15,
-                mean: bool = True, *args, **kwargs):
-        l1 = bt_loss(h1, h2, lambda_, batch_norm=batch_norm, eps=eps, *args, **kwargs)
-        l2 = bt_loss(h2, h1, lambda_, batch_norm=batch_norm, eps=eps, *args, **kwargs)
-
-        ret = (l1 + l2) * 0.5
-        ret = ret.mean() if mean else ret.sum()
-
-        return ret
+        return loss.mean()
