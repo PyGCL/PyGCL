@@ -81,17 +81,20 @@ def test(encoder_model, data, dataloader):
 
 
 def main():
+    import torch.multiprocessing
+    torch.multiprocessing.set_sharing_strategy('file_system')
+
     device = torch.device('cuda')
     path = osp.join(osp.expanduser('~'), 'datasets', 'Reddit')
     dataset = Reddit(path)
     data = dataset[0].to(device)
 
     train_loader = NeighborSampler(data.edge_index, node_idx=None,
-                                   sizes=[10, 10, 25], batch_size=256,
-                                   shuffle=True, num_workers=64)
+                                   sizes=[10, 10, 25], batch_size=128,
+                                   shuffle=True, num_workers=32)
     test_loader = NeighborSampler(data.edge_index, node_idx=None,
-                                  sizes=[10, 10, 25], batch_size=256,
-                                  shuffle=False, num_workers=64)
+                                  sizes=[10, 10, 25], batch_size=128,
+                                  shuffle=False, num_workers=32)
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=3).to(device)
     encoder_model = Encoder(encoder=gconv, hidden_dim=512).to(device)
