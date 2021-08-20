@@ -1,6 +1,6 @@
 import torch
-from torch_scatter import scatter
 from abc import ABC, abstractmethod
+from torch_scatter import scatter
 
 
 class Sampler(ABC):
@@ -70,3 +70,12 @@ class CrossScaleSampler(Sampler):
 
         neg_mask = 1. - pos_mask
         return anchor, sample, pos_mask, neg_mask
+
+
+def get_sampler(mode: str, intraview_negs: bool) -> Sampler:
+    if mode in {'L2L', 'G2G'}:
+        return SameScaleSampler(intraview_negs=intraview_negs)
+    elif mode == 'G2L':
+        return CrossScaleSampler(intraview_negs=intraview_negs)
+    else:
+        raise RuntimeError(f'unsupported mode: {mode}')
