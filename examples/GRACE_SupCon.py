@@ -64,7 +64,7 @@ def train(encoder_model, contrast_model, data, optimizer):
     # construct extra supervision signals for only training samples
     extra_pos_mask[~data.train_mask][:, ~data.train_mask] = False
     extra_pos_mask.fill_diagonal_(False)
-    # pos_mask: [N, 2N] for both inter-view and intra-view negatives
+    # pos_mask: [N, 2N] for both inter-view and intra-view samples
     extra_pos_mask = torch.cat([extra_pos_mask, extra_pos_mask], dim=1).to('cuda')
     # fill interview positives only; pos_mask for intraview samples should have zeros in diagonal
     extra_pos_mask.fill_diagonal_(True)
