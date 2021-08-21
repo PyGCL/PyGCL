@@ -59,14 +59,22 @@ def train(encoder_model, contrast_model, data, optimizer):
     z, z1, z2 = encoder_model(data.x, data.edge_index, data.edge_attr)
     h1, h2 = [encoder_model.project(x) for x in [z1, z2]]
 
+    # compute extra pos and neg masks for semi-supervised learning
     extra_pos_mask = torch.eq(data.y, data.y.unsqueeze(dim=1)).to('cuda')
     # construct extra supervision signals for only training samples
     extra_pos_mask[~data.train_mask][:, ~data.train_mask] = False
-    extra_pos_mask.fill_diagonal_(True)
-    # pos_mask: [N, 2N] for both inter-view and intra-view negatives
+    extra_pos_mask.fill_diagonal_(False)
+    # pos_mask: [N, 2N] for both inter-view and intra-view samples
     extra_pos_mask = torch.cat([extra_pos_mask, extra_pos_mask], dim=1).to('cuda')
+    # fill interview positives only; pos_mask for intraview samples should have zeros in diagonal
+    extra_pos_mask.fill_diagonal_(True)
 
-    loss = contrast_model(h1=h1, h2=h2, extra_pos_mask=extra_pos_mask)
+    extra_neg_mask = torch.ne(data.y, data.y.unsqueeze(dim=1)).to('cuda')
+    extra_neg_mask[~data.train_mask][:, ~data.train_mask] = True
+    extra_neg_mask.fill_diagonal_(False)
+    extra_neg_mask = torch.cat([extra_neg_mask, extra_neg_mask], dim=1).to('cuda')
+
+    loss = contrast_model(h1=h1, h2=h2, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
     loss.backward()
     optimizer.step()
     return loss.item()
