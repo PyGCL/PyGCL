@@ -18,6 +18,17 @@ def get_split(num_samples: int, train_ratio: float = 0.1, test_ratio: float = 0.
     }
 
 
+def from_predefined_split(data):
+    assert all([mask is not None for mask in [data.train_mask, data.test_mask, data.val_mask]])
+    num_samples = data.num_nodes
+    indices = torch.arange(num_samples)
+    return {
+        'train': indices[data.train_mask],
+        'valid': indices[data.val_mask],
+        'test': indices[data.test_mask]
+    }
+
+
 def split_to_numpy(x, y, split):
     keys = ['train', 'test', 'valid']
     objs = [x, y]

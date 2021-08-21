@@ -1,16 +1,17 @@
 import torch
 
 from GCL.losses import Loss
-from GCL.samplers import Sampler, CrossScaleSampler, SameScaleSampler
+from GCL.models import get_sampler
 
 
-def get_sampler(mode: str, intraview_negs: bool) -> Sampler:
-    if mode in {'L2L', 'G2G'}:
-        return SameScaleSampler(intraview_negs=intraview_negs)
-    elif mode == 'G2L':
-        return CrossScaleSampler(intraview_negs=intraview_negs)
+def add_extra_mask(pos_mask, neg_mask=None, extra_pos_mask=None, extra_neg_mask=None):
+    if extra_pos_mask is not None:
+        pos_mask = torch.bitwise_or(pos_mask.bool(), extra_pos_mask.bool()).float()
+    if extra_neg_mask is not None:
+        neg_mask = torch.bitwise_and(neg_mask.bool(), extra_neg_mask.bool()).float()
     else:
-        raise RuntimeError(f'unsupported mode: {mode}')
+        neg_mask = 1. - pos_mask
+    return pos_mask, neg_mask
 
 
 class SingleBranchContrast(torch.nn.Module):
@@ -22,7 +23,7 @@ class SingleBranchContrast(torch.nn.Module):
         self.sampler = get_sampler(mode, intraview_negs=intraview_negs)
         self.kwargs = kwargs
 
-    def forward(self, h, g, batch=None, hn=None):
+    def forward(self, h, g, batch=None, hn=None, extra_pos_mask=None, extra_neg_mask=None):
         if batch is None:  # for single-graph datasets
             assert hn is not None
             anchor, sample, pos_mask, neg_mask = self.sampler(anchor=g, sample=h, neg_sample=hn)
@@ -30,6 +31,7 @@ class SingleBranchContrast(torch.nn.Module):
             assert batch is not None
             anchor, sample, pos_mask, neg_mask = self.sampler(anchor=g, sample=h, batch=batch)
 
+        pos_mask, neg_mask = add_extra_mask(pos_mask, neg_mask, extra_pos_mask, extra_neg_mask)
         loss = self.loss(anchor=anchor, sample=sample, pos_mask=pos_mask, neg_mask=neg_mask, **self.kwargs)
         return loss
 
@@ -42,7 +44,8 @@ class DualBranchContrast(torch.nn.Module):
         self.sampler = get_sampler(mode, intraview_negs=intraview_negs)
         self.kwargs = kwargs
 
-    def forward(self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None):
+    def forward(self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None,
+                extra_pos_mask=None, extra_neg_mask=None):
         if self.mode == 'L2L':
             assert h1 is not None and h2 is not None
             anchor1, sample1, pos_mask1, neg_mask1 = self.sampler(anchor=h1, sample=h2)
@@ -61,6 +64,8 @@ class DualBranchContrast(torch.nn.Module):
                 anchor1, sample1, pos_mask1, neg_mask1 = self.sampler(anchor=g1, sample=h2, batch=batch)
                 anchor2, sample2, pos_mask2, neg_mask2 = self.sampler(anchor=g2, sample=h1, batch=batch)
 
+        pos_mask1, neg_mask1 = add_extra_mask(pos_mask1, neg_mask1, extra_pos_mask, extra_neg_mask)
+        pos_mask2, neg_mask2 = add_extra_mask(pos_mask2, neg_mask2, extra_pos_mask, extra_neg_mask)
         l1 = self.loss(anchor=anchor1, sample=sample1, pos_mask=pos_mask1, neg_mask=neg_mask1, **self.kwargs)
         l2 = self.loss(anchor=anchor2, sample=sample2, pos_mask=pos_mask2, neg_mask=neg_mask2, **self.kwargs)
 
@@ -75,7 +80,8 @@ class BootstrapContrast(torch.nn.Module):
         self.sampler = get_sampler(mode, intraview_negs=False)
 
     def forward(self, h1_pred=None, h2_pred=None, h1_target=None, h2_target=None,
-                g1_pred=None, g2_pred=None, g1_target=None, g2_target=None, batch=None):
+                g1_pred=None, g2_pred=None, g1_target=None, g2_target=None,
+                batch=None, extra_pos_mask=None):
         if self.mode == 'L2L':
             assert all(v is not None for v in [h1_pred, h2_pred, h1_target, h2_target])
             anchor1, sample1, pos_mask1, _ = self.sampler(anchor=h1_target, sample=h2_pred)
@@ -94,6 +100,8 @@ class BootstrapContrast(torch.nn.Module):
                 anchor1, sample1, pos_mask1, _ = self.sampler(anchor=g1_target, sample=h2_pred, batch=batch)
                 anchor2, sample2, pos_mask2, _ = self.sampler(anchor=g2_target, sample=h1_pred, batch=batch)
 
+        pos_mask1, _ = add_extra_mask(pos_mask1, extra_pos_mask=extra_pos_mask)
+        pos_mask2, _ = add_extra_mask(pos_mask2, extra_pos_mask=extra_pos_mask)
         l1 = self.loss(anchor=anchor1, sample=sample1, pos_mask=pos_mask1)
         l2 = self.loss(anchor=anchor2, sample=sample2, pos_mask=pos_mask2)
 
