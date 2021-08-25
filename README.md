@@ -21,7 +21,7 @@ Graph Contrastive Learning (GCL) establishes a new paradigm for learning graph r
 PyGCL needs the following packages to be installed beforehand:
 
 * Python 3.8+
-* PyTorch 1.8+
+* PyTorch 1.9+
 * PyTorch-Geometric 1.7
 * DGL 0.7+
 * Scikit-learn 0.24+
@@ -104,7 +104,7 @@ In `GCL.losses`, PyGCL further implements four negative mining strategies that a
 | Debiased contrastive objective    | `InfoNCELoss(debiased_nt_xent_loss)` |
 | Hardness-biased negative sampling | `InfoNCELoss(hardness_nt_xent_loss)` |
 
-# Examples
+# Implementations and Examples
 
 For a quick start, please check out the `examples` folder. We currently implemented the following methods:
 
@@ -112,12 +112,14 @@ For a quick start, please check out the `examples` folder. We currently implemen
 * **InfoGraph** (F.-Y. Sun et al., InfoGraph: Unsupervised and Semi-supervised Graph-Level Representation Learning via Mutual Information Maximization, ICLR, 2020) [[Example](examples/InfoGraph.py)]
 * **MVGRL** (K. Hassani et al., Contrastive Multi-View Representation Learning on Graphs, ICML, 2020) [[Example1](examples/MVGRL_node.py), [Example2](examples/MVGRL_graph.py)]
 * **GRACE** (Y. Zhu et al., Deep Graph Contrastive Representation Learning, GRL+@ICML, 2020) [[Example](examples/GRACE.py)]
-* **BGRL** (S. Thakoor et al., Bootstrapped Representation Learning on Graphs, arXiv, 2021) [[Example1](examples/BGRL_L2L.py), [Example2](examples/BGRL_G2L.py)]
-* **G-BT** (P. Bielak et al., Graph Barlow Twins: A Self-Supervised Representation Learning Framework for Graphs, arXiv, 2021) [[Example](examples/GBT.py)]
-* **GCC** (J. Qiu et al., GCC: Graph Contrastive Coding for Graph Neural Network Pre-Training, KDD, 2020)
-* **SupCon** (P. Khosla et al., Supervised Contrastive Learning, NeurIPS, 2020)
+* **GraphCL** (Y. You et al., Graph Contrastive Learning with Augmentations, NeurIPS, 2020) [[Example](examples/GraphCL.py)]
+* **SupCon** (P. Khosla et al., Supervised Contrastive Learning, NeurIPS, 2020) [[Example](examples/GRACE_SupCon.py)]
 * **HardMixing** (Y. Kalantidis et al., Hard Negative Mixing for Contrastive Learning, NeurIPS, 2020)
 * **DCL** (C.-Y. Chuang et al., Debiased Contrastive Learning, NeurIPS, 2020)
 * **HCL** (J. Robinson et al., Contrastive Learning with Hard Negative Samples, ICLR, 2021)
 * **Ring** (M. Wu et al., Conditional Negative Sampling for Contrastive Learning of Visual Representations, ICLR, 2021)
+* **Exemplar** (N. Zhao et al., What Makes Instance Discrimination Good for Transfer Learning?, ICLR, 2021)
+* **BGRL** (S. Thakoor et al., Bootstrapped Representation Learning on Graphs, arXiv, 2021) [[Example1](examples/BGRL_L2L.py), [Example2](examples/BGRL_G2L.py)]
+* **G-BT** (P. Bielak et al., Graph Barlow Twins: A Self-Supervised Representation Learning Framework for Graphs, arXiv, 2021) [[Example](examples/GBT.py)]
+* **VICReg** (A. Bardes et al., VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning, arXiv, 2021)
 
