@@ -2,7 +2,19 @@
 
 PyGCL is an open-source library for graph contrastive learning (GCL), which features modularized GCL components from published papers, standardized evaluation, and experiment management. 
 
+[![Made with Python](https://img.shields.io/github/languages/top/GraphCL/PyGCL?color=lightgrey)](https://github.com/GraphCL/PyGCL)
+[![GitHub stars](https://img.shields.io/github/stars/GraphCL/PyGCL?color=yellow)](https://github.com/GraphCL/PyGCL/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/GraphCL/PyGCL?color=brightgreen&label=fork)](https://github.com/GraphCL/PyGCL/network/members)
+[![Total lines](https://img.shields.io/tokei/lines/github/GraphCL/PyGCL?color=red)](https://github.com/GraphCL/PyGCL)
+[![visitors](https://visitor-badge.glitch.me/badge?page_id=GraphCL.PyGCL)](https://github.com/GraphCL/PyGCL)
+
 ---
+
+# What is Graph Contrastive Learning?
+
+Graph Contrastive Learning (GCL) establishes a new paradigm for learning graph representations without human annotations. A typical GCL algorithm firstly constructs multiple graph views via stochastic augmentation of the input and then learns representations by contrasting positive samples against negative ones.
+
+👉 For a general introduction of GCL, please refer to our [paper] and [blog](https://sxkdz.github.io/research/GraphCL/). Also, this [repo](https://github.com/SXKDZ/awesome-self-supervised-learning-for-graphs) tracks newly published GCL papers.
 
 # Prerequisites
 
