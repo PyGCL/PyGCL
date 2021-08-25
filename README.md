@@ -1,6 +1,6 @@
-# PyGCL: Graph Contrastive Learning for PyTorch
+# 🌝🌚PyGCL: Graph Contrastive Learning for PyTorch
 
-PyGCL is an open-source library for graph contrastive learning (GCL), which features modularized GCL components from published papers, standardized evaluation, and experiment management. 
+PyGCL is an open-source Graph Contrastive Learning (GCL) library for [PyTorch](https://pytorch.org), which features modularized GCL components from published papers, standardized evaluation, and experiment management.
 
 [![Made with Python](https://img.shields.io/github/languages/top/GraphCL/PyGCL?color=lightgrey)](https://github.com/GraphCL/PyGCL)
 [![GitHub stars](https://img.shields.io/github/stars/GraphCL/PyGCL?color=yellow)](https://github.com/GraphCL/PyGCL/stargazers)
@@ -10,13 +10,13 @@ PyGCL is an open-source library for graph contrastive learning (GCL), which feat
 
 ---
 
-# What is Graph Contrastive Learning?
+# 🌘What is Graph Contrastive Learning?
 
 Graph Contrastive Learning (GCL) establishes a new paradigm for learning graph representations without human annotations. A typical GCL algorithm firstly constructs multiple graph views via stochastic augmentation of the input and then learns representations by contrasting positive samples against negative ones.
 
-👉 For a general introduction of GCL, please refer to our [paper] and [blog](https://sxkdz.github.io/research/GraphCL/). Also, this [repo](https://github.com/SXKDZ/awesome-self-supervised-learning-for-graphs) tracks newly published GCL papers.
+👉 For a general introduction of GCL, please refer to our [paper](https://openreview.net/forum?id=fYxEnpY-__G) and [blog](https://sxkdz.github.io/research/GraphCL/). Also, this [repo](https://github.com/SXKDZ/awesome-self-supervised-learning-for-graphs) tracks newly published GCL papers.
 
-# Prerequisites
+# 🌑Prerequisites
 
 PyGCL needs the following packages to be installed beforehand:
 
@@ -29,82 +29,18 @@ PyGCL needs the following packages to be installed beforehand:
 * tqdm
 * NetworkX
 
-# Getting Started
-
-## Package Overview
+# 🌒Package Overview
 
 Our PyGCL implements four main components of graph contrastive learning algorithms:
 
 * Graph augmentation: transforms input graphs into congruent graph views.
-* Contrasting modes: specifies positive and negative pairs.
+* Contrasting architectures and modes: generate positive and negative pairs according to node and graph embeddings.
 * Contrastive objectives: computes the likelihood score for positive and negative pairs.
 * Negative mining strategies: improves the negative sample set by considering the relative similarity (the hardness) of negative sample.
 
 We also implement utilities for training models, evaluating model performance, and managing experiments.
 
-## Building Your Own GCL Algorithms
-
-Besides try the above examples for node and graph classification tasks, you can also build your own graph contrastive learning algorithms straightforwardly.
-
-### Graph Augmentation
-
-In `GCL.augmentors`, PyGCL provides the `Augmentor` base class, which offers a universal interface for graph augmentation functions. Specifically, PyGCL implements the following augmentation functions:
-
-| Augmentation                             | Class name        |
-| ---------------------------------------- | ----------------- |
-| Edge Adding (EA)                         | `EdgeAdding`      |
-| Edge Removing (ER)                       | `EdgeRemoving`    |
-| Feature Masking (FM)                     | `FeatureMasking`  |
-| Feature Dropout (FD)                     | `FeatureDropout`  |
-| Personalized PageRank (PPR)              | `PPRDiffusion`    |
-| Markov Diffusion Kernel (MDK)            | `MarkovDiffusion` |
-| Node Dropping (ND)                       | `NodeDropping`    |
-| Subgraphs induced by Random Walks (RWS)  | `RWSampling`      |
-| Ego-net Sampling (ES)                    | `Identity`        |
-
-Call these augmentation functions by feeding with a graph of in a tuple form of node features, edge index, and edge features `x, edge_index, edge_weights`will produce corresponding augmented graphs.
-
-PyGCL also supports composing arbitrary number of augmentations together. To compose a list of augmentation instances `augmentors`, you only need to use the right shift operator `>>`:
-
-```python
-aug = augmentors[0]
-for a in augs[1:]:
-    aug = aug >> a
-```
-
-You can also write your own augmentation functions by defining the `augment` function.
-
-### Contrasting Modes
-
-PyGCL implements three contrasting modes: (a) local-local, (b) global-local, and (c) global-global modes. You can refer to the `models` folder for details. Note that the bootstrapping latent loss involves some special model design (asymmetric online/offline encoders and momentum weight updates) and thus we implement contrasting modes involving this contrastive objective in a separate `BGRL` model.
-
-### Contrastive Objectives
-
-In `GCL.losses`, PyGCL implements the following contrastive objectives:
-
-| Contrastive objectives                | Class name      |
-| ------------------------------------- | --------------- |
-| InfoNCE loss                          | `InfoNCELoss`   |
-| Jensen-Shannon Divergence (JSD) loss  | `JSDLoss`       |
-| Triplet Margin (TM) loss              | `TripletLoss`   |
-| Bootstrapping Latent (BL) loss        | `BootstrapLoss` |
-| Barlow Twins (BT) loss                | `BTLoss`        |
-| VICReg loss                           | `VICRegLoss`    |
-
-All these objectives are for contrasting positive and negative pairs at the same scale (i.e. local-local and global-global modes). For global-local modes, we offer `G2L` variants except for Barlow Twins and VICReg losses. Moreover, for InfoNCE, JSD, and Triplet losses, we further provide `G2LEN` variants, primarily for node-level tasks, which involve explicit construction of negative samples. You can find their examples in the root folder.
-
-### Negative Mining Strategies
-
-In `GCL.losses`, PyGCL further implements four negative mining strategies that are build upon the InfoNCE contrastive objective:
-
-| Hard negative mining strategies   | Class name                           |
-| --------------------------------- | ------------------------------------ |
-| Hard negative mixing              | `HardMixingLoss`                     |
-| Conditional negative sampling     | `RingLoss`                           |
-| Debiased contrastive objective    | `InfoNCELoss(debiased_nt_xent_loss)` |
-| Hardness-biased negative sampling | `InfoNCELoss(hardness_nt_xent_loss)` |
-
-# Implementations and Examples
+# 🌓Implementations and Examples
 
 For a quick start, please check out the `examples` folder. We currently implemented the following methods:
 
@@ -123,3 +59,124 @@ For a quick start, please check out the `examples` folder. We currently implemen
 * **G-BT** (P. Bielak et al., Graph Barlow Twins: A Self-Supervised Representation Learning Framework for Graphs, arXiv, 2021) [[Example](examples/GBT.py)]
 * **VICReg** (A. Bardes et al., VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning, arXiv, 2021)
 
+# 🌕Building Your Own GCL Algorithms
+
+Besides try the above examples for node and graph classification tasks, you can also build your own graph contrastive learning algorithms straightforwardly.
+
+## Graph Augmentation
+
+In `GCL.augmentors`, PyGCL provides the `Augmentor` base class, which offers a universal interface for graph augmentation functions. Specifically, PyGCL implements the following augmentation functions:
+
+| Augmentation                             | Class name        |
+| ---------------------------------------- | ----------------- |
+| Edge Adding (EA)                         | `EdgeAdding`      |
+| Edge Removing (ER)                       | `EdgeRemoving`    |
+| Feature Masking (FM)                     | `FeatureMasking`  |
+| Feature Dropout (FD)                     | `FeatureDropout`  |
+| Edge Attribute Masking (EAR)             | `EdgeAttrMasking` |
+| Personalized PageRank (PPR)              | `PPRDiffusion`    |
+| Markov Diffusion Kernel (MDK)            | `MarkovDiffusion` |
+| Node Dropping (ND)                       | `NodeDropping`    |
+| Node Shuffling (NS)                      | `NodeShuffling`   |
+| Subgraphs induced by Random Walks (RWS)  | `RWSampling`      |
+| Ego-net Sampling (ES)                    | `Identity`        |
+
+Call these augmentation functions by feeding with a `Graph` in a tuple form of node features, edge index, and edge features `(x, edge_index, edge_attrs)`will produce corresponding augmented graphs.
+
+### Composite Augmentations
+PyGCL supports composing arbitrary numbers of augmentations together. To compose a list of augmentation instances `augmentors`, you need to use the `Compose` class:
+
+```python
+import GCL.augmentors as A
+
+aug = A.Compose([A.EdgeRemoving(pe=0.3), A.FeatureMasking(pf=0.3)])
+```
+
+You can also use the `RandomChoice` class to randomly draw a few augmentations each time:
+
+```python
+import GCL.augmentors as A
+
+aug = A.RandomChoice([A.RWSampling(num_seeds=1000, walk_length=10),
+                      A.NodeDropping(pn=0.1),
+                      A.FeatureMasking(pf=0.1),
+                      A.EdgeRemoving(pe=0.1)],
+                     num_choices=1)
+```
+
+### Customizing Your Own Augmentation
+
+You can write your own augmentation functions by inherting the base `Augmentor` class and defining the `augment` function.
+
+## Contrasting Architectures and Modes
+
+Existing GCL architectures could be grouped into two lines: negative-sample-based methods and negative-sample-free ones.
+
+* Negative-sample-based approaches can either have one single branch or two branches. In single-branch contrasting, we only need to construct one graph view and perform contrastive learning within this view. In dual-branch models, we generate two graph views and perform contrastive learning within and across views.
+* Negative-sample-free approaches eschew the need of explicit negative samples. Currently, PyGCL supports the bootstrap-style contrastive learning as well contrastive learning within embeddings (such as Barlow Twins and VICReg).
+
+| Contrastive architectures    | Supported contrastive modes | Need negative samples | Class name             | Examples                                                     |
+| ---------------------------- | --------------------------- | :-------------------: | ---------------------- | ------------------------------------------------------------ |
+| Single-branch contrasting    | G2L only                    |           ✅           | `SingleBranchContrast` | [DGI](examples/DGI_transductive.py), [InfoGraph](examples/InfoGraph.py) |
+| Dual-branch contrasting      | L2L, G2G, and G2L           |           ✅           | `DualBranchContrast`   | [GRACE](examples/GRACE.py)                                   |
+| Bootstrapped contrasting     | L2L, G2G, and G2L           |           ❎           | `BootstrapContrast`    | [BGRL](examples/BGRL.py)                                     |
+| Within-embedding contrasting | L2L and G2G                 |           ❎           | `WithinEmbedContrast`  | [GBT](examples/GBT.py)                                       |
+
+Moreover, you can use `add_extra_mask` if you want to add positives or remove negatives. This function performs bitwise ADD to extra positive masks specified by `extra_pos_mask` and bitwise OR to extra negative masks specified by `extra_neg_mask`. It is helpful, for example, when you have supervision signals from labels and want to train the model in a semi-supervised manner.
+
+Internally, PyGCL calls `Sampler` classes in `GCL.models` that receive embeddings and produce positive/negative masks. PyGCL implements three contrasting modes: (a) Local-Local (L2L), (b) Global-Global (G2G), and (c) Global-Local (G2L) modes. L2L and G2G modes contrast embeddings at the same scale and the latter G2L one performs cross-scale contrasting. To implement your own GCL model, you may also use these provided sampler models:
+
+| Contrastive modes                    | Class name          |
+| ------------------------------------ | ------------------- |
+| Same-scale contrasting (L2L and G2G) | `SameScaleSampler`  |
+| Cross-scale contrasting (G2L)        | `CrossScaleSampler` |
+
+* For L2L and G2G, embedding pairs of the same node/graph in different views constitute positive pairs. You can refer to [GRACE](examples/GRACE.py) and [GraphCL](examples/GraphCL.py) for examples.
+* For G2L, node-graph embedding pairs form positives. Note that for single-graph datasets, the G2L mode requires explicit negative sampling (otherwise no negatives for contrasting). You can refer to [DGI](examples/DGI_transductive.py) for an example.
+* Some models (e.g., GRACE) add extra intra-view negative samples. You may manually call `sampler.add_intraview_negs` to enlarge the negative sample set.
+* Note that the bootstrapping latent model involves some special model design (asymmetric online/offline encoders and momentum weight updates). You may refer to [BGRL](examples/BGRL.py) for details.
+
+## Contrastive Objectives
+
+In `GCL.losses`, PyGCL implements the following contrastive objectives:
+
+| Contrastive objectives               | Class name        |
+| ------------------------------------ | ----------------- |
+| InfoNCE loss                         | `InfoNCE`         |
+| Jensen-Shannon Divergence (JSD) loss | `JSD`             |
+| Triplet Margin (TM) loss             | `Triplet`         |
+| Bootstrapping Latent (BL) loss       | `BootstrapLatent` |
+| Barlow Twins (BT) loss               | `BarlowTwins`     |
+| VICReg loss                          | `VICReg`          |
+
+All these objectives are able to contrast any arbitrary positive and negative pairs, except for Barlow Twins and VICReg losses that perform contrastive learning within embeddings. Moreover, for InfoNCE and Triplet losses, we further provide `SP` variants that computes contrastive objectives given only one positive pair per sample to speed up computation and avoid excessive memory consumption. 
+
+## Negative Sampling Strategies
+
+PyGCL further implements several negative sampling strategies:
+
+| Negative sampling strategies      | Class name                                              |
+| --------------------------------- | ------------------------------------------------------- |
+| Subsampling                       | `GCL.models.SubSampler`                                 |
+| Hard negative mixing              | `GCL.models.HardMixing`                                 |
+| Conditional negative sampling     | `GCL.models.Ring`                                       |
+| Debiased contrastive objective    | `GCL.losses.DebiasedInfoNCE `, `GCL.losses.DebiasedJSD` |
+| Hardness-biased negative sampling | `GCL.losses.HardnessInfoNCE`, `GCL.losses.HardnessJSD`  |
+
+The former three models serve as an additional sampling step similar to existing `Sampler ` ones and can be used in conjunction with any objectives. The last two objectives are only for InfoNCE and JSD losses.
+
+## Utilities
+
+PyGCL provides a variety of evaluator functions to evaluate the embedding quality:
+
+| Evaluator              | Class name     |
+| ---------------------- | -------------- |
+| Logistic regression    | `LREvaluator`  |
+| Support vector machine | `SVMEvaluator` |
+| Random forest          | `RFEvaluator`  |
+
+To use these evaluators, you first need to generate dataset splits by `get_split` (random split) or by `from_predefined_split` (according to preset splits).
+
+# 🌗Contribution
+
+Feel free to submit [issues](issues/new) should you find problems or [create pull requests](pulls) to add your own work!
