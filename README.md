@@ -44,7 +44,7 @@ We also implement utilities for training models, evaluating model performance, a
 
 For a quick start, please check out the `examples` folder. We currently implemented the following methods:
 
-* **DGI** (P. Veličković et al., Deep Graph Infomax, ICLR, 2019) [[Example1](examples/DGI_transductive.py), [Example2](DGI_inductive.py)]
+* **DGI** (P. Veličković et al., Deep Graph Infomax, ICLR, 2019) [[Example1](examples/DGI_transductive.py), [Example2](examples/DGI_inductive.py)]
 * **InfoGraph** (F.-Y. Sun et al., InfoGraph: Unsupervised and Semi-supervised Graph-Level Representation Learning via Mutual Information Maximization, ICLR, 2020) [[Example](examples/InfoGraph.py)]
 * **MVGRL** (K. Hassani et al., Contrastive Multi-View Representation Learning on Graphs, ICML, 2020) [[Example1](examples/MVGRL_node.py), [Example2](examples/MVGRL_graph.py)]
 * **GRACE** (Y. Zhu et al., Deep Graph Contrastive Representation Learning, GRL+@ICML, 2020) [[Example](examples/GRACE.py)]
@@ -81,7 +81,7 @@ In `GCL.augmentors`, PyGCL provides the `Augmentor` base class, which offers a u
 | Subgraphs induced by Random Walks (RWS)  | `RWSampling`      |
 | Ego-net Sampling (ES)                    | `Identity`        |
 
-Call these augmentation functions by feeding with a `Graph` in a tuple form of node features, edge index, and edge features `(x, edge_index, edge_attrs)`will produce corresponding augmented graphs.
+Call these augmentation functions by feeding with a `Graph` in a tuple form of node features, edge index, and edge features `(x, edge_index, edge_attrs)` will produce corresponding augmented graphs.
 
 ### Composite Augmentations
 PyGCL supports composing arbitrary numbers of augmentations together. To compose a list of augmentation instances `augmentors`, you need to use the `Compose` class:
@@ -106,7 +106,7 @@ aug = A.RandomChoice([A.RWSampling(num_seeds=1000, walk_length=10),
 
 ### Customizing Your Own Augmentation
 
-You can write your own augmentation functions by inherting the base `Augmentor` class and defining the `augment` function.
+You can write your own augmentation functions by inheriting the base `Augmentor` class and defining the `augment` function.
 
 ## Contrasting Architectures and Modes
 
