@@ -52,8 +52,6 @@ Our PyGCL implements four main components of graph contrastive learning algorith
 
 We also implement utilities for training models, evaluating model performance, and managing experiments.
 
-Install
-
 # 🌓Implementations and Examples
 
 For a quick start, please check out the `examples` folder. We currently implemented the following methods:
