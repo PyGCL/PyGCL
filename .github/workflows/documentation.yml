@@ -18,21 +18,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install PyTorch ${{ matrix.torch-version }}+cpu
+      - name: Install internal dependencies
         run: |
-          pip install torch==${{ matrix.torch-version}}+cpu -f https://download.pytorch.org/whl/torch_stable.html
-      - name: Install PyG and DGL
-        run: |
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-${{ matrix.torch-version }}+cpu.html
-          pip install torch-sparse -f https://data.pyg.org/whl/torch-${{ matrix.torch-version }}+cpu.html
-          pip install torch-geometric
-          pip install dgl -f https://data.dgl.ai/wheels/repo.html
+          cd docs && pip install --requirement requirements.txt
       - name: Install main package
         run: |
           pip install -e .
-      - name: Install other internal dependencies
-        run: |
-          cd docs && pip install --requirement requirements.txt
       - name: Build documentation
         run: |
           cd docs && make clean && make html SPHINXOPTS="-W"
