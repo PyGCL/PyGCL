@@ -16,8 +16,12 @@ from torch.distributions.bernoulli import Bernoulli
 def permute(x: torch.Tensor) -> torch.Tensor:
     """
     Randomly permute node embeddings or features.
-    :param x: The latent embedding or node feature.
-    :return: Embeddings or features resulting from permutation.
+
+    Args:
+        x: The latent embedding or node feature.
+
+    Returns:
+        torch.Tensor: Embeddings or features resulting from permutation.
     """
     return x[torch.randperm(x.size(0))]
 
@@ -25,8 +29,12 @@ def permute(x: torch.Tensor) -> torch.Tensor:
 def get_mixup_idx(x: torch.Tensor) -> torch.Tensor:
     """
     Generate node IDs randomly for mixup; avoid mixup the same node.
-    :param x: The latent embedding or node feature.
-    :return: Random node IDs.
+
+    Args:
+        x: The latent embedding or node feature.
+
+    Returns:
+        torch.Tensor: Random node IDs.
     """
     mixup_idx = torch.randint(x.size(0) - 1, [x.size(0)])
     mixup_self_mask = mixup_idx - torch.arange(x.size(0))
@@ -38,9 +46,13 @@ def get_mixup_idx(x: torch.Tensor) -> torch.Tensor:
 def mixup(x: torch.Tensor, alpha: float) -> torch.Tensor:
     """
     Randomly mixup node embeddings or features with other nodes'.
-    :param x: The latent embedding or node feature.
-    :param alpha: The hyperparameter controlling the mixup coefficient.
-    :return: Embeddings or features resulting from mixup.
+
+    Args:
+        x: The latent embedding or node feature.
+        alpha: The hyperparameter controlling the mixup coefficient.
+
+    Returns:
+        torch.Tensor: Embeddings or features resulting from mixup.
     """
     device = x.device
     mixup_idx = get_mixup_idx(x).to(device)
@@ -53,11 +65,15 @@ def multiinstance_mixup(x1: torch.Tensor, x2: torch.Tensor,
                         alpha: float, shuffle=False) -> (torch.Tensor, torch.Tensor):
     """
     Randomly mixup node embeddings or features with nodes from other views.
-    :param x1: The latent embedding or node feature from one view.
-    :param x2: The latent embedding or node feature from the other view.
-    :param alpha: The mixup coefficient `\lambda` follows `Beta(\alpha, \alpha)`.
-    :param shuffle: Whether to use fixed negative samples.
-    :return: Spurious positive samples and the mixup coefficient.
+
+    Args:
+        x1: The latent embedding or node feature from one view.
+        x2: The latent embedding or node feature from the other view.
+        alpha: The mixup coefficient `\lambda` follows `Beta(\alpha, \alpha)`.
+        shuffle: Whether to use fixed negative samples.
+
+    Returns:
+        (torch.Tensor, torch.Tensor): Spurious positive samples and the mixup coefficient.
     """
     device = x1.device
     lambda_ = Beta(alpha, alpha).sample([1]).to(device)
