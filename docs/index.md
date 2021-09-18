@@ -22,7 +22,15 @@ It also implements utilities for training models, evaluating model performance, 
 notes/installation
 ```
 
-# Package Reference
+```{toctree}
+:maxdepth: 1
+:caption: "Package Reference"
+:glob:
+
+modules/augmentors
+```
+
+# Indices and Tables
 
 * {ref}`genindex`
 * {ref}`modindex`
