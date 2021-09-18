@@ -1,0 +1,38 @@
+name: Documentation
+
+on: [push, pull_request]
+
+jobs:
+  make-documentation:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04 ]
+        python-version: [ 3.9 ]
+        torch-version: [ 1.9.0 ]
+
+    steps:
+      - uses: actions/checkout@main
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install PyTorch ${{ matrix.torch-version }}+cpu
+        run: |
+          pip install torch==${{ matrix.torch-version}}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+      - name: Install PyG and DGL
+        run: |
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-${{ matrix.torch-version }}+cpu.html
+          pip install torch-sparse -f https://data.pyg.org/whl/torch-${{ matrix.torch-version }}+cpu.html
+          pip install torch-geometric
+          pip install dgl -f https://data.dgl.ai/wheels/repo.html
+      - name: Install main package
+        run: |
+          pip install -e .
+      - name: Install other internal dependencies
+        run: |
+          cd docs && pip install --requirement requirements.txt
+      - name: Build documentation
+        run: |
+          make clean && make html SPHINXOPTS="-W"
