@@ -1,0 +1,27 @@
+name: flake8 Linting
+
+on: [push, pull_request]
+
+jobs:
+  flake8-lint:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04 ]
+        python-version: [ 3.9 ]
+        torch-version: [ 1.9.0 ]
+
+    name: Lint
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v2
+      - name: Set up Python environment
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: flake8 Lint
+        uses: py-actions/flake8@v1
+        with:
+          args: "--max-complexity=5"
+          max-line-length: "100"
