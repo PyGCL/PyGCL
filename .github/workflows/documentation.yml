@@ -35,4 +35,4 @@ jobs:
           cd docs && pip install --requirement requirements.txt
       - name: Build documentation
         run: |
-          make clean && make html SPHINXOPTS="-W"
+          cd docs && make clean && make html SPHINXOPTS="-W"
