@@ -10,11 +10,13 @@ version = GCL.__version__
 release = GCL.__version__
 
 extensions = [
+    'myst_parser',
     'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
+    'sphinx.ext.githubpages',
 ]
 
 intersphinx_mapping = {'python': ('https://docs.python.org/', None)}
