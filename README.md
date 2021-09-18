@@ -16,7 +16,9 @@ Graph Contrastive Learning (GCL) establishes a new paradigm for learning graph r
 
 👉 For a general introduction of GCL, please refer to our [paper](https://openreview.net/forum?id=fYxEnpY-__G) and [blog](https://sxkdz.github.io/research/GraphCL/). Also, this [repo](https://github.com/SXKDZ/awesome-self-supervised-learning-for-graphs) tracks newly published GCL papers.
 
-# 🌑Prerequisites
+# 🌑Install
+
+## Prerequisites
 
 PyGCL needs the following packages to be installed beforehand:
 
@@ -28,6 +30,16 @@ PyGCL needs the following packages to be installed beforehand:
 * Numpy
 * tqdm
 * NetworkX
+
+## Manual Installation
+
+To install PyGCL with [`pip`](https://pip.pypa.io/en/stable/), simply run:
+
+```
+pip install .
+```
+
+Then, you can import `GCL` from your current environment.
 
 # 🌒Package Overview
 
@@ -179,4 +191,22 @@ To use these evaluators, you first need to generate dataset splits by `get_split
 
 # 🌗Contribution
 
-Feel free to submit [issues](issues/new) should you find problems or [create pull requests](pulls) to add your own work!
+Feel free to open an [issue](issues/new) should you find anything unexpected or [create pull requests](pulls) to add your own work! We are motivated to continuously make PyGCL even better.
+
+# 🌔Citation
+
+Please cite [our paper](https://arxiv.org/abs/2109.01116) if you use this code in your own work:
+
+```
+@article{Zhu:2021tu,
+author = {Zhu, Yanqiao and Xu, Yichen and Liu, Qiang and Wu, Shu},
+title = {{An Empirical Study of Graph Contrastive Learning}},
+journal = {arXiv.org},
+year = {2021},
+eprint = {2109.01116v1},
+eprinttype = {arxiv},
+eprintclass = {cs.LG},
+month = sep,
+}
+```
+
