@@ -1,0 +1,29 @@
+name: Documentation
+
+on: [push, pull_request]
+
+jobs:
+  make-documentation:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04 ]
+        python-version: [ 3.9 ]
+        torch-version: [ 1.9.0 ]
+
+    steps:
+      - uses: actions/checkout@main
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install internal dependencies
+        run: |
+          cd docs && pip install --requirement requirements.txt
+      - name: Install main package
+        run: |
+          pip install -e .
+      - name: Build documentation
+        run: |
+          cd docs && make clean && make html SPHINXOPTS="-W"

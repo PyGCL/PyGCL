@@ -31,12 +31,12 @@ PyGCL needs the following packages to be installed beforehand:
 * tqdm
 * NetworkX
 
-## Manual Installation
+## Installation via PyPI
 
 To install PyGCL with [`pip`](https://pip.pypa.io/en/stable/), simply run:
 
 ```
-pip install .
+pip install PyGCL
 ```
 
 Then, you can import `GCL` from your current environment.

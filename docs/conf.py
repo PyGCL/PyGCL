@@ -43,11 +43,7 @@ html_theme_options = {
     'navigation_depth': 2,
     'display_version': True,
 }
-
-html_static_path = ['_static']
-
 add_module_names = False
-
 
 rst_context = {'GCL': GCL}
 
