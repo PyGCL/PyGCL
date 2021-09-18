@@ -4,6 +4,8 @@
 :local:
 ```
 
+## Available Augmentors
+
 ```{eval-rst}
 .. currentmodule:: GCL.augmentors
 
