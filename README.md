@@ -1,12 +1,28 @@
+[pygcl-url]: https://github.com/GraphCL/PyGCL
+[pypi-img]: https://img.shields.io/pypi/v/PyGCL
+[pypi-url]: https://pypi.org/project/PyGCL
+[python-img]: https://img.shields.io/github/languages/top/GraphCL/PyGCL?color=lightgrey
+[stars-img]: https://img.shields.io/github/stars/GraphCL/PyGCL?color=yellow
+[stars-url]: https://github.com/GraphCL/PyGCL/stargazers
+[fork-img]: https://img.shields.io/github/forks/GraphCL/PyGCL?color=lightblue&label=fork
+[fork-url]: https://github.com/GraphCL/PyGCL/network/members
+[doc-img]: https://readthedocs.org/projects/pygcl/badge/?version=latest
+[doc-url]: https://pygcl.readthedocs.io/en/latest/?badge=latest
+[lines-img]: https://img.shields.io/tokei/lines/github/GraphCL/PyGCL?color=red
+[visitors-img]: https://visitor-badge.glitch.me/badge?page_id=GraphCL.PyGCL
+
+
 # 🌝🌚PyGCL: Graph Contrastive Learning for PyTorch
 
 PyGCL is an open-source Graph Contrastive Learning (GCL) library for [PyTorch](https://pytorch.org), which features modularized GCL components from published papers, standardized evaluation, and experiment management.
 
-[![Made with Python](https://img.shields.io/github/languages/top/GraphCL/PyGCL?color=lightgrey)](https://github.com/GraphCL/PyGCL)
-[![GitHub stars](https://img.shields.io/github/stars/GraphCL/PyGCL?color=yellow)](https://github.com/GraphCL/PyGCL/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/GraphCL/PyGCL?color=brightgreen&label=fork)](https://github.com/GraphCL/PyGCL/network/members)
-[![Total lines](https://img.shields.io/tokei/lines/github/GraphCL/PyGCL?color=red)](https://github.com/GraphCL/PyGCL)
-[![visitors](https://visitor-badge.glitch.me/badge?page_id=GraphCL.PyGCL)](https://github.com/GraphCL/PyGCL)
+[![Made with Python][python-img]][pygcl-url]
+[![PyPI version][pypi-img]][pypi-url]
+[![Documentation Status][doc-img]][doc-url]
+[![GitHub stars][stars-img]][stars-url]
+[![GitHub forks][fork-img]][fork-url]
+[![Total lines][lines-img]][pygcl-url]
+[![visitors][visitors-img]][pygcl-url]
 
 ---
 
@@ -79,19 +95,19 @@ Besides try the above examples for node and graph classification tasks, you can 
 
 In `GCL.augmentors`, PyGCL provides the `Augmentor` base class, which offers a universal interface for graph augmentation functions. Specifically, PyGCL implements the following augmentation functions:
 
-| Augmentation                             | Class name        |
-| ---------------------------------------- | ----------------- |
-| Edge Adding (EA)                         | `EdgeAdding`      |
-| Edge Removing (ER)                       | `EdgeRemoving`    |
-| Feature Masking (FM)                     | `FeatureMasking`  |
-| Feature Dropout (FD)                     | `FeatureDropout`  |
-| Edge Attribute Masking (EAR)             | `EdgeAttrMasking` |
-| Personalized PageRank (PPR)              | `PPRDiffusion`    |
-| Markov Diffusion Kernel (MDK)            | `MarkovDiffusion` |
-| Node Dropping (ND)                       | `NodeDropping`    |
-| Node Shuffling (NS)                      | `NodeShuffling`   |
-| Subgraphs induced by Random Walks (RWS)  | `RWSampling`      |
-| Ego-net Sampling (ES)                    | `Identity`        |
+| Augmentation                            | Class name        |
+| --------------------------------------- | ----------------- |
+| Edge Adding (EA)                        | `EdgeAdding`      |
+| Edge Removing (ER)                      | `EdgeRemoving`    |
+| Feature Masking (FM)                    | `FeatureMasking`  |
+| Feature Dropout (FD)                    | `FeatureDropout`  |
+| Edge Attribute Masking (EAR)            | `EdgeAttrMasking` |
+| Personalized PageRank (PPR)             | `PPRDiffusion`    |
+| Markov Diffusion Kernel (MDK)           | `MarkovDiffusion` |
+| Node Dropping (ND)                      | `NodeDropping`    |
+| Node Shuffling (NS)                     | `NodeShuffling`   |
+| Subgraphs induced by Random Walks (RWS) | `RWSampling`      |
+| Ego-net Sampling (ES)                   | `Identity`        |
 
 Call these augmentation functions by feeding with a `Graph` in a tuple form of node features, edge index, and edge features `(x, edge_index, edge_attrs)` will produce corresponding augmented graphs.
 
