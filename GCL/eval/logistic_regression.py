@@ -39,7 +39,7 @@ class LREvaluator(BaseEvaluator):
 
         best_val_micro = 0
         best_test_micro = 0
-        best_test_macro = 1
+        best_test_macro = 0
         best_epoch = 0
 
         with tqdm(total=self.num_epochs, desc='(LR)',
@@ -76,5 +76,5 @@ class LREvaluator(BaseEvaluator):
 
         return {
             'micro_f1': best_test_micro,
-            'macro_f1': best_val_micro
+            'macro_f1': best_test_macro
         }
