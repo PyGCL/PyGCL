@@ -30,7 +30,7 @@ PyGCL is an open-source Graph Contrastive Learning (GCL) library for [PyTorch](h
 
 Graph Contrastive Learning (GCL) establishes a new paradigm for learning graph representations without human annotations. A typical GCL algorithm firstly constructs multiple graph views via stochastic augmentation of the input and then learns representations by contrasting positive samples against negative ones.
 
-👉 For a general introduction of GCL, please refer to our [paper](https://openreview.net/forum?id=fYxEnpY-__G) and [blog](https://sxkdz.github.io/research/GraphCL/). Also, this [repo](https://github.com/SXKDZ/awesome-self-supervised-learning-for-graphs) tracks newly published GCL papers.
+👉 For a general introduction of GCL, please refer to our [paper](https://arxiv.org/abs/2109.01116) and [blog](https://sxkdz.github.io/research/GraphCL/). Also, this [repo](https://github.com/SXKDZ/awesome-self-supervised-learning-for-graphs) tracks newly published GCL papers.
 
 # 🌑Install
 
