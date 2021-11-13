@@ -37,7 +37,8 @@ class PyGAugmentor(Augmentor):
         self.augmentor = augmentor
 
     def pyg_augment(self, g: PyGGraph):
-        return self.augmentor(g)
+        g_new = g.clone()
+        return self.augmentor(g_new)
 
     def dgl_augment(self, g: DGLGraph):
         raise NotImplementedError
@@ -65,6 +66,12 @@ class Compose(Augmentor):
             g = aug.augment(g)
         return g
 
+    def pyg_augment(self, g: PyGGraph):
+        raise NotImplementedError
+
+    def dgl_augment(self, g: DGLGraph):
+        raise NotImplementedError
+
 
 class RandomChoice(Augmentor):
     def __init__(self, augmentors: List[Augmentor], num_choices: int):
@@ -82,6 +89,12 @@ class RandomChoice(Augmentor):
             g = aug.augment(g)
         return g
 
+    def pyg_augment(self, g: PyGGraph):
+        raise NotImplementedError
+
+    def dgl_augment(self, g: DGLGraph):
+        raise NotImplementedError
+
 
 if __name__ == '__main__':
     import dgl
@@ -95,9 +108,11 @@ if __name__ == '__main__':
     data = dataset[0]
 
     aug1 = PyGAugmentor(T.Constant(1))
-    print(aug1(data))
+    aug2 = PyGAugmentor(T.Constant(2))
+    comp_aug = Compose([aug1, aug2])
+    print(comp_aug(data))
 
     g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
     f = partial(dgl.add_edges, u=torch.tensor([1, 3]), v=torch.tensor([0, 1]))
-    aug2 = DGLAugmentor(f)
-    print(aug2(g))
+    aug = DGLAugmentor(f)
+    print(aug(g))
