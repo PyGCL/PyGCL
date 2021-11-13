@@ -3,8 +3,8 @@ from __future__ import annotations
 import torch
 from dgl import DGLGraph
 from abc import ABC, abstractmethod
-from typing import Optional, List
-from torch_geometric.data import Data
+from typing import Optional, List, Callable
+from torch_geometric.data import Data as PyGGraph
 
 
 class Augmentor(ABC):
@@ -12,10 +12,10 @@ class Augmentor(ABC):
     def __init__(self):
         pass
 
-    def augment(self, g: Optional[DGLGraph, Data]):
+    def augment(self, g: Optional[DGLGraph, PyGGraph]):
         if isinstance(g, DGLGraph):
             return self.dgl_augment(g)
-        elif isinstance(g, Data):
+        elif isinstance(g, PyGGraph):
             return self.pyg_augment(g)
 
     @abstractmethod
@@ -23,12 +23,36 @@ class Augmentor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def pyg_augment(self, g: Data):
+    def pyg_augment(self, g: PyGGraph):
         raise NotImplementedError
 
-    def __call__(self, g: Optional[DGLGraph, Data]):
-        assert isinstance(g, DGLGraph) or isinstance(g, Data)
+    def __call__(self, g: Optional[DGLGraph, PyGGraph]):
+        assert isinstance(g, DGLGraph) or isinstance(g, PyGGraph)
         return self.augment(g)
+
+
+class PyGAugmentor(Augmentor):
+    def __init__(self, augmentor: Callable):
+        super(PyGAugmentor, self).__init__()
+        self.augmentor = augmentor
+
+    def pyg_augment(self, g: PyGGraph):
+        return self.augmentor(g)
+
+    def dgl_augment(self, g: DGLGraph):
+        raise NotImplementedError
+
+
+class DGLAugmentor(Augmentor):
+    def __init__(self, augmentor: Callable):
+        super(DGLAugmentor, self).__init__()
+        self.augmentor = augmentor
+
+    def pyg_augment(self, g: PyGGraph):
+        raise NotImplementedError
+
+    def dgl_augment(self, g: DGLGraph):
+        return self.augmentor(g)
 
 
 class Compose(Augmentor):
@@ -57,3 +81,23 @@ class RandomChoice(Augmentor):
             aug = self.augmentors[i]
             g = aug.augment(g)
         return g
+
+
+if __name__ == '__main__':
+    import dgl
+    import os.path as osp
+    import torch_geometric.transforms as T
+    from functools import partial
+    from torch_geometric.datasets import Planetoid
+
+    path = osp.join(osp.expanduser('~'), 'datasets')
+    dataset = Planetoid(path, name='Cora', transform=T.NormalizeFeatures())
+    data = dataset[0]
+
+    aug1 = PyGAugmentor(T.Constant(1))
+    print(aug1(data))
+
+    g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
+    f = partial(dgl.add_edges, u=torch.tensor([1, 3]), v=torch.tensor([0, 1]))
+    aug2 = DGLAugmentor(f)
+    print(aug2(g))
