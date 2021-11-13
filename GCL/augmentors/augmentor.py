@@ -1,17 +1,10 @@
 from __future__ import annotations
 
 import torch
+from dgl import DGLGraph
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple, NamedTuple, List
-
-
-class Graph(NamedTuple):
-    x: torch.FloatTensor
-    edge_index: torch.LongTensor
-    edge_weights: Optional[torch.FloatTensor]
-
-    def unfold(self) -> Tuple[torch.FloatTensor, torch.LongTensor, Optional[torch.FloatTensor]]:
-        return self.x, self.edge_index, self.edge_weights
+from typing import Optional, List
+from torch_geometric.data import Data
 
 
 class Augmentor(ABC):
@@ -19,15 +12,23 @@ class Augmentor(ABC):
     def __init__(self):
         pass
 
-    @abstractmethod
-    def augment(self, g: Graph) -> Graph:
-        raise NotImplementedError(f"GraphAug.augment should be implemented.")
+    def augment(self, g: Optional[DGLGraph, Data]):
+        if isinstance(g, DGLGraph):
+            return self.dgl_augment(g)
+        elif isinstance(g, Data):
+            return self.pyg_augment(g)
 
-    def __call__(
-            self, x: torch.FloatTensor,
-            edge_index: torch.LongTensor, edge_weight: Optional[torch.FloatTensor] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
-        return self.augment(Graph(x, edge_index, edge_weight)).unfold()
+    @abstractmethod
+    def dgl_augment(self, g: DGLGraph):
+        raise NotImplementedError
+
+    @abstractmethod
+    def pyg_augment(self, g: Data):
+        raise NotImplementedError
+
+    def __call__(self, g: Optional[DGLGraph, Data]):
+        assert isinstance(g, DGLGraph) or isinstance(g, Data)
+        return self.augment(g)
 
 
 class Compose(Augmentor):
@@ -35,7 +36,7 @@ class Compose(Augmentor):
         super(Compose, self).__init__()
         self.augmentors = augmentors
 
-    def augment(self, g: Graph) -> Graph:
+    def augment(self, g):
         for aug in self.augmentors:
             g = aug.augment(g)
         return g
@@ -48,7 +49,7 @@ class RandomChoice(Augmentor):
         self.augmentors = augmentors
         self.num_choices = num_choices
 
-    def augment(self, g: Graph) -> Graph:
+    def augment(self, g):
         num_augmentors = len(self.augmentors)
         perm = torch.randperm(num_augmentors)
         idx = perm[:self.num_choices]
