@@ -73,20 +73,17 @@ class BaseEvaluator(ABC):
         return result
 
 
-class BaseSKLearnEvaluator(BaseEvaluator):
-    def __init__(self, evaluator, params):
+class BaseSKLearnEvaluator:
+    def __init__(self, evaluator, param_grid, cv, scoring, refit):
         self.evaluator = evaluator
-        self.params = params
+        self.param_grid = param_grid
+        self.cv = cv
+        self.scoring = scoring
+        self.refit = refit
 
-    def evaluate(self, x, y, split):
-        x_train, x_test, x_val, y_train, y_test, y_val = split_to_numpy(x, y, split)
-        ps, [x_train, y_train] = get_predefined_split(x_train, x_val, y_train, y_val)
-        classifier = GridSearchCV(self.evaluator, self.params, cv=ps, scoring='accuracy', verbose=0)
-        classifier.fit(x_train, y_train)
-        test_macro = f1_score(y_test, classifier.predict(x_test), average='macro')
-        test_micro = f1_score(y_test, classifier.predict(x_test), average='micro')
-
-        return {
-            'micro_f1': test_micro,
-            'macro_f1': test_macro,
-        }
+    def evaluate(self, x, y):
+        classifier = GridSearchCV(
+            self.evaluator, param_grid=self.param_grid, cv=self.cv, scoring=self.scoring, refit=self.refit,
+            verbose=0, return_train_score=True)
+        classifier.fit(x, y)
+        return classifier.cv_results_
