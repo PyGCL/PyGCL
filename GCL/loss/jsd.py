@@ -1,7 +1,7 @@
 import numpy as np
 import torch.nn.functional as F
 
-from .loss import Loss
+from GCL.loss import Loss
 
 
 class JSD(Loss):

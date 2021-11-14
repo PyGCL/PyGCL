@@ -1,5 +1,6 @@
 import torch
-from .loss import Loss
+
+from GCL.loss import Loss
 
 
 class TripletMarginSP(Loss):
