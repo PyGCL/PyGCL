@@ -1,4 +1,5 @@
 import torch
+
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from torch_scatter import scatter
@@ -14,7 +15,9 @@ class DefaultSampler:
     def __call__(self, anchor: torch.Tensor, sample: torch.Tensor) -> ContrastInstance:
         return self.sample(anchor, sample)
 
-    def sample(self, anchor: torch.Tensor, sample: torch.Tensor) -> ContrastInstance:
+    @staticmethod
+    def sample(anchor: torch.Tensor, sample: torch.Tensor) -> ContrastInstance:
+        assert anchor.size(0) == sample.size(0) and anchor.size(1) == sample.size(1)
         return ContrastInstance(anchor=anchor, sample=sample, pos_mask=None, neg_mask=None)
 
 
