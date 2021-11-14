@@ -1,6 +1,6 @@
 import torch
 import os.path as osp
-import GCL.losses as L
+import GCL.loss as L
 import torch_geometric.transforms as T
 
 from torch import nn

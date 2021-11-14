@@ -1,6 +1,6 @@
 import torch
 import os.path as osp
-import GCL.losses as L
+import GCL.loss as L
 import GCL.augmentors as A
 
 from torch import nn

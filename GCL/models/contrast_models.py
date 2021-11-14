@@ -2,7 +2,7 @@ import torch
 
 from typing import Optional
 
-from GCL.losses import Loss
+from GCL.loss import Loss
 from GCL.models import get_dense_sampler
 from GCL.models.samplers import DenseSampler, DefaultSampler, ContrastInstance
 

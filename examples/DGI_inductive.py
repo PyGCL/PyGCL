@@ -1,6 +1,6 @@
 import torch
 import os.path as osp
-import GCL.losses as L
+import GCL.loss as L
 
 from torch import nn
 from tqdm import tqdm

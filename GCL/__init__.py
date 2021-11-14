@@ -1,4 +1,4 @@
-import GCL.losses
+import GCL.loss
 import GCL.augmentors
 import GCL.eval
 import GCL.models
@@ -8,7 +8,7 @@ __version__ = '0.1.0'
 
 __all__ = [
     '__version__',
-    'losses',
+    'loss',
     'augmentors',
     'eval',
     'models',

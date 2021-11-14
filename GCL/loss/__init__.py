@@ -4,7 +4,7 @@ from .infonce import InfoNCE, InfoNCESP, DebiasedInfoNCE, HardnessInfoNCE
 from .triplet import TripletMargin, TripletMarginSP
 from .bootstrap import BootstrapLatent
 from .barlow_twins import BarlowTwins
-from .losses import Loss
+from .loss import Loss
 
 __all__ = [
     'Loss',
