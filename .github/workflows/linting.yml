@@ -24,4 +24,4 @@ jobs:
         uses: py-actions/flake8@v1
         with:
           args: "--max-complexity=5"
-          max-line-length: "120"
+          max-line-length: "100"
