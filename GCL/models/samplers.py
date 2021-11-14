@@ -1,11 +1,17 @@
 import torch
 
 from abc import ABC, abstractmethod
-from collections import namedtuple
+from typing import Optional
+from dataclasses import dataclass
 from torch_scatter import scatter
 
 
-ContrastInstance = namedtuple('ContrastInstance', ['anchor', 'sample', 'pos_mask', 'neg_mask'])
+@dataclass
+class ContrastInstance:
+    anchor: torch.Tensor
+    sample: torch.Tensor
+    pos_mask: Optional[torch.Tensor] = None
+    neg_mask: Optional[torch.Tensor] = None
 
 
 class DefaultSampler:
@@ -92,7 +98,7 @@ class CrossScaleDenseSampler(DenseSampler):
                     pos_mask[graph_idx][node_idx] = 1.                              # M * N
 
         neg_mask = 1. - pos_mask
-        return anchor, sample, pos_mask, neg_mask
+        return ContrastInstance(anchor=anchor, sample=sample, pos_mask=pos_mask, neg_mask=neg_mask)
 
 
 def get_dense_sampler(mode: str, intraview_negs: bool) -> DenseSampler:
