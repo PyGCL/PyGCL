@@ -1,5 +1,5 @@
-from GCL.augmentors.augmentor import Graph, Augmentor
-from GCL.augmentors.functional import compute_markov_diffusion
+from GCL.augmentor.augmentor import Augmentor
+from GCL.augmentor.functional import compute_markov_diffusion
 
 
 class MarkovDiffusion(Augmentor):

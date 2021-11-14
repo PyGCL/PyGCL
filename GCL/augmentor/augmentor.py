@@ -8,7 +8,7 @@ from torch_geometric.data import Data as PyGGraph
 
 
 class Augmentor(ABC):
-    """Base class for graph augmentors."""
+    """Base class for graph augmentor."""
     def __init__(self):
         pass
 

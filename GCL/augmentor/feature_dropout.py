@@ -1,5 +1,5 @@
-from GCL.augmentors.augmentor import Graph, Augmentor
-from GCL.augmentors.functional import dropout_feature
+from GCL.augmentor.augmentor import Augmentor
+from GCL.augmentor.functional import dropout_feature
 
 
 class FeatureDropout(Augmentor):

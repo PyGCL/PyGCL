@@ -1,4 +1,4 @@
-from .augmentor import Graph, Augmentor, Compose, RandomChoice
+from .augmentor import Augmentor, Compose, RandomChoice
 from .identity import Identity
 from .rw_sampling import RWSampling
 from .ppr_diffusion import PPRDiffusion
@@ -12,7 +12,6 @@ from .feature_dropout import FeatureDropout
 from .edge_attr_masking import EdgeAttrMasking
 
 __all__ = [
-    'Graph',
     'Augmentor',
     'Compose',
     'RandomChoice',

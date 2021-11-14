@@ -1,5 +1,5 @@
-from GCL.augmentors.augmentor import Graph, Augmentor
-from GCL.augmentors.functional import dropout_adj
+from GCL.augmentor.augmentor import Augmentor
+from GCL.augmentor.functional import dropout_adj
 
 
 class EdgeRemoving(Augmentor):

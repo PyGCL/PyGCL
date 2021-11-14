@@ -1,5 +1,5 @@
-from GCL.augmentors.augmentor import Graph, Augmentor
-from GCL.augmentors.functional import add_edge
+from GCL.augmentor.augmentor import Graph, Augmentor
+from GCL.augmentor.functional import add_edge
 
 
 class EdgeAdding(Augmentor):
