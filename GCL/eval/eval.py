@@ -3,8 +3,7 @@ import numpy as np
 
 from abc import ABC, abstractmethod
 from typing import Union, Callable, List, Dict, Optional
-from sklearn.metrics import f1_score
-from sklearn.model_selection import PredefinedSplit, GridSearchCV, BaseCrossValidator
+from sklearn.model_selection import GridSearchCV, BaseCrossValidator
 
 
 def get_split(num_samples: int, train_ratio: float = 0.1, test_ratio: float = 0.8):
@@ -36,16 +35,6 @@ def split_to_numpy(x, y, split):
     return [obj[split[key]].detach().cpu().numpy() for obj in objs for key in keys]
 
 
-def get_predefined_split(x_train, x_val, y_train, y_val, return_array=True):
-    test_fold = np.concatenate([-np.ones_like(y_train), np.zeros_like(y_val)])
-    ps = PredefinedSplit(test_fold)
-    if return_array:
-        x = np.concatenate([x_train, x_val], axis=0)
-        y = np.concatenate([y_train, y_val], axis=0)
-        return ps, [x, y]
-    return ps
-
-
 class BaseEvaluator(ABC):
     def __init__(
             self, split: Union[Dict, List[Dict]],
@@ -65,10 +54,10 @@ class BaseEvaluator(ABC):
             self.stop_metric = stop_metric
 
     @abstractmethod
-    def evaluate(self, x: torch.FloatTensor, y: torch.LongTensor) -> dict:
+    def evaluate(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> dict:
         raise NotImplementedError
 
-    def __call__(self, x: torch.FloatTensor, y: torch.LongTensor) -> dict:
+    def __call__(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> dict:
         result = self.evaluate(x, y)
         return result
 
