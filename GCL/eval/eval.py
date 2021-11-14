@@ -2,8 +2,9 @@ import torch
 import numpy as np
 
 from abc import ABC, abstractmethod
+from typing import Union, Callable, List, Dict, Optional
 from sklearn.metrics import f1_score
-from sklearn.model_selection import PredefinedSplit, GridSearchCV
+from sklearn.model_selection import PredefinedSplit, GridSearchCV, BaseCrossValidator
 
 
 def get_split(num_samples: int, train_ratio: float = 0.1, test_ratio: float = 0.8):
@@ -46,15 +47,29 @@ def get_predefined_split(x_train, x_val, y_train, y_val, return_array=True):
 
 
 class BaseEvaluator(ABC):
+    def __init__(
+            self, split: Union[Dict, List[Dict]],
+            metric: Union[Callable, List[Callable]], stop_metric: Union[None, Callable, int] = None,
+            cv: Optional[BaseCrossValidator] = None):
+        self.cv = cv
+        self.split = split
+        self.metric = metric
+        if cv is None and stop_metric is None:
+            stop_metric = 0
+        if isinstance(stop_metric, int):
+            if isinstance(metric, list):
+                self.stop_metric = metric[stop_metric]
+            else:
+                raise ValueError
+        else:
+            self.stop_metric = stop_metric
+
     @abstractmethod
-    def evaluate(self, x: torch.FloatTensor, y: torch.LongTensor, split: dict) -> dict:
-        pass
+    def evaluate(self, x: torch.FloatTensor, y: torch.LongTensor) -> dict:
+        raise NotImplementedError
 
-    def __call__(self, x: torch.FloatTensor, y: torch.LongTensor, split: dict) -> dict:
-        for key in ['train', 'test', 'valid']:
-            assert key in split
-
-        result = self.evaluate(x, y, split)
+    def __call__(self, x: torch.FloatTensor, y: torch.LongTensor) -> dict:
+        result = self.evaluate(x, y)
         return result
 
 
