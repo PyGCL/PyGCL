@@ -7,7 +7,7 @@ import torch_geometric.transforms as T
 from tqdm import tqdm
 from torch.optim import Adam
 from GCL.eval import get_split, LREvaluator
-from GCL.models.contrast_model import WithinEmbedContrast
+from GCL.models.contrast_models import WithinEmbedContrast
 from torch_geometric.nn import GCNConv
 from torch_geometric.datasets import WikiCS
 from pl_bolts.optimizers import LinearWarmupCosineAnnealingLR

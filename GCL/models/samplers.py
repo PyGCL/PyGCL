@@ -1,24 +1,40 @@
 import torch
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from torch_scatter import scatter
 
 
-class Sampler(ABC):
+ContrastInstance = namedtuple('ContrastInstance', ['anchor', 'sample', 'pos_mask', 'neg_mask'])
+
+
+class DefaultSampler:
+    def __init__(self):
+        pass
+
+    def __call__(self, anchor: torch.Tensor, sample: torch.Tensor) -> ContrastInstance:
+        return self.sample(anchor, sample)
+
+    def sample(self, anchor: torch.Tensor, sample: torch.Tensor) -> ContrastInstance:
+        return ContrastInstance(anchor=anchor, sample=sample, pos_mask=None, neg_mask=None)
+
+
+class DenseSampler(ABC):
     def __init__(self, intraview_negs=False):
         self.intraview_negs = intraview_negs
 
-    def __call__(self, anchor, sample, *args, **kwargs):
+    def __call__(self, anchor: torch.Tensor, sample: torch.Tensor, *args, **kwargs) -> ContrastInstance:
         ret = self.sample(anchor, sample, *args, **kwargs)
         if self.intraview_negs:
-            ret = self.add_intraview_negs(*ret)
+            ret = self.add_intraview_negs(ret)
         return ret
 
     @abstractmethod
-    def sample(self, anchor, sample, *args, **kwargs):
-        pass
+    def sample(self, anchor: torch.Tensor, sample: torch.Tensor, *args, **kwargs) -> ContrastInstance:
+        raise NotImplementedError
 
     @staticmethod
-    def add_intraview_negs(anchor, sample, pos_mask, neg_mask):
+    def add_intraview_negs(contrast_instance: ContrastInstance) -> ContrastInstance:
+        anchor, sample, pos_mask, neg_mask = contrast_instance
         num_nodes = anchor.size(0)
         device = anchor.device
         intraview_pos_mask = torch.zeros_like(pos_mask, device=device)
@@ -26,27 +42,31 @@ class Sampler(ABC):
         new_sample = torch.cat([sample, anchor], dim=0)                     # (M+N) * K
         new_pos_mask = torch.cat([pos_mask, intraview_pos_mask], dim=1)     # M * (M+N)
         new_neg_mask = torch.cat([neg_mask, intraview_neg_mask], dim=1)     # M * (M+N)
-        return anchor, new_sample, new_pos_mask, new_neg_mask
+        return ContrastInstance(anchor=anchor, sample=new_sample, pos_mask=new_pos_mask, neg_mask=new_neg_mask)
 
 
-class SameScaleSampler(Sampler):
+class SameScaleDenseSampler(DenseSampler):
     def __init__(self, *args, **kwargs):
-        super(SameScaleSampler, self).__init__(*args, **kwargs)
+        super(SameScaleDenseSampler, self).__init__(*args, **kwargs)
 
-    def sample(self, anchor, sample, *args, **kwargs):
+    def sample(self, anchor: torch.Tensor, sample: torch.Tensor, *args, **kwargs) -> ContrastInstance:
         assert anchor.size(0) == sample.size(0)
         num_nodes = anchor.size(0)
         device = anchor.device
         pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
         neg_mask = 1. - pos_mask
-        return anchor, sample, pos_mask, neg_mask
+        return ContrastInstance(anchor=anchor, sample=sample, pos_mask=pos_mask, neg_mask=neg_mask)
 
 
-class CrossScaleSampler(Sampler):
+class CrossScaleDenseSampler(DenseSampler):
     def __init__(self, *args, **kwargs):
-        super(CrossScaleSampler, self).__init__(*args, **kwargs)
+        super(CrossScaleDenseSampler, self).__init__(*args, **kwargs)
 
-    def sample(self, anchor, sample, batch=None, neg_sample=None, use_gpu=True, *args, **kwargs):
+    def sample(
+            self,
+            anchor: torch.Tensor, sample: torch.Tensor,
+            batch: torch.Tensor = None, neg_sample: torch.Tensor = None,
+            use_gpu: bool = True, *args, **kwargs) -> ContrastInstance:
         num_graphs = anchor.shape[0]  # M
         num_nodes = sample.shape[0]   # N
         device = sample.device
@@ -72,10 +92,10 @@ class CrossScaleSampler(Sampler):
         return anchor, sample, pos_mask, neg_mask
 
 
-def get_sampler(mode: str, intraview_negs: bool) -> Sampler:
+def get_dense_sampler(mode: str, intraview_negs: bool) -> DenseSampler:
     if mode in {'L2L', 'G2G'}:
-        return SameScaleSampler(intraview_negs=intraview_negs)
+        return SameScaleDenseSampler(intraview_negs=intraview_negs)
     elif mode == 'G2L':
-        return CrossScaleSampler(intraview_negs=intraview_negs)
+        return CrossScaleDenseSampler(intraview_negs=intraview_negs)
     else:
-        raise RuntimeError(f'unsupported mode: {mode}')
+        raise RuntimeError(f'Unsupported mode: {mode}')

@@ -1,7 +1,7 @@
 import torch
 
 from GCL.losses import Loss
-from GCL.models import get_sampler
+from GCL.models import get_dense_sampler
 
 
 def add_extra_mask(pos_mask, neg_mask=None, extra_pos_mask=None, extra_neg_mask=None):
@@ -20,7 +20,7 @@ class SingleBranchContrast(torch.nn.Module):
         assert mode == 'G2L'  # only global-local pairs allowed in single-branch contrastive learning
         self.loss = loss
         self.mode = mode
-        self.sampler = get_sampler(mode, intraview_negs=intraview_negs)
+        self.sampler = get_dense_sampler(mode, intraview_negs=intraview_negs)
         self.kwargs = kwargs
 
     def forward(self, h, g, batch=None, hn=None, extra_pos_mask=None, extra_neg_mask=None):
@@ -41,7 +41,7 @@ class DualBranchContrast(torch.nn.Module):
         super(DualBranchContrast, self).__init__()
         self.loss = loss
         self.mode = mode
-        self.sampler = get_sampler(mode, intraview_negs=intraview_negs)
+        self.sampler = get_dense_sampler(mode, intraview_negs=intraview_negs)
         self.kwargs = kwargs
 
     def forward(self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None,
@@ -77,7 +77,7 @@ class BootstrapContrast(torch.nn.Module):
         super(BootstrapContrast, self).__init__()
         self.loss = loss
         self.mode = mode
-        self.sampler = get_sampler(mode, intraview_negs=False)
+        self.sampler = get_dense_sampler(mode, intraview_negs=False)
 
     def forward(self, h1_pred=None, h2_pred=None, h1_target=None, h2_target=None,
                 g1_pred=None, g2_pred=None, g1_target=None, g2_target=None,
