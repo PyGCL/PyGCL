@@ -3,8 +3,8 @@ import torch
 from typing import Optional
 
 from GCL.loss import Loss
-from GCL.models import get_dense_sampler
-from GCL.models.samplers import DenseSampler, DefaultSampler, ContrastInstance
+from GCL.model import get_dense_sampler
+from GCL.model.sampler import DenseSampler, DefaultSampler, ContrastInstance
 
 
 def add_extra_mask(contrast_instance: ContrastInstance, extra_pos_mask=None, extra_neg_mask=None):

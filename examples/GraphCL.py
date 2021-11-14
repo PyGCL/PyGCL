@@ -8,7 +8,7 @@ from torch import nn
 from tqdm import tqdm
 from torch.optim import Adam
 from GCL.eval import get_split, SVMEvaluator
-from GCL.models import DualBranchContrast
+from GCL.model import DualBranchContrast
 from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.data import DataLoader
 from torch_geometric.datasets import TUDataset

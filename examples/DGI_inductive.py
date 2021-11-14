@@ -6,7 +6,7 @@ from torch import nn
 from tqdm import tqdm
 from torch.optim import Adam
 from GCL.eval import get_split, LREvaluator
-from GCL.models import SingleBranchContrast
+from GCL.model import SingleBranchContrast
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import uniform
 from torch_geometric.data import NeighborSampler

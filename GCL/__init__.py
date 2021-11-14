@@ -1,7 +1,7 @@
 import GCL.loss
 import GCL.augmentors
 import GCL.eval
-import GCL.models
+import GCL.model
 import GCL.utils
 
 __version__ = '0.1.0'
@@ -11,6 +11,6 @@ __all__ = [
     'loss',
     'augmentors',
     'eval',
-    'models',
+    'model',
     'utils'
 ]

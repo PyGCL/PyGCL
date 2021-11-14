@@ -8,7 +8,7 @@ from torch import nn
 from tqdm import tqdm
 from torch.optim import Adam
 from GCL.eval import get_split, LREvaluator
-from GCL.models import DualBranchContrast
+from GCL.model import DualBranchContrast
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.inits import uniform
 from torch_geometric.datasets import Planetoid

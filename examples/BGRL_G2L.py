@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator, get_split
-from GCL.models import BootstrapContrast
+from GCL.model import BootstrapContrast
 from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.data import DataLoader
 from torch_geometric.datasets import TUDataset
