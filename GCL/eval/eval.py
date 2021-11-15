@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import pandas as pd
 
 from abc import ABC, abstractmethod
 from typing import Union, Callable, List, Dict, Optional
@@ -63,16 +64,33 @@ class BaseEvaluator(ABC):
 
 
 class BaseSKLearnEvaluator:
-    def __init__(self, evaluator, param_grid, cv, scoring, refit):
+    def __init__(
+            self, evaluator: Callable, metric: Union[Callable, List[Callable]], split: BaseCrossValidator,
+            param_grid: Optional[Dict] = None, search_cv: Optional[Callable] = None, refit: Optional[str] = None):
         self.evaluator = evaluator
         self.param_grid = param_grid
-        self.cv = cv
-        self.scoring = scoring
+        self.split = split
+        self.search_cv = search_cv
         self.refit = refit
+        if callable(metric):
+            metric = [metric]
+        self.metric = metric
 
-    def evaluate(self, x, y):
-        classifier = GridSearchCV(
-            self.evaluator, param_grid=self.param_grid, cv=self.cv, scoring=self.scoring, refit=self.refit,
-            verbose=0, return_train_score=True)
-        classifier.fit(x, y)
-        return classifier.cv_results_
+    def evaluate(self, x: np.ndarray, y: np.ndarray) -> dict:
+        results = []
+        for train_idx, test_idx in self.split.split(x, y):
+            x_train, y_train = x[train_idx], y[train_idx]
+            x_test, y_test = x[test_idx], y[test_idx]
+            if self.param_grid is not None:
+                classifier = GridSearchCV(
+                    self.evaluator, param_grid=self.param_grid, cv=self.search_cv,
+                    scoring=self.metric, refit=self.refit,
+                    verbose=0, return_train_score=False)
+            else:
+                classifier = self.evaluator
+            classifier.fit(x_train, y_train)
+            y_pred = classifier.predict(x_test)
+            results.append({metric.__name__: metric(y_test, y_pred) for metric in self.metric})
+
+        results = pd.DataFrame.from_dict(results)
+        return results.agg(['mean', 'std']).to_dict()
