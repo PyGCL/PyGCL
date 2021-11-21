@@ -51,6 +51,7 @@ class DGLAugmentor(Augmentor):
     def __init__(self):
         super(DGLAugmentor, self).__init__()
 
+    @abstractmethod
     def _augment(self, g: DGLGraph) -> DGLGraph:
         raise NotImplementedError
 
