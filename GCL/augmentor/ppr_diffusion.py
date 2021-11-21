@@ -1,4 +1,4 @@
-from GCL.augmentor.augmentor import Augmentor
+from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
 from GCL.augmentor.functional import compute_ppr
 
 
@@ -11,14 +11,18 @@ class PPRDiffusion(Augmentor):
         self.use_cache = use_cache
         self.add_self_loop = add_self_loop
 
-    def augment(self, g: Graph) -> Graph:
+    def pyg_augment(self, g: PyGGraph):
         if self._cache is not None and self.use_cache:
             return self._cache
-        x, edge_index, edge_weights = g.unfold()
+        g = g.clone()
         edge_index, edge_weights = compute_ppr(
-            edge_index, edge_weights,
+            g.edge_index, g.edge_attr,
             alpha=self.alpha, eps=self.eps, ignore_edge_attr=False, add_self_loop=self.add_self_loop
         )
-        res = Graph(x=x, edge_index=edge_index, edge_weights=edge_weights)
-        self._cache = res
-        return res
+        g.edge_index = edge_index
+        g.edge_attr = edge_weights
+        self._cache = g
+        return g
+
+    def dgl_augment(self, g: DGLGraph):
+        raise NotImplementedError

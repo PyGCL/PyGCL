@@ -1,4 +1,4 @@
-from GCL.augmentor.augmentor import Augmentor
+from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
 from GCL.augmentor.functional import drop_feature
 
 
@@ -7,8 +7,11 @@ class EdgeAttrMasking(Augmentor):
         super(EdgeAttrMasking, self).__init__()
         self.pf = pf
 
-    def augment(self, g: Graph) -> Graph:
-        x, edge_index, edge_weights = g.unfold()
-        if edge_weights is not None:
-            edge_weights = drop_feature(edge_weights, self.pf)
-        return Graph(x=x, edge_index=edge_index, edge_weights=edge_weights)
+    def pyg_augment(self, g: PyGGraph):
+        g = g.clone()
+        if g.edge_attr is not None:
+            g.edge_attr = drop_feature(g.edge_attr, self.pf)
+        return g
+
+    def dgl_augment(self, g: DGLGraph):
+        raise NotImplementedError

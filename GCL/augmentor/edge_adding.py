@@ -1,4 +1,4 @@
-from GCL.augmentor.augmentor import Graph, Augmentor
+from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
 from GCL.augmentor.functional import add_edge
 
 
@@ -7,7 +7,10 @@ class EdgeAdding(Augmentor):
         super(EdgeAdding, self).__init__()
         self.pe = pe
 
-    def augment(self, g: Graph) -> Graph:
-        x, edge_index, edge_weights = g.unfold()
-        edge_index = add_edge(edge_index, ratio=self.pe)
-        return Graph(x=x, edge_index=edge_index, edge_weights=edge_weights)
+    def pyg_augment(self, g: PyGGraph):
+        g = g.clone()
+        g.edge_index = add_edge(g.edge_index, ratio=self.pe)
+        return g
+
+    def dgl_augment(self, g: DGLGraph):
+        raise NotImplementedError

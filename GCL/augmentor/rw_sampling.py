@@ -1,4 +1,4 @@
-from GCL.augmentor.augmentor import Augmentor
+from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
 from GCL.augmentor.functional import random_walk_subgraph
 
 
@@ -8,9 +8,12 @@ class RWSampling(Augmentor):
         self.num_seeds = num_seeds
         self.walk_length = walk_length
 
-    def augment(self, g: Graph) -> Graph:
-        x, edge_index, edge_weights = g.unfold()
+    def pyg_augment(self, g: PyGGraph):
+        g = g.clone()
 
-        edge_index, edge_weights = random_walk_subgraph(edge_index, edge_weights, batch_size=self.num_seeds, length=self.walk_length)
+        g.edge_index, g.edge_attr = random_walk_subgraph(g.edge_index, g.edge_attr, batch_size=self.num_seeds, length=self.walk_length)
 
-        return Graph(x=x, edge_index=edge_index, edge_weights=edge_weights)
+        return g
+
+    def dgl_augment(self, g: DGLGraph):
+        raise NotImplementedError
