@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from dgl import DGLGraph
 from abc import ABC, abstractmethod
-from typing import Optional, List, Callable
+from typing import Union, List, Callable
 from torch_geometric.data import Data as PyGGraph
 
 
@@ -12,7 +12,7 @@ class Augmentor(ABC):
     def __init__(self):
         pass
 
-    def augment(self, g: Optional[DGLGraph, PyGGraph]):
+    def augment(self, g: Union[DGLGraph, PyGGraph]):
         if isinstance(g, DGLGraph):
             return self.dgl_augment(g)
         elif isinstance(g, PyGGraph):
@@ -26,7 +26,7 @@ class Augmentor(ABC):
     def pyg_augment(self, g: PyGGraph):
         raise NotImplementedError
 
-    def __call__(self, g: Optional[DGLGraph, PyGGraph]):
+    def __call__(self, g: Union[DGLGraph, PyGGraph]):
         assert isinstance(g, DGLGraph) or isinstance(g, PyGGraph)
         return self.augment(g)
 
