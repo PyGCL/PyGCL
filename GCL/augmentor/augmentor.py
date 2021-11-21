@@ -32,28 +32,33 @@ class Augmentor(ABC):
 
 
 class PyGAugmentor(Augmentor):
-    def __init__(self, augmentor: Callable):
+    def __init__(self):
         super(PyGAugmentor, self).__init__()
-        self.augmentor = augmentor
+
+    @abstractmethod
+    def _augment(self, g: PyGGraph) -> PyGGraph:
+        raise NotImplementedError
 
     def pyg_augment(self, g: PyGGraph):
         g_new = g.clone()
-        return self.augmentor(g_new)
+        return self._augment(g_new)
 
     def dgl_augment(self, g: DGLGraph):
         raise NotImplementedError
 
 
 class DGLAugmentor(Augmentor):
-    def __init__(self, augmentor: Callable):
+    def __init__(self):
         super(DGLAugmentor, self).__init__()
-        self.augmentor = augmentor
+
+    def _augment(self, g: DGLGraph) -> DGLGraph:
+        raise NotImplementedError
 
     def pyg_augment(self, g: PyGGraph):
         raise NotImplementedError
 
     def dgl_augment(self, g: DGLGraph):
-        return self.augmentor(g)
+        return self._augment(g)
 
 
 class Compose(Augmentor):
