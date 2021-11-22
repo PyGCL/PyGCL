@@ -1,0 +1,44 @@
+name: Testing and Reporting
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  flake8-lint:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04 ]
+        python-version: [ 3.9 ]
+        torch-version: [ 1.9.0 ]
+
+    name: Test and report coverage
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v2
+      - name: Set up Python environment
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install internal dependencies
+        run: |
+          cd test && pip install --requirement requirements_test.txt
+      - name: Install main package
+        run: |
+          pip install -e .[test]
+      - name: Run test suite and report coverage
+        run: |
+          coverage run -m pytest
+          coverage xml
+      - name: Upload coverage report to codecov
+        uses: codecov/codecov-action@v2.1.0
+        if: success()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: unittests
+          verbose: true
