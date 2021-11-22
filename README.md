@@ -214,15 +214,10 @@ Feel free to open an [issue](issues/new) should you find anything unexpected or 
 Please cite [our paper](https://arxiv.org/abs/2109.01116) if you use this code in your own work:
 
 ```
-@article{Zhu:2021tu,
+@inproceedings{Zhu:2021tu,
 author = {Zhu, Yanqiao and Xu, Yichen and Liu, Qiang and Wu, Shu},
 title = {{An Empirical Study of Graph Contrastive Learning}},
-journal = {arXiv.org},
+booktitle = {Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks},
 year = {2021},
-eprint = {2109.01116v1},
-eprinttype = {arxiv},
-eprintclass = {cs.LG},
-month = sep,
 }
 ```
-
