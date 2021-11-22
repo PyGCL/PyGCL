@@ -2,7 +2,7 @@ import copy
 import torch
 import os.path as osp
 import GCL.losses as L
-import GCL.augmentors as A
+import GCL.augmentor as A
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 

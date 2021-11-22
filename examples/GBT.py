@@ -1,7 +1,7 @@
 import torch
 import os.path as osp
 import GCL.losses as L
-import GCL.augmentors as A
+import GCL.augmentor as A
 import torch_geometric.transforms as T
 
 from tqdm import tqdm
