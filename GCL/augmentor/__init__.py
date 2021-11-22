@@ -1,4 +1,4 @@
-from .augmentor import Augmentor, Compose, RandomChoice
+from .augmentor import Augmentor, Compose, RandomChoice, PyGAugmentor, DGLAugmentor
 from .identity import Identity
 from .rw_sampling import RWSampling
 from .ppr_diffusion import PPRDiffusion
@@ -25,7 +25,9 @@ __all__ = [
     'MarkovDiffusion',
     'NodeDropping',
     'NodeShuffling',
-    'RWSampling'
+    'RWSampling',
+    'PyGAugmentor',
+    'DGLAugmentor'
 ]
 
 classes = __all__

@@ -94,25 +94,3 @@ class RandomChoice(Augmentor):
 
     def dgl_augment(self, g: DGLGraph):
         raise NotImplementedError
-
-
-if __name__ == '__main__':
-    import dgl
-    import os.path as osp
-    import torch_geometric.transforms as T
-    from functools import partial
-    from torch_geometric.datasets import Planetoid
-
-    path = osp.join(osp.expanduser('~'), 'datasets')
-    dataset = Planetoid(path, name='Cora', transform=T.NormalizeFeatures())
-    data = dataset[0]
-
-    aug1 = PyGAugmentor(T.Constant(1))
-    aug2 = PyGAugmentor(T.Constant(2))
-    comp_aug = Compose([aug1, aug2])
-    print(comp_aug(data))
-
-    g = dgl.graph((torch.tensor([0, 1]), torch.tensor([1, 2])))
-    f = partial(dgl.add_edges, u=torch.tensor([1, 3]), v=torch.tensor([0, 1]))
-    aug = DGLAugmentor(f)
-    print(aug(g))
