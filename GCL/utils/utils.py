@@ -1,7 +1,6 @@
 from typing import *
 import os
 import torch
-import dgl
 import random
 import numpy as np
 
@@ -57,11 +56,6 @@ def normalize(s):
     return (s.max() - s) / (s.max() - s.mean())
 
 
-def build_dgl_graph(edge_index: torch.Tensor) -> dgl.DGLGraph:
-    row, col = edge_index
-    return dgl.graph((row, col))
-
-
 def batchify_dict(dicts: List[dict], aggr_func=lambda x: x):
     res = dict()
     for d in dicts:
@@ -72,3 +66,4 @@ def batchify_dict(dicts: List[dict], aggr_func=lambda x: x):
                 res[k].append(v)
     res = {k: aggr_func(v) for k, v in res.items()}
     return res
+

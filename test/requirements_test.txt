@@ -1,0 +1,15 @@
+-f https://download.pytorch.org/whl/torch_stable.html
+torch==1.9.0+cpu
+-f https://data.dgl.ai/wheels/repo.html
+dgl
+-f https://data.pyg.org/whl/torch-1.9.0+cpu.html
+torch-scatter
+-f https://data.pyg.org/whl/torch-1.9.0+cpu.html
+torch-sparse
+-f https://data.pyg.org/whl/torch-1.9.0+cpu.html
+torch-cluster
+-f https://data.pyg.org/whl/torch-1.9.0+cpu.html
+torch-spline-conv
+-f https://data.pyg.org/whl/torch-1.9.0+cpu.html
+torch-geometric
+
