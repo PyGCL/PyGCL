@@ -12,7 +12,7 @@ def test_pygaugmentor():
     data = Data(edge_index=edge_index, num_nodes=3)
     aug = PyGAugmentor(T.Constant(1))
     data = aug(data)
-    assert data.x.tolist() == [[1.0, 1.0, 1.0]]
+    assert data.x.tolist() == [[1.0], [1.0], [1.0]]
 
     data = aug(data)
     data.x.tolist()
@@ -24,10 +24,10 @@ def test_dglaugmentor():
     f = partial(dgl.add_edges, u=torch.tensor([1, 3]), v=torch.tensor([0, 1]))
     aug = DGLAugmentor(f)
     g = aug(g)
-    assert g.num_nodes == 4
-    assert g.num_edges == 4
-    assert aug(g).edges()[0].tolist() == [0, 1, 1, 3]
-    assert aug(g).edges()[1].tolist() == [1, 2, 0, 1]
+    assert g.num_nodes() == 4
+    assert g.num_edges() == 4
+    assert g.edges()[0].tolist() == [0, 1, 1, 3]
+    assert g.edges()[1].tolist() == [1, 2, 0, 1]
 
 
 def test_composing_augmentor():
