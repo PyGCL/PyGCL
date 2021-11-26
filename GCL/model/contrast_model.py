@@ -1,6 +1,6 @@
 import torch
 
-from typing import Optional
+from typing import Optional, Union
 
 from GCL.loss import Loss
 from GCL.model import get_dense_sampler
@@ -43,7 +43,7 @@ class SingleBranchContrast(torch.nn.Module):
 class DualBranchContrast(torch.nn.Module):
     def __init__(
             self, loss: Loss, mode: str, intraview_negs: bool = False,
-            sampler: Optional[DenseSampler, DefaultSampler] = None, **kwargs):
+            sampler: Optional[Union[DenseSampler, DefaultSampler]] = None, **kwargs):
         super(DualBranchContrast, self).__init__()
         self.loss = loss
         self.mode = mode
@@ -88,7 +88,7 @@ class DualBranchContrast(torch.nn.Module):
 
 
 class BootstrapContrast(torch.nn.Module):
-    def __init__(self, loss, mode='L2L', sampler: Optional[DenseSampler, DefaultSampler] = None):
+    def __init__(self, loss, mode='L2L', sampler: Optional[Union[DenseSampler, DefaultSampler]] = None):
         super(BootstrapContrast, self).__init__()
         self.loss = loss
         self.mode = mode

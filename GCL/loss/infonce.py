@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
-from GCL.loss import Loss
+from .loss import Loss
 
 
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):

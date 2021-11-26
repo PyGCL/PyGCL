@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from GCL.loss import Loss
+from .loss import Loss
 
 
 class VICReg(Loss):

@@ -1,7 +1,16 @@
 import torch
 
 from abc import ABC, abstractmethod
-from GCL.model.sampler import ContrastInstance
+from typing import Optional
+from dataclasses import dataclass
+
+
+@dataclass
+class ContrastInstance:
+    anchor: torch.Tensor
+    sample: torch.Tensor
+    pos_mask: Optional[torch.Tensor] = None
+    neg_mask: Optional[torch.Tensor] = None
 
 
 class Loss(ABC):
