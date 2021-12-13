@@ -4,36 +4,81 @@ import pandas as pd
 
 from abc import ABC, abstractmethod
 from typing import Union, Callable, List, Dict, Optional
+from torch_geometric.data import Data
 from sklearn.model_selection import GridSearchCV, BaseCrossValidator
 
 
-def get_split(num_samples: int, train_ratio: float = 0.1, test_ratio: float = 0.8):
+def get_split(
+        num_samples: int, num_splits: int = 1,
+        train_ratio: float = 0.1, test_ratio: float = 0.8) -> Union[Dict, List[Dict]]:
+    """
+    Generate split indices for train, test, and validation sets.
+
+    Args:
+        num_samples (int): The size of the dataset.
+        num_splits (int, optional): The number of splits to generate. (default: :obj:`1`)
+        train_ratio (float, optional): The ratio of the train set. (default: :obj:`0.1`)
+        test_ratio (float, optional): The ratio of the test set. (default: :obj:`0.8`)
+
+    Returns:
+        Union(Dict, List[Dict]): A dictionary of split indices or a list of dictionaries of split indices.
+
+    Examples:
+        >>> get_split(10, num_splits=1, train_ratio=0.5, test_ratio=0.4)
+        [{'train': [3, 4, 0, 1, 2], 'test': [5, 7, 6, 8], 'valid': [9]}]
+    """
     assert train_ratio + test_ratio < 1
+
     train_size = int(num_samples * train_ratio)
     test_size = int(num_samples * test_ratio)
-    indices = torch.randperm(num_samples)
-    return {
-        'train': indices[:train_size],
-        'valid': indices[train_size: test_size + train_size],
-        'test': indices[test_size + train_size:]
-    }
+
+    out = []
+    for i in range(num_splits):
+        indices = torch.randperm(num_samples)
+        out.append({
+            'train': indices[:train_size],
+            'valid': indices[train_size: test_size + train_size],
+            'test': indices[test_size + train_size:]
+        })
+    return out if num_splits > 1 else out[0]
 
 
-def from_predefined_split(data):
-    assert all([mask is not None for mask in [data.train_mask, data.test_mask, data.val_mask]])
+def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
+    """
+    Convert PyG split indices for train, test, and validation sets.
+
+    Args:
+        data (`Data`): The PyG data object.
+
+    Returns:
+        Union[Dict, List[Dict]]: A dictionary of split indices.
+
+    Raises:
+        ValueError: If the data object does not have the split indices.
+    """
+    if any([mask is None for mask in [data.train_mask, data.test_mask, data.val_mask]]):
+        raise ValueError('The data object does not have the split indices.')
     num_samples = data.num_nodes
     indices = torch.arange(num_samples)
-    return {
-        'train': indices[data.train_mask],
-        'valid': indices[data.val_mask],
-        'test': indices[data.test_mask]
-    }
 
-
-def split_to_numpy(x, y, split):
-    keys = ['train', 'test', 'valid']
-    objs = [x, y]
-    return [obj[split[key]].detach().cpu().numpy() for obj in objs for key in keys]
+    if data.train_mask.dim() == 1:
+        return {
+            'train': indices[data.train_mask],
+            'valid': indices[data.val_mask],
+            'test': indices[data.test_mask]
+        }
+    else:
+        out = []
+        for i in range(data.train_mask.size(1)):
+            out_dict = {}
+            for mask in ['train_mask', 'val_mask', 'test_mask']:
+                if data[mask].dim() == 1:
+                    # Datasets like WikiCS have only one split for the test set.
+                    out_dict[mask[:-5]] = indices[data[mask]]
+                else:
+                    out_dict[mask[:-5]] = indices[data[mask][:, i]]
+            out.append(out_dict)
+        return out
 
 
 class BaseEvaluator(ABC):
