@@ -4,6 +4,7 @@ import pandas as pd
 
 from abc import ABC, abstractmethod
 from typing import Union, Callable, List, Dict, Optional
+from sklearn.base import BaseEstimator
 from torch_geometric.data import Data
 from sklearn.model_selection import GridSearchCV, BaseCrossValidator
 
@@ -124,33 +125,66 @@ class BaseEvaluator(ABC):
 
 
 class BaseSKLearnEvaluator:
-    def __init__(
-            self, evaluator: Callable, metric: Union[Callable, List[Callable]], split: BaseCrossValidator,
-            param_grid: Optional[Dict] = None, search_cv: Optional[Callable] = None, refit: Optional[str] = None):
-        self.evaluator = evaluator
-        self.param_grid = param_grid
-        self.split = split
-        self.search_cv = search_cv
-        self.refit = refit
-        if callable(metric):
-            metric = [metric]
-        self.metric = metric
+    """
+    Base class for sklearn-based evaluation.
 
-    def evaluate(self, x: np.ndarray, y: np.ndarray) -> dict:
+    Args:
+        evaluator (BaseEstimator): The sklearn evaluator.
+        metrics (Union[str, List[str]], optional): The metric(s) to evaluate.
+        split (BaseCrossValidator): The sklearn cross-validator, used to split the data.
+        param_grid (Optional[List[Dict]], optional): The parameter grid for the grid search. (default: :obj:`None`)
+        grid_search_scoring (Dict[str, Callable]): The metric(s) used in grid search. (default: :obj:`None`)
+        cv_params (Optional[Dict], optional): If :obj:`param_grid` is provided, further pass the parameters
+         for the sklearn cross-validator. See sklearn :obj:`GridSearchCV<https://scikit-learn.org/stable/modules/
+         generated/sklearn.model_selection.GridSearchCV.html>`_ for details. (default: :obj:`None`)
+    """
+
+    def __init__(
+            self, evaluator: BaseEstimator, metrics: Dict[str, Callable],
+            split: BaseCrossValidator, param_grid: Optional[Dict] = None,
+            grid_search_scoring: Optional[Dict[str, Callable]] = None,
+            cv_params: Optional[Dict] = None):
+        self.evaluator = evaluator
+        self.split = split
+        self.cv_params = cv_params
+        self.grid_search_scoring = grid_search_scoring
+        self.metrics = metrics
+        self.param_grid = param_grid
+
+    def evaluate(self, x: np.ndarray, y: np.ndarray) -> Dict:
+        """
+        Evaluate the model on the given data using sklearn evaluator.
+
+        Args:
+            x (np.ndarray): The data.
+            y (np.ndarray): The targets (labels).
+
+        Returns:
+            Dict: The evaluation results with mean and standard deviation.
+        """
         results = []
         for train_idx, test_idx in self.split.split(x, y):
             x_train, y_train = x[train_idx], y[train_idx]
             x_test, y_test = x[test_idx], y[test_idx]
             if self.param_grid is not None:
-                classifier = GridSearchCV(
-                    self.evaluator, param_grid=self.param_grid, cv=self.search_cv,
-                    scoring=self.metric, refit=self.refit,
-                    verbose=0, return_train_score=False)
+                predictor = GridSearchCV(
+                    self.evaluator, self.param_grid, scoring=self.grid_search_scoring,
+                    verbose=0, refit=next(iter(self.grid_search_scoring)))
+                if self.cv_params is not None:
+                    predictor.set_params(**self.cv_params)
             else:
-                classifier = self.evaluator
-            classifier.fit(x_train, y_train)
-            y_pred = classifier.predict(x_test)
-            results.append({metric.__name__: metric(y_test, y_pred) for metric in self.metric})
+                predictor = self.evaluator
+            predictor.fit(x_train, y_train)
+            y_pred = predictor.predict(x_test)
+            results.append({name: metric(y_test, y_pred) for name, metric in self.metrics.items()})
 
         results = pd.DataFrame.from_dict(results)
         return results.agg(['mean', 'std']).to_dict()
+
+    def __call__(self, x: Union[torch.Tensor, np.ndarray], y: Union[torch.Tensor, np.ndarray]) -> Dict:
+        if isinstance(x, torch.Tensor):
+            x = x.detach().cpu().numpy()
+        if isinstance(y, torch.Tensor):
+            y = y.detach().cpu().numpy()
+        result = self.evaluate(x, y)
+        return result
