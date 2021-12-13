@@ -82,6 +82,19 @@ def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
 
 
 class BaseEvaluator(ABC):
+    """
+    Base class for trainable (e.g., logistic regression) evaluation.
+
+    Args:
+        split (Union[Dict, List[Dict]]): The split indices.
+        metric (Union[Callable, List[Callable]]): The metric(s) to evaluate.
+        stop_metric (Union[None, Callable, int], optional): The metric(s) to stop training.
+            It could be a callable function, or an integer specifying the index of the :obj:`metric`.
+            If set to :obj:`None`, the stopping metric will be set to the first in :obj:`metric`.
+             (default: :obj:`None`)
+        cv (Optional[BaseCrossValidator], optional): The sklearn cross-validator. (default: :obj:`None`)
+    """
+
     def __init__(
             self, split: Union[Dict, List[Dict]],
             metric: Union[Callable, List[Callable]], stop_metric: Union[None, Callable, int] = None,
@@ -91,6 +104,8 @@ class BaseEvaluator(ABC):
         self.metric = metric
         if cv is None and stop_metric is None:
             stop_metric = 0
+        if callable(metric):
+            metric = [metric]
         if isinstance(stop_metric, int):
             if isinstance(metric, list):
                 self.stop_metric = metric[stop_metric]
@@ -100,10 +115,10 @@ class BaseEvaluator(ABC):
             self.stop_metric = stop_metric
 
     @abstractmethod
-    def evaluate(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> dict:
+    def evaluate(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> Dict:
         raise NotImplementedError
 
-    def __call__(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> dict:
+    def __call__(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> Dict:
         result = self.evaluate(x, y)
         return result
 
