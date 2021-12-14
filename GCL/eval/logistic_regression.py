@@ -112,7 +112,7 @@ class LRSklearnEvaluator(BaseSKLearnEvaluator):
         grid_search_scoring (Dict[str, Callable], optional):
          If :obj:`param_grid` is given, provide metric(s) in grid search. (default: :obj:`None`)
         cv_params (Dict, optional): If :obj:`param_grid` is given, further pass the parameters
-         for the sklearn cross-validator. See sklearn :obj:`GridSearchCV
+         for the sklearn cross-validator. See sklearn `GridSearchCV
          <https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html>`_
          for details. (default: :obj:`None`)
     """
