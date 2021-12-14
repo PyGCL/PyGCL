@@ -107,13 +107,18 @@ class BaseEvaluator(ABC):
             self, model: torch.nn.Module, optimizer: Optimizer, objective: Callable,
             split: Union[Dict, List[Dict], BaseCrossValidator],
             metrics: Dict[str, Callable], num_epochs: int = 1000,
-            test_interval: int = 20, test_metric: Optional[Callable, str] = None):
+            test_interval: int = 20, test_metric: Union[Callable, str, None] = None):
+        self.model = model
+        self.optimizer = optimizer
+        self.objective = objective
         self.split = split
         self.metrics = metrics
-        if isinstance(stop_metric, str):
-            self.stop_metric = metrics[stop_metric]
+        self.num_epochs = num_epochs
+        self.test_interval = test_interval
+        if isinstance(test_metric, str):
+            self.stop_metric = metrics[test_metric]
         else:
-            self.stop_metric = stop_metric
+            self.stop_metric = test_metric
 
     @abstractmethod
     def train(self, x, y) -> Dict:
