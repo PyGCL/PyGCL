@@ -99,7 +99,7 @@ class LREvaluator(BaseEvaluator):
 
 class LRSklearnEvaluator(BaseSKLearnEvaluator):
     """
-    Evaluation using the sklearn logistic regression classifier.
+    Evaluate using the sklearn logistic regression classifier.
 
     Parameters:
         metrics (Dict[str, Callable]): The metric(s) to evaluate.

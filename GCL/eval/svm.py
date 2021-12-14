@@ -7,20 +7,20 @@ from GCL.eval import BaseSKLearnEvaluator
 
 class SVMEvaluator(BaseSKLearnEvaluator):
     """
-    Evaluation using SVM.
+    Evaluate using the sklearn SVM classifier.
 
     Parameters:
         metrics (Dict[str, Callable]): The metric(s) to evaluate.
         split (BaseCrossValidator): The sklearn cross-validator to split the data.
         linear (bool): Whether to use linear SVM. (default: :obj:`True`)
         params (Dict, optional): Other parameters for the SVM model.
-         See sklearn :obj:`SVC<https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html>`_
+         See sklearn `SVC<https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html>`_
          for details. (default: :obj:`None`)
         param_grid (List[Dict], optional): The parameter grid for the grid search. (default: :obj:`None`)
         grid_search_scoring (Dict[str, Callable], optional):
          If :obj:`param_grid` is given, provide metric(s) in grid search. (default: :obj:`None`)
         cv_params (Dict, optional): If :obj:`param_grid` is given, further pass the parameters
-         for the sklearn cross-validator. See sklearn :obj:`GridSearchCV<https://scikit-learn.org/stable/modules/
+         for the sklearn cross-validator. See sklearn `GridSearchCV<https://scikit-learn.org/stable/modules/
          generated/sklearn.model_selection.GridSearchCV.html>`_ for details. (default: :obj:`None`)
     """
     def __init__(
