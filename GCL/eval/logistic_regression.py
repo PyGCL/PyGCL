@@ -102,9 +102,9 @@ class LRSklearnEvaluator(BaseSKLearnEvaluator):
     Evaluate using the sklearn logistic regression classifier.
 
     Parameters:
-        metrics (Dict[str, Callable]): The metric(s) to evaluate.
-        split (BaseCrossValidator): The sklearn cross-validator to split the data.
-        params (Dict, optional): Other parameters for the logistic regression model.
+        metrics: The metric(s) to evaluate.
+        split: The sklearn cross-validator to split the data.
+        params: Other parameters for the logistic regression model.
             See sklearn `LogisticRegression
             <https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html>`_
             for details. (default: :obj:`None`)
