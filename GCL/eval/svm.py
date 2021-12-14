@@ -10,7 +10,8 @@ class SVMEvaluator(BaseSKLearnEvaluator):
     Evaluate using the sklearn SVM classifier.
 
     Parameters:
-        metrics (Dict[str, Callable]): The metric(s) to evaluate.
+        metrics (Dict[str, Callable]): The metrics to evaluate in a dictionary
+            with metric names as keys and callables a values.
         split (BaseCrossValidator): The sklearn cross-validator to split the data.
         linear (bool): Whether to use linear SVM. (default: :obj:`True`)
         params (Dict, optional): Other parameters for the SVM model.
@@ -19,7 +20,9 @@ class SVMEvaluator(BaseSKLearnEvaluator):
             for details. (default: :obj:`None`)
         param_grid (List[Dict], optional): The parameter grid for the grid search. (default: :obj:`None`)
         grid_search_scoring (Dict[str, Callable], optional):
-            If :obj:`param_grid` is given, provide metric(s) in grid search. (default: :obj:`None`)
+            If :obj:`param_grid` is given, provide metrics in grid search.
+            If multiple metrics are given, the first one will be used to retrain the best model.
+            (default: :obj:`None`)
         cv_params (Dict, optional): If :obj:`param_grid` is given, further pass the parameters
             for the sklearn cross-validator. See sklearn `GridSearchCV
             <https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html>`_

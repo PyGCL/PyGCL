@@ -5,6 +5,7 @@ import pandas as pd
 from abc import ABC, abstractmethod
 from typing import Union, Callable, List, Dict, Optional
 from sklearn.base import BaseEstimator
+from torch.optim import Optimizer
 from torch_geometric.data import Data
 from sklearn.model_selection import GridSearchCV, BaseCrossValidator
 
@@ -49,7 +50,7 @@ def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
     Convert from PyG split indices of training, test, and validation sets.
 
     Args:
-        data (`Data`): A PyG data object.
+        data (Data): A PyG data object.
 
     Returns:
         Union[Dict, List[Dict]]: A dictionary of split indices or a list of dictionaries of split indices.
@@ -87,30 +88,37 @@ class BaseEvaluator(ABC):
     Base class for trainable (e.g., logistic regression) evaluation.
 
     Args:
-        split (Union[Dict, List[Dict]]): The split indices.
-        metrics (Dict[str, Callable]): The metrics to evaluate.
-        stop_metric (Union[None, Callable, str], optional): The metric(s) to stop training.
-            It could be a callable function, or a string specifying the key in :obj:`metric`.
-            If set to :obj:`None`, the stopping metric will be set to the first in :obj:`metric`.
-            (default: :obj:`None`)
-        cv (BaseCrossValidator, optional): The sklearn cross-validator. (default: :obj:`None`)
+        model (torch.nn.Module): The evaluation model to train.
+        optimizer (Optimizer): The optimizer to use for training.
+        objective (Callable): The objective function to use for training.
+        split (Union[Dict, List[Dict], BaseCrossValidator]): Split indices (for one fold), or a list of split
+            indices (for multiple folds), or a sklearn cross-validator.
+        metrics (Dict[str, Callable]): The metrics to evaluate in a dictionary with metric names as keys and
+            callables a values.
+        num_epochs (int): The number of epochs to train the model. (default: :obj:`1000`)
+        test_interval (int): The number of epochs between each test. (default: :obj:`20`)
+        test_metric (Union[Callable, str], optional): The metric to test on the validation set during training.
+            If :obj:`split` is a sklearn cross-validator, this parameter is ignored as no validation set is used.
+            It could be a callable function, or a string specifying the key in :obj:`metrics`.
+            If set to :obj:`None`, the test metric will be the first in :obj:`metrics`. (default: :obj:`None`)
     """
 
     def __init__(
-            self, split: Union[Dict, List[Dict]],
-            metrics: Dict[str, Callable], stop_metric: Union[None, Callable, int] = None,
-            cv: Optional[BaseCrossValidator] = None):
-        self.cv = cv
+            self, model: torch.nn.Module, optimizer: Optimizer, objective: Callable,
+            split: Union[Dict, List[Dict], BaseCrossValidator],
+            metrics: Dict[str, Callable], num_epochs: int = 1000,
+            test_interval: int = 20, test_metric: Optional[Callable, str] = None):
         self.split = split
         self.metrics = metrics
-        if cv is None and stop_metric is None:
-            stop_metric = 0
         if isinstance(stop_metric, str):
             self.stop_metric = metrics[stop_metric]
         else:
             self.stop_metric = stop_metric
 
     @abstractmethod
+    def train(self, x, y) -> Dict:
+        raise NotImplementedError
+
     def evaluate(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> Dict:
         raise NotImplementedError
 
@@ -125,12 +133,15 @@ class BaseSKLearnEvaluator:
 
     Args:
         evaluator (BaseEstimator): The sklearn evaluator.
-        metrics (Dict[str, Callable]): The metric(s) to evaluate.
+        metrics (Dict[str, Callable]): The metrics to evaluate in a dictionary
+            with metric names as keys and callables a values.
         split (BaseCrossValidator): The sklearn cross-validator to split the data.
         params (Dict, optional): Other parameters for the evaluator. (default: :obj:`None`)
         param_grid (List[Dict], optional): The parameter grid for the grid search. (default: :obj:`None`)
         grid_search_scoring (Dict[str, Callable], optional):
-            If :obj:`param_grid` is given, provide metric(s) in grid search. (default: :obj:`None`)
+            If :obj:`param_grid` is given, provide metrics in grid search.
+            If multiple metrics are given, the first one will be used to retrain the best model.
+            (default: :obj:`None`)
         cv_params (Dict, optional): If :obj:`param_grid` is given, further pass the parameters
             for the sklearn cross-validator. See sklearn `GridSearchCV
             <https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html>`_
