@@ -127,6 +127,7 @@ class BaseSKLearnEvaluator:
         evaluator (BaseEstimator): The sklearn evaluator.
         metrics (Dict[str, Callable]): The metric(s) to evaluate.
         split (BaseCrossValidator): The sklearn cross-validator to split the data.
+        params (Dict, optional): The hyper-parameters for the evaluator. (default: :obj:`None`)
         param_grid (List[Dict], optional): The parameter grid for the grid search. (default: :obj:`None`)
         grid_search_scoring (Dict[str, Callable], optional):
          If :obj:`param_grid` is given, provide metric(s) in grid search. (default: :obj:`None`)
@@ -137,9 +138,10 @@ class BaseSKLearnEvaluator:
 
     def __init__(
             self, evaluator: BaseEstimator, metrics: Dict[str, Callable],
-            split: BaseCrossValidator, param_grid: Optional[Dict] = None,
-            grid_search_scoring: Optional[Dict[str, Callable]] = None,
-            cv_params: Optional[Dict] = None):
+            split: BaseCrossValidator, params: Optional[Dict] = None, param_grid: Optional[Dict] = None,
+            grid_search_scoring: Optional[Dict[str, Callable]] = None, cv_params: Optional[Dict] = None):
+        if params is not None:
+            evaluator.set_params(**params)
         self.evaluator = evaluator
         self.split = split
         self.cv_params = cv_params
