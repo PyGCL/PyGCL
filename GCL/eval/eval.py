@@ -13,12 +13,12 @@ def get_split(
         num_samples: int, num_splits: int = 1,
         train_ratio: float = 0.1, test_ratio: float = 0.8) -> Union[Dict, List[Dict]]:
     """
-    Generate split indices for train, test, and validation sets.
+    Generate split indices for training, test, and validation sets.
 
     Args:
         num_samples (int): The size of the dataset.
         num_splits (int, optional): The number of splits to generate. (default: :obj:`1`)
-        train_ratio (float, optional): The ratio of the train set. (default: :obj:`0.1`)
+        train_ratio (float, optional): The ratio of the training set. (default: :obj:`0.1`)
         test_ratio (float, optional): The ratio of the test set. (default: :obj:`0.8`)
 
     Returns:
@@ -46,16 +46,16 @@ def get_split(
 
 def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
     """
-    Convert PyG split indices for train, test, and validation sets.
+    Convert from PyG split indices of training, test, and validation sets.
 
     Args:
-        data (`Data`): The PyG data object.
+        data (`Data`): A PyG data object.
 
     Returns:
-        Union[Dict, List[Dict]]: A dictionary of split indices.
+        Union[Dict, List[Dict]]: A dictionary of split indices or a list of dictionaries of split indices.
 
     Raises:
-        ValueError: If the data object does not have the split indices.
+        ValueError: If the :obj:`data` object does not have the split indices.
     """
     if any([mask is None for mask in [data.train_mask, data.test_mask, data.val_mask]]):
         raise ValueError('The data object does not have the split indices.')
@@ -92,7 +92,7 @@ class BaseEvaluator(ABC):
         stop_metric (Union[None, Callable, str], optional): The metric(s) to stop training.
             It could be a callable function, or a string specifying the key in :obj:`metric`.
             If set to :obj:`None`, the stopping metric will be set to the first in :obj:`metric`.
-             (default: :obj:`None`)
+            (default: :obj:`None`)
         cv (BaseCrossValidator, optional): The sklearn cross-validator. (default: :obj:`None`)
     """
 
