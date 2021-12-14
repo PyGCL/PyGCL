@@ -2,7 +2,6 @@ import torch
 import numpy as np
 import pandas as pd
 
-from abc import ABC, abstractmethod
 from typing import Union, Callable, List, Dict, Optional
 from sklearn.base import BaseEstimator
 from torch.optim import Optimizer
@@ -83,7 +82,7 @@ def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
         return out
 
 
-class BaseEvaluator(ABC):
+class BaseEvaluator:
     """
     Base class for trainable (e.g., logistic regression) evaluation.
 
@@ -95,34 +94,33 @@ class BaseEvaluator(ABC):
             indices (for multiple folds), or a sklearn cross-validator.
         metrics (Dict[str, Callable]): The metrics to evaluate in a dictionary with metric names as keys and
             callables a values.
+        device (Union[str, torch.device]): The device to use for training. (default: :obj:`'cpu'`)
         num_epochs (int): The number of epochs to train the model. (default: :obj:`1000`)
         test_interval (int): The number of epochs between each test. (default: :obj:`20`)
         test_metric (Union[Callable, str], optional): The metric to test on the validation set during training.
-            If :obj:`split` is a sklearn cross-validator, this parameter is ignored as no validation set is used.
             It could be a callable function, or a string specifying the key in :obj:`metrics`.
-            If set to :obj:`None`, the test metric will be the first in :obj:`metrics`. (default: :obj:`None`)
+            If set to :obj:`None`, the test metric will be the first in :obj:`metrics`.
+            If :obj:`split` is a sklearn cross-validator, this parameter is ignored as no validation set is used.
+            (default: :obj:`None`)
     """
 
     def __init__(
             self, model: torch.nn.Module, optimizer: Optimizer, objective: Callable,
             split: Union[Dict, List[Dict], BaseCrossValidator],
-            metrics: Dict[str, Callable], num_epochs: int = 1000,
-            test_interval: int = 20, test_metric: Union[Callable, str, None] = None):
+            metrics: Dict[str, Callable], device: Union[str, torch.device] = 'cpu',
+            num_epochs: int = 1000, test_interval: int = 20, test_metric: Union[Callable, str, None] = None):
         self.model = model
         self.optimizer = optimizer
         self.objective = objective
         self.split = split
         self.metrics = metrics
+        self.device = device
         self.num_epochs = num_epochs
         self.test_interval = test_interval
         if isinstance(test_metric, str):
-            self.stop_metric = metrics[test_metric]
+            self.test_metric = metrics[test_metric]
         else:
-            self.stop_metric = test_metric
-
-    @abstractmethod
-    def train(self, x, y) -> Dict:
-        raise NotImplementedError
+            self.test_metric = test_metric
 
     def evaluate(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> Dict:
         raise NotImplementedError
