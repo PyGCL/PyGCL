@@ -1,8 +1,5 @@
 # GCL.augmentors
 
-```{contents} Contents
-:local:
-```
 
 ## Available Augmentors
 

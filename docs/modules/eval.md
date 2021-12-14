@@ -1,9 +1,5 @@
 # GCL.eval
 
-```{contents} Contents
-:local:
-```
-
 ## Available Evaluation Models
 
 ```{eval-rst}
