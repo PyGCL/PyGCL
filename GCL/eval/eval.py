@@ -74,8 +74,10 @@ class BaseTrainableEvaluator:
                 [v.to(self.device) for v in split_dict.values()]
                 x_train, x_test, x_valid = itemgetter('x_train', 'x_test', 'x_valid')(split_dict)
                 y_train, y_test, y_valid = itemgetter('y_train', 'y_test', 'y_valid')(split_dict)
-                y_valid = y_valid.detach().cpu().numpy()
                 y_test = y_test.detach().cpu().numpy()
+                use_valid = (x_valid is not None and y_valid is not None) or (len(x_valid) == 0)
+                if use_valid:
+                    y_valid = y_valid.detach().cpu().numpy()
 
                 model = self.model.to(self.device)
                 model.reset_parameters()
@@ -93,7 +95,7 @@ class BaseTrainableEvaluator:
                     loss.backward()
                     optimizer.step()
 
-                    if (epoch + 1) % self.test_interval == 0:
+                    if use_valid and (epoch + 1) % self.test_interval == 0:
                         model.eval()
                         with torch.no_grad():
                             y_pred = model.predict(x_valid).detach().cpu().numpy()
@@ -102,7 +104,11 @@ class BaseTrainableEvaluator:
                                 best_val = val_result
                                 y_pred = model.predict(x_test).detach().cpu().numpy()
                                 best_test = {k: v(y_pred, y_test) for k, v in self.metrics.items()}
-                pbar.set_postfix(best_test)
+                                pbar.set_postfix(best_test)
+                if not bool(best_test):
+                    # No validation set is given, evaluate on the test set after training
+                    y_pred = model.predict(x_test).detach().cpu().numpy()
+                    best_test = {k: v(y_pred, y_test) for k, v in self.metrics.items()}
                 pbar.update()
                 results.append(best_test)
 
