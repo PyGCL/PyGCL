@@ -41,7 +41,7 @@ def random_split(
     return out
 
 
-def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
+def from_PyG_split(data: Data) -> List[Dict]:
     """
     Convert from PyG split indices of training, test, and validation sets.
 
@@ -49,7 +49,7 @@ def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
         data (Data): A PyG data object.
 
     Returns:
-        Union[Dict, List[Dict]]: A dictionary of split indices or a list of dictionaries of split indices.
+        List[Dict]: A list of dictionaries of split indices.
 
     Raises:
         ValueError: If the :obj:`data` object does not have the split indices.
