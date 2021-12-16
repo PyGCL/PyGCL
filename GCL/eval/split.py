@@ -69,12 +69,12 @@ def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
         out = []
         for i in range(data.train_mask.size(1)):
             out_dict = {}
-            for mask in ['train_mask', 'val_mask', 'test_mask']:
+            for mask_name, mask in [['train', 'train_mask'], ['valid', 'val_mask'], ['test', 'test_mask']]:
                 if data[mask].dim() == 1:
                     # Datasets like WikiCS have only one split for the test set.
-                    out_dict[mask[:-5]] = indices[data[mask]]
+                    out_dict[mask_name] = indices[data[mask]]
                 else:
-                    out_dict[mask[:-5]] = indices[data[mask][:, i]]
+                    out_dict[mask_name] = indices[data[mask][:, i]]
             out.append(out_dict)
         return out
 
