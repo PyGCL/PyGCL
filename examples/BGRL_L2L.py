@@ -7,9 +7,11 @@ import torch.nn.functional as F
 import torch_geometric.transforms as T
 
 from tqdm import tqdm
+from functools import partial
 from torch.optim import Adam
-from GCL.eval import get_split, LREvaluator
+from GCL.eval import LRTrainableEvaluator, from_PyG_split
 from GCL.models import BootstrapContrast
+from sklearn.metrics import f1_score
 from torch_geometric.nn import GCNConv
 from torch_geometric.datasets import WikiCS
 
@@ -111,13 +113,16 @@ def train(encoder_model, contrast_model, data, optimizer):
     return loss.item()
 
 
-def test(encoder_model, data):
+def eval(encoder_model, data):
     encoder_model.eval()
     h1, h2, _, _, _, _ = encoder_model(data.x, data.edge_index)
     z = torch.cat([h1, h2], dim=1)
-    split = get_split(num_samples=z.size()[0], train_ratio=0.1, test_ratio=0.8)
-    result = LREvaluator()(z, data.y, split)
-    return result
+    split = from_PyG_split(data)
+    evaluator = LRTrainableEvaluator(
+        input_dim=z.size(1), num_classes=data.y.max().item() + 1,
+        metrics={'micro_f1': partial(f1_score, average='micro'), 'macro_f1': partial(f1_score, average='macro')},
+        split=split, device=data.x.device, test_metric='micro_f1')
+    return evaluator(z, data.y)
 
 
 def main():
@@ -135,14 +140,15 @@ def main():
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
 
-    with tqdm(total=100, desc='(T)') as pbar:
-        for epoch in range(1, 101):
+    with tqdm(total=3000, desc='(T)') as pbar:
+        for epoch in range(1, 3001):
             loss = train(encoder_model, contrast_model, data, optimizer)
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
-    test_result = test(encoder_model, data)
-    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    test_result = eval(encoder_model, data)
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]["mean"]:.4f}±{test_result["micro_f1"]["std"]:.4f},'
+          f' F1Ma={test_result["macro_f1"]["mean"]:.4f}±{test_result["macro_f1"]["std"]:.4f}')
 
 
 if __name__ == '__main__':
