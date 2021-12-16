@@ -9,7 +9,7 @@
 .. autosummary::
    :nosignatures:
    
-   {% for cls in GCL.augmentors.classes %}
+   {% for cls in GCL.augmentor.classes %}
      {{ cls }}
    {% endfor %}
 ```
