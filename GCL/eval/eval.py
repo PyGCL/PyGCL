@@ -68,23 +68,23 @@ class BaseTrainableEvaluator:
             Dict[str, Dict]: Evaluation results with metrics as keys and mean and standard deviation as values.
         """
         results = []
-        for idx, split_dict in enumerate(iter_split(self.split, x, y)):
-            [v.to(self.device) for v in split_dict.values()]
-            x_train, x_test, x_valid = itemgetter('x_train', 'x_test', 'x_valid')(split_dict)
-            y_train, y_test, y_valid = itemgetter('y_train', 'y_test', 'y_valid')(split_dict)
-            y_valid = y_valid.detach().cpu().numpy()
-            y_test = y_test.detach().cpu().numpy()
+        with tqdm(total=len(list(iter_split(self.split, x, y))), desc=f'(ET)',
+                  bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}{postfix}]') as pbar:
+            for idx, split_dict in enumerate(iter_split(self.split, x, y)):
+                [v.to(self.device) for v in split_dict.values()]
+                x_train, x_test, x_valid = itemgetter('x_train', 'x_test', 'x_valid')(split_dict)
+                y_train, y_test, y_valid = itemgetter('y_train', 'y_test', 'y_valid')(split_dict)
+                y_valid = y_valid.detach().cpu().numpy()
+                y_test = y_test.detach().cpu().numpy()
 
-            model = self.model.to(self.device)
-            model.reset_parameters()
-            optimizer = self.optimizer_class(model.parameters(), **self.optimizer_params)
-            criterion = self.objective
+                model = self.model.to(self.device)
+                model.reset_parameters()
+                optimizer = self.optimizer_class(model.parameters(), **self.optimizer_params)
+                criterion = self.objective
 
-            best_val = 0
-            best_test = {}
+                best_val = 0
+                best_test = {}
 
-            with tqdm(total=self.num_epochs, desc=f'(E#{idx+1})',
-                      bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}{postfix}]') as pbar:
                 for epoch in range(self.num_epochs):
                     model.train()
                     optimizer.zero_grad()
@@ -102,9 +102,9 @@ class BaseTrainableEvaluator:
                                 best_val = val_result
                                 y_pred = model.predict(x_test).detach().cpu().numpy()
                                 best_test = {k: v(y_pred, y_test) for k, v in self.metrics.items()}
-                        pbar.set_postfix(best_test)
-                        pbar.update(self.test_interval)
-            results.append(best_test)
+                pbar.set_postfix(best_test)
+                pbar.update()
+                results.append(best_test)
 
         results = pd.DataFrame.from_dict(results)
         return results.agg(['mean', 'std']).to_dict()
@@ -169,20 +169,26 @@ class BaseSKLearnEvaluator:
             Dict[str, Dict]: Evaluation results with metrics as keys and mean and standard deviation as values.
         """
         results = []
-        for split_dict in iter_split(self.split, x, y):
-            x_train, x_test = itemgetter('x_train', 'x_test')(split_dict)
-            y_train, y_test = itemgetter('y_train', 'y_test')(split_dict)
-            if self.param_grid is not None:
-                predictor = GridSearchCV(
-                    self.evaluator, self.param_grid, scoring=self.grid_search_scoring,
-                    verbose=0, refit=next(iter(self.grid_search_scoring)))
-                if self.grid_search_params is not None:
-                    predictor.set_params(**self.grid_search_params)
-            else:
-                predictor = self.evaluator
-            predictor.fit(x_train, y_train)
-            y_pred = predictor.predict(x_test)
-            results.append({name: metric(y_test, y_pred) for name, metric in self.metrics.items()})
+
+        with tqdm(total=len(list(iter_split(self.split, x, y))), desc=f'(ET)',
+                  bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}{postfix}]') as pbar:
+            for split_dict in iter_split(self.split, x, y):
+                x_train, x_test = itemgetter('x_train', 'x_test')(split_dict)
+                y_train, y_test = itemgetter('y_train', 'y_test')(split_dict)
+                if self.param_grid is not None:
+                    predictor = GridSearchCV(
+                        self.evaluator, self.param_grid, scoring=self.grid_search_scoring,
+                        verbose=0, refit=next(iter(self.grid_search_scoring)))
+                    if self.grid_search_params is not None:
+                        predictor.set_params(**self.grid_search_params)
+                else:
+                    predictor = self.evaluator
+                predictor.fit(x_train, y_train)
+                y_pred = predictor.predict(x_test)
+                test_result = {name: metric(y_test, y_pred) for name, metric in self.metrics.items()}
+                pbar.set_postfix(test_result)
+                pbar.update()
+                results.append(test_result)
 
         results = pd.DataFrame.from_dict(results)
         return results.agg(['mean', 'std']).to_dict()
