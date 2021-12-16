@@ -6,7 +6,7 @@ import torch_geometric.transforms as T
 from torch import nn
 from tqdm import tqdm
 from torch.optim import Adam
-from GCL.eval import get_split, LREvaluator
+from GCL.eval import random_split, LRTrainableEvaluator
 from GCL.models import SingleBranchContrast
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.inits import uniform
@@ -64,8 +64,8 @@ def train(encoder_model, contrast_model, data, optimizer):
 def test(encoder_model, data):
     encoder_model.eval()
     z, _, _ = encoder_model(data.x, data.edge_index)
-    split = get_split(num_samples=z.size()[0], train_ratio=0.1, test_ratio=0.8)
-    result = LREvaluator()(z, data.y, split)
+    split = random_split(num_samples=z.size()[0], train_ratio=0.1, test_ratio=0.8)
+    result = LRTrainableEvaluator()(z, data.y, split)
     return result
 
 

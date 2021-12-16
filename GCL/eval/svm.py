@@ -11,7 +11,7 @@ class SVMEvaluator(BaseSKLearnEvaluator):
 
     Parameters:
         metrics (Dict[str, Callable]): The metrics to evaluate in a dictionary
-            with metric names as keys and callables a values.
+            with metric names as keys and callables as values.
         split (BaseCrossValidator): The sklearn cross-validator to split the data.
         linear (bool): Whether to use linear SVM. (default: :obj:`True`)
         params (Dict, optional): Other parameters for the SVM model.
@@ -23,8 +23,8 @@ class SVMEvaluator(BaseSKLearnEvaluator):
             If :obj:`param_grid` is given, provide metrics in grid search.
             If multiple metrics are given, the first one will be used to retrain the best model.
             (default: :obj:`None`)
-        cv_params (Dict, optional): If :obj:`param_grid` is given, further pass the parameters
-            for the sklearn cross-validator. See sklearn `GridSearchCV
+        grid_search_params (Dict, optional): If :obj:`param_grid` is given, further pass the parameters
+            for the sklearn grid search cross-validator. See sklearn `GridSearchCV
             <https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html>`_
             for details. (default: :obj:`None`)
     """
@@ -32,11 +32,11 @@ class SVMEvaluator(BaseSKLearnEvaluator):
             self, metrics: Dict[str, Callable], split: BaseCrossValidator,
             linear=True, params: Optional[Dict] = None, param_grid: Optional[Dict] = None,
             grid_search_scoring: Optional[Dict[str, Callable]] = None,
-            cv_params: Optional[Dict] = None):
+            grid_search_params: Optional[Dict] = None):
         if linear:
             self.evaluator = LinearSVC()
         else:
             self.evaluator = SVC()
         super(SVMEvaluator, self).__init__(
             evaluator=self.evaluator, metrics=metrics, split=split, params=params,
-            param_grid=param_grid, grid_search_scoring=grid_search_scoring, cv_params=cv_params)
+            param_grid=param_grid, grid_search_scoring=grid_search_scoring, grid_search_params=grid_search_params)

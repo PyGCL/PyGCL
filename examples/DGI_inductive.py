@@ -5,7 +5,7 @@ import GCL.losses as L
 from torch import nn
 from tqdm import tqdm
 from torch.optim import Adam
-from GCL.eval import get_split, LREvaluator
+from GCL.eval import random_split, LRTrainableEvaluator
 from GCL.models import SingleBranchContrast
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import uniform
@@ -75,8 +75,8 @@ def test(encoder_model, data, dataloader):
         zs.append(z)
     x = torch.cat(zs, dim=0)
 
-    split = get_split(num_samples=x.size()[0], train_ratio=0.1, test_ratio=0.8)
-    result = LREvaluator()(x, data.y, split)
+    split = random_split(num_samples=x.size()[0], train_ratio=0.1, test_ratio=0.8)
+    result = LRTrainableEvaluator()(x, data.y, split)
     return result
 
 

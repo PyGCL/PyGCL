@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 from tqdm import tqdm
 from torch.optim import Adam
-from GCL.eval import get_split, SVMEvaluator
+from GCL.eval import random_split, SVMEvaluator
 from GCL.models import DualBranchContrast
 from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.data import DataLoader
@@ -102,7 +102,7 @@ def test(encoder_model, dataloader):
     x = torch.cat(x, dim=0)
     y = torch.cat(y, dim=0)
 
-    split = get_split(num_samples=x.size()[0], train_ratio=0.8, test_ratio=0.1)
+    split = random_split(num_samples=x.size()[0], train_ratio=0.8, test_ratio=0.1)
     result = SVMEvaluator(linear=True)(x, y, split)
     return result
 

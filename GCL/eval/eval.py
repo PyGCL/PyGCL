@@ -2,98 +2,31 @@ import torch
 import numpy as np
 import pandas as pd
 
-from typing import Union, Callable, List, Dict, Optional
-from sklearn.base import BaseEstimator
+from tqdm import tqdm
+from typing import Union, Callable, List, Dict, Optional, Type
+from operator import itemgetter
 from torch.optim import Optimizer
-from torch_geometric.data import Data
+from sklearn.base import BaseEstimator
 from sklearn.model_selection import GridSearchCV, BaseCrossValidator
 
-
-def get_split(
-        num_samples: int, num_splits: int = 1,
-        train_ratio: float = 0.1, test_ratio: float = 0.8) -> Union[Dict, List[Dict]]:
-    """
-    Generate split indices for training, test, and validation sets.
-
-    Args:
-        num_samples (int): The size of the dataset.
-        num_splits (int, optional): The number of splits to generate. (default: :obj:`1`)
-        train_ratio (float, optional): The ratio of the training set. (default: :obj:`0.1`)
-        test_ratio (float, optional): The ratio of the test set. (default: :obj:`0.8`)
-
-    Returns:
-        Union(Dict, List[Dict]): A dictionary of split indices or a list of dictionaries of split indices.
-
-    Examples:
-        >>> get_split(10, num_splits=1, train_ratio=0.5, test_ratio=0.4)
-        [{'train': [3, 4, 0, 1, 2], 'test': [5, 7, 6, 8], 'valid': [9]}]
-    """
-    assert train_ratio + test_ratio < 1
-
-    train_size = int(num_samples * train_ratio)
-    test_size = int(num_samples * test_ratio)
-
-    out = []
-    for i in range(num_splits):
-        indices = torch.randperm(num_samples)
-        out.append({
-            'train': indices[:train_size],
-            'valid': indices[train_size: test_size + train_size],
-            'test': indices[test_size + train_size:]
-        })
-    return out if num_splits > 1 else out[0]
+from GCL.eval.split import iter_split
 
 
-def from_PyG_split(data: Data) -> Union[Dict, List[Dict]]:
-    """
-    Convert from PyG split indices of training, test, and validation sets.
-
-    Args:
-        data (Data): A PyG data object.
-
-    Returns:
-        Union[Dict, List[Dict]]: A dictionary of split indices or a list of dictionaries of split indices.
-
-    Raises:
-        ValueError: If the :obj:`data` object does not have the split indices.
-    """
-    if any([mask is None for mask in [data.train_mask, data.test_mask, data.val_mask]]):
-        raise ValueError('The data object does not have the split indices.')
-    num_samples = data.num_nodes
-    indices = torch.arange(num_samples)
-
-    if data.train_mask.dim() == 1:
-        return {
-            'train': indices[data.train_mask],
-            'valid': indices[data.val_mask],
-            'test': indices[data.test_mask]
-        }
-    else:
-        out = []
-        for i in range(data.train_mask.size(1)):
-            out_dict = {}
-            for mask in ['train_mask', 'val_mask', 'test_mask']:
-                if data[mask].dim() == 1:
-                    # Datasets like WikiCS have only one split for the test set.
-                    out_dict[mask[:-5]] = indices[data[mask]]
-                else:
-                    out_dict[mask[:-5]] = indices[data[mask][:, i]]
-            out.append(out_dict)
-        return out
-
-
-class BaseEvaluator:
+class BaseTrainableEvaluator:
     """
     Base class for trainable (e.g., logistic regression) evaluation.
 
     Args:
-        model (torch.nn.Module): The evaluation model to train.
-        optimizer (Optimizer): The optimizer to use for training.
-        objective (Callable): The objective function to use for training.
-        split (Union[Dict, List[Dict], BaseCrossValidator]): Split indices (for one fold), or a list of split
-            indices (for multiple folds), or a sklearn cross-validator.
+        model (torch.nn.Module): The evaluation model to train. It should implement a :obj:`predict` function to
+            convert logits to predictions.
+        optimizer (Optimizer): The optimizer class for training.
+        optimizer_params (Dict): The parameters for the optimizer.
+        objective (Callable): The objective function to use for training. Its signature should be like
+            :obj:`f(logits, y)`.
+        split (Union[List[Dict], BaseCrossValidator]): A list of split indices (for multiple folds), or a
+            sklearn cross-validator.
         metrics (Dict[str, Callable]): The metrics to evaluate in a dictionary with metric names as keys and
-            callables a values.
+            callables as values.
         device (Union[str, torch.device]): The device to use for training. (default: :obj:`'cpu'`)
         num_epochs (int): The number of epochs to train the model. (default: :obj:`1000`)
         test_interval (int): The number of epochs between each test. (default: :obj:`20`)
@@ -105,12 +38,13 @@ class BaseEvaluator:
     """
 
     def __init__(
-            self, model: torch.nn.Module, optimizer: Optimizer, objective: Callable,
-            split: Union[Dict, List[Dict], BaseCrossValidator],
+            self, model: torch.nn.Module, optimizer: Type[Optimizer], optimizer_params: Dict,
+            objective: Callable, split: Union[Dict, List[Dict], BaseCrossValidator],
             metrics: Dict[str, Callable], device: Union[str, torch.device] = 'cpu',
             num_epochs: int = 1000, test_interval: int = 20, test_metric: Union[Callable, str, None] = None):
         self.model = model
-        self.optimizer = optimizer
+        self.optimizer_class = optimizer
+        self.optimizer_params = optimizer_params
         self.objective = objective
         self.split = split
         self.metrics = metrics
@@ -122,10 +56,71 @@ class BaseEvaluator:
         else:
             self.test_metric = test_metric
 
-    def evaluate(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> Dict:
-        raise NotImplementedError
+    def evaluate(self, x: torch.Tensor, y: torch.Tensor) -> Dict[str, Dict]:
+        """
+        Evaluate the model on the given data by training another evaluator model.
 
-    def __call__(self, x: Union[torch.FloatTensor, np.ndarray], y: Union[torch.LongTensor, np.ndarray]) -> Dict:
+        Args:
+            x (torch.Tensor): The data.
+            y (torch.Tensor): The targets (labels).
+
+        Returns:
+            Dict[str, Dict]: Evaluation results with metrics as keys and mean and standard deviation as values.
+        """
+        results = []
+        for split_dict in iter_split(self.split, x, y):
+            [v.to(self.device) for v in split_dict.values()]
+            x_train, x_test, x_valid = itemgetter('x_train', 'x_test', 'x_valid')(split_dict)
+            y_train, y_test, y_valid = itemgetter('y_train', 'y_test', 'y_valid')(split_dict)
+
+            model = self.model.to(self.device)
+            model.reset_paramerters()
+            optimizer = self.optimizer_class(model.parameters(), **self.optimizer_params)
+            criterion = self.objective
+
+            best_val = 0
+            best_test = {}
+
+            with tqdm(total=self.num_epochs, desc='(ET)',
+                      bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}{postfix}]') as pbar:
+                for epoch in range(self.num_epochs):
+                    model.train()
+                    optimizer.zero_grad()
+                    y_pred = model(x_train)
+                    loss = criterion(y_pred, y_train)
+                    loss.backward()
+                    optimizer.step()
+
+                    if (epoch + 1) % self.test_interval == 0:
+                        model.eval()
+                        with torch.no_grad():
+                            y_pred = model.predict(x_valid).detach().cpu().numpy()
+                            val_result = self.test_metric(y_pred, y_valid)
+                            if val_result > best_val:
+                                best_val = val_result
+                                y_pred = model.predict(x_test).detach().cpu().numpy()
+                                best_test = {k: v(y_pred, y_test) for k, v in self.metrics.items()}
+                                best_model = self.model.state_dict().copy()
+                        pbar.set_postfix(best_test)
+                        pbar.update(self.test_interval)
+
+            model.load_state_dict(best_model)
+            model.eval()
+            with torch.no_grad():
+                y_pred = model.predict(x_test).detach().cpu().numpy()
+                test_result = {k: v(y_pred, y_test) for k, v in self.metrics.items()}
+            results.append(test_result)
+
+        results = pd.DataFrame.from_dict(results)
+        return results.agg(['mean', 'std']).to_dict()
+
+    def __call__(self, x: Union[torch.Tensor, np.ndarray], y: Union[torch.Tensor, np.ndarray]) -> Dict[str, Dict]:
+        if isinstance(x, np.ndarray):
+            x = torch.from_numpy(x)
+        if isinstance(y, np.ndarray):
+            y = torch.from_numpy(y)
+        x = x.detach().to(self.device)
+        y = y.detach().to(self.device)
         result = self.evaluate(x, y)
         return result
 
@@ -137,34 +132,37 @@ class BaseSKLearnEvaluator:
     Args:
         evaluator (BaseEstimator): The sklearn evaluator.
         metrics (Dict[str, Callable]): The metrics to evaluate in a dictionary
-            with metric names as keys and callables a values.
-        split (BaseCrossValidator): The sklearn cross-validator to split the data.
+            with metric names as keys and callables as values.
+        split (Union[List[Dict], BaseCrossValidator]): A list of split indices (for multiple folds), or a
+            sklearn cross-validator. If a list of indices is given, the validation set will be ignored.
         params (Dict, optional): Other parameters for the evaluator. (default: :obj:`None`)
         param_grid (List[Dict], optional): The parameter grid for the grid search. (default: :obj:`None`)
         grid_search_scoring (Dict[str, Callable], optional):
             If :obj:`param_grid` is given, provide metrics in grid search.
             If multiple metrics are given, the first one will be used to retrain the best model.
             (default: :obj:`None`)
-        cv_params (Dict, optional): If :obj:`param_grid` is given, further pass the parameters
-            for the sklearn cross-validator. See sklearn `GridSearchCV
+        grid_search_params (Dict, optional): If :obj:`param_grid` is given, further pass the parameters
+            for the sklearn grid search cross-validator. See sklearn `GridSearchCV
             <https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html>`_
             for details. (default: :obj:`None`)
     """
 
     def __init__(
             self, evaluator: BaseEstimator, metrics: Dict[str, Callable],
-            split: BaseCrossValidator, params: Optional[Dict] = None, param_grid: Optional[Dict] = None,
-            grid_search_scoring: Optional[Dict[str, Callable]] = None, cv_params: Optional[Dict] = None):
+            split: Union[List[Dict], BaseCrossValidator],
+            params: Optional[Dict] = None, param_grid: Optional[Dict] = None,
+            grid_search_scoring: Optional[Dict[str, Callable]] = None,
+            grid_search_params: Optional[Dict] = None):
         if params is not None:
             evaluator.set_params(**params)
         self.evaluator = evaluator
         self.split = split
-        self.cv_params = cv_params
+        self.grid_search_params = grid_search_params
         self.grid_search_scoring = grid_search_scoring
         self.metrics = metrics
         self.param_grid = param_grid
 
-    def evaluate(self, x: np.ndarray, y: np.ndarray) -> Dict:
+    def evaluate(self, x: np.ndarray, y: np.ndarray) -> Dict[str, Dict]:
         """
         Evaluate the model on the given data using sklearn evaluator.
 
@@ -173,18 +171,18 @@ class BaseSKLearnEvaluator:
             y (np.ndarray): The targets (labels).
 
         Returns:
-            Dict: The evaluation results with mean and standard deviation.
+            Dict[str, Dict]: Evaluation results with metrics as keys and mean and standard deviation as values.
         """
         results = []
-        for train_idx, test_idx in self.split.split(x, y):
-            x_train, y_train = x[train_idx], y[train_idx]
-            x_test, y_test = x[test_idx], y[test_idx]
+        for split_dict in iter_split(self.split, x, y):
+            x_train, x_test = itemgetter('x_train', 'x_test')(split_dict)
+            y_train, y_test = itemgetter('y_train', 'y_test')(split_dict)
             if self.param_grid is not None:
                 predictor = GridSearchCV(
                     self.evaluator, self.param_grid, scoring=self.grid_search_scoring,
                     verbose=0, refit=next(iter(self.grid_search_scoring)))
-                if self.cv_params is not None:
-                    predictor.set_params(**self.cv_params)
+                if self.grid_search_params is not None:
+                    predictor.set_params(**self.grid_search_params)
             else:
                 predictor = self.evaluator
             predictor.fit(x_train, y_train)
@@ -194,7 +192,7 @@ class BaseSKLearnEvaluator:
         results = pd.DataFrame.from_dict(results)
         return results.agg(['mean', 'std']).to_dict()
 
-    def __call__(self, x: Union[torch.Tensor, np.ndarray], y: Union[torch.Tensor, np.ndarray]) -> Dict:
+    def __call__(self, x: Union[torch.Tensor, np.ndarray], y: Union[torch.Tensor, np.ndarray]) -> Dict[str, Dict]:
         if isinstance(x, torch.Tensor):
             x = x.detach().cpu().numpy()
         if isinstance(y, torch.Tensor):

@@ -7,7 +7,7 @@ import torch_geometric.transforms as T
 
 from tqdm import tqdm
 from torch.optim import Adam
-from GCL.eval import from_predefined_split, LREvaluator
+from GCL.eval import from_PyG_split, LRTrainableEvaluator
 from GCL.models import DualBranchContrast
 from torch_geometric.nn import GCNConv
 from torch_geometric.datasets import Planetoid
@@ -83,8 +83,8 @@ def train(encoder_model, contrast_model, data, optimizer):
 def test(encoder_model, data):
     encoder_model.eval()
     z, _, _ = encoder_model(data.x, data.edge_index, data.edge_attr)
-    split = from_predefined_split(data=data)
-    result = LREvaluator()(z, data.y, split)
+    split = from_PyG_split(data=data)
+    result = LRTrainableEvaluator()(z, data.y, split)
     return result
 
 
