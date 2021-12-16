@@ -107,7 +107,7 @@ class BaseTrainableEvaluator:
                 results.append(best_test)
 
         results = pd.DataFrame.from_dict(results)
-        return results.agg(['mean', 'std']).to_dict()
+        return results.agg(['mean', 'std']).fillna(0).to_dict()
 
     def __call__(self, x: Union[torch.Tensor, np.ndarray], y: Union[torch.Tensor, np.ndarray]) -> Dict[str, Dict]:
         if isinstance(x, np.ndarray):
@@ -191,7 +191,7 @@ class BaseSKLearnEvaluator:
                 results.append(test_result)
 
         results = pd.DataFrame.from_dict(results)
-        return results.agg(['mean', 'std']).to_dict()
+        return results.agg(['mean', 'std']).fillna(0).to_dict()
 
     def __call__(self, x: Union[torch.Tensor, np.ndarray], y: Union[torch.Tensor, np.ndarray]) -> Dict[str, Dict]:
         if isinstance(x, torch.Tensor):
