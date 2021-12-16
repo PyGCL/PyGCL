@@ -68,7 +68,7 @@ class BaseTrainableEvaluator:
             Dict[str, Dict]: Evaluation results with metrics as keys and mean and standard deviation as values.
         """
         results = []
-        for split_dict in iter_split(self.split, x, y):
+        for idx, split_dict in enumerate(iter_split(self.split, x, y)):
             [v.to(self.device) for v in split_dict.values()]
             x_train, x_test, x_valid = itemgetter('x_train', 'x_test', 'x_valid')(split_dict)
             y_train, y_test, y_valid = itemgetter('y_train', 'y_test', 'y_valid')(split_dict)
@@ -83,7 +83,7 @@ class BaseTrainableEvaluator:
             best_val = 0
             best_test = {}
 
-            with tqdm(total=self.num_epochs, desc='(ET)',
+            with tqdm(total=self.num_epochs, desc=f'(E#{idx+1})',
                       bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}{postfix}]') as pbar:
                 for epoch in range(self.num_epochs):
                     model.train()
