@@ -114,4 +114,5 @@ def iter_split(
                 'y_test': y[test_idx],
                 'y_valid': None
             }
-    raise ValueError('The split object is not supported.')
+    else:
+        raise ValueError('The split object is not supported.')

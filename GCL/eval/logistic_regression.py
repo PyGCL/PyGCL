@@ -23,7 +23,7 @@ class LRModel(nn.Module):
         return self.output_fn(self.fc(x))
 
     def predict(self, x):
-        return self.fc(x)
+        return self.fc(x).argmax(dim=-1)
 
 
 class LRTrainableEvaluator(BaseTrainableEvaluator):
@@ -59,7 +59,7 @@ class LRTrainableEvaluator(BaseTrainableEvaluator):
         optimizer = Adam
         optimizer_params = {'lr': learning_rate, 'weight_decay': weight_decay}
         criterion = nn.NLLLoss()
-        super(LRTrainableEvaluator).__init__(
+        super(LRTrainableEvaluator, self).__init__(
             model=model, optimizer=optimizer, optimizer_params=optimizer_params,
             objective=criterion, split=split, metrics=metrics, device=device,
             num_epochs=num_epochs, test_interval=test_interval, test_metric=test_metric)

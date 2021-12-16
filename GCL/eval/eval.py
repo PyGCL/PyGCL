@@ -72,9 +72,11 @@ class BaseTrainableEvaluator:
             [v.to(self.device) for v in split_dict.values()]
             x_train, x_test, x_valid = itemgetter('x_train', 'x_test', 'x_valid')(split_dict)
             y_train, y_test, y_valid = itemgetter('y_train', 'y_test', 'y_valid')(split_dict)
+            y_valid = y_valid.detach().cpu().numpy()
+            y_test = y_test.detach().cpu().numpy()
 
             model = self.model.to(self.device)
-            model.reset_paramerters()
+            model.reset_parameters()
             optimizer = self.optimizer_class(model.parameters(), **self.optimizer_params)
             criterion = self.objective
 
@@ -100,16 +102,9 @@ class BaseTrainableEvaluator:
                                 best_val = val_result
                                 y_pred = model.predict(x_test).detach().cpu().numpy()
                                 best_test = {k: v(y_pred, y_test) for k, v in self.metrics.items()}
-                                best_model = self.model.state_dict().copy()
                         pbar.set_postfix(best_test)
                         pbar.update(self.test_interval)
-
-            model.load_state_dict(best_model)
-            model.eval()
-            with torch.no_grad():
-                y_pred = model.predict(x_test).detach().cpu().numpy()
-                test_result = {k: v(y_pred, y_test) for k, v in self.metrics.items()}
-            results.append(test_result)
+            results.append(best_test)
 
         results = pd.DataFrame.from_dict(results)
         return results.agg(['mean', 'std']).to_dict()

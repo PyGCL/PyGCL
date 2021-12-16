@@ -10,7 +10,9 @@ __all__ = [
     'LRTrainableEvaluator',
     'LRSklearnEvaluator',
     'SVMEvaluator',
-    'RFEvaluator'
+    'RFEvaluator',
+    'random_split',
+    'from_PyG_split'
 ]
 
 classes = __all__
