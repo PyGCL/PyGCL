@@ -1,14 +1,21 @@
 import copy
 import torch
 import os.path as osp
+
+
 import GCL.losses as L
 import GCL.augmentors as A
 import torch.nn.functional as F
 
 from tqdm import tqdm
+from functools import partial
 from torch.optim import Adam
-from GCL.eval import SVMEvaluator, random_split
+from GCL.eval import SVMEvaluator
 from GCL.models import BootstrapContrast
+from sklearn.metrics import f1_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils._testing import ignore_warnings
 from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.data import DataLoader
 from torch_geometric.datasets import TUDataset
@@ -136,7 +143,8 @@ def train(encoder_model, contrast_model, dataloader, optimizer):
     return total_loss
 
 
-def test(encoder_model, dataloader):
+@ignore_warnings(category=ConvergenceWarning)
+def eval(encoder_model, dataloader):
     encoder_model.eval()
     x = []
     y = []
@@ -152,8 +160,11 @@ def test(encoder_model, dataloader):
     x = torch.cat(x, dim=0)
     y = torch.cat(y, dim=0)
 
-    split = random_split(num_samples=x.size()[0], train_ratio=0.8, test_ratio=0.1)
-    result = SVMEvaluator(linear=True)(x, y, split)
+    split = StratifiedKFold(n_splits=10, shuffle=True, random_state=None)
+    evaluator = SVMEvaluator(
+        linear=True, split=split,
+        metrics={'micro_f1': partial(f1_score, average='micro'), 'macro_f1': partial(f1_score, average='macro')})
+    result = evaluator(x, y)
     return result
 
 
@@ -179,8 +190,9 @@ def main():
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
-    test_result = test(encoder_model, dataloader)
-    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    test_result = eval(encoder_model, dataloader)
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]["mean"]:.4f}±{test_result["micro_f1"]["std"]:.4f},'
+          f' F1Ma={test_result["macro_f1"]["mean"]:.4f}±{test_result["macro_f1"]["std"]:.4f}')
 
 
 if __name__ == '__main__':
