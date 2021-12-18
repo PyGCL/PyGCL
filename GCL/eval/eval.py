@@ -39,7 +39,7 @@ class BaseTrainableEvaluator:
 
     def __init__(
             self, model: torch.nn.Module, optimizer: Type[Optimizer], optimizer_params: Dict,
-            objective: Callable, split: Union[Dict, List[Dict], BaseCrossValidator],
+            objective: Callable, split: Union[List[Dict], BaseCrossValidator],
             metrics: Dict[str, Callable], device: Union[str, torch.device] = 'cpu',
             num_epochs: int = 1000, test_interval: int = 20, test_metric: Union[Callable, str, None] = None):
         self.model = model
