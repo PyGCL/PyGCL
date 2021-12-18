@@ -1,14 +1,19 @@
 import torch
 import os.path as osp
 import GCL.loss as L
-import GCL.augmentors as A
+import GCL.augmentor as A
 import torch.nn.functional as F
 
-from torch import nn
 from tqdm import tqdm
+from torch import nn
+from functools import partial
 from torch.optim import Adam
-from GCL.eval import get_split, SVMEvaluator
+from GCL.eval import SVMEvaluator
 from GCL.model import DualBranchContrast
+from sklearn.metrics import f1_score
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils._testing import ignore_warnings
+from sklearn.model_selection import StratifiedKFold
 from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.data import DataLoader
 from torch_geometric.datasets import TUDataset
@@ -87,7 +92,8 @@ def train(encoder_model, contrast_model, dataloader, optimizer):
     return epoch_loss
 
 
-def test(encoder_model, dataloader):
+@ignore_warnings(category=ConvergenceWarning)
+def eval(encoder_model, dataloader):
     encoder_model.eval()
     x = []
     y = []
@@ -102,8 +108,11 @@ def test(encoder_model, dataloader):
     x = torch.cat(x, dim=0)
     y = torch.cat(y, dim=0)
 
-    split = get_split(num_samples=x.size()[0], train_ratio=0.8, test_ratio=0.1)
-    result = SVMEvaluator(linear=True)(x, y, split)
+    split = StratifiedKFold(n_splits=10, shuffle=True, random_state=None)
+    evaluator = SVMEvaluator(
+        linear=True, split=split,
+        metrics={'micro_f1': partial(f1_score, average='micro'), 'macro_f1': partial(f1_score, average='macro')})
+    result = evaluator(x, y)
     return result
 
 
@@ -115,10 +124,11 @@ def main():
     input_dim = max(dataset.num_features, 1)
 
     aug1 = A.Identity()
-    aug2 = A.RandomChoice([A.RWSampling(num_seeds=1000, walk_length=10),
-                           A.NodeDropping(pn=0.1),
-                           A.FeatureMasking(pf=0.1),
-                           A.EdgeRemoving(pe=0.1)], 1)
+    aug2 = A.RandomChoice([
+        A.RWSampling(num_seeds=1000, walk_length=10),
+        A.NodeDropping(pn=0.1),
+        A.FeatureMasking(pf=0.1),
+        A.EdgeRemoving(pe=0.1)], 1)
     gconv = GConv(input_dim=input_dim, hidden_dim=32, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2)).to(device)
     contrast_model = DualBranchContrast(loss=L.InfoNCE(tau=0.2), mode='G2G').to(device)
@@ -131,8 +141,9 @@ def main():
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
-    test_result = test(encoder_model, dataloader)
-    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    test_result = eval(encoder_model, dataloader)
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]["mean"]:.4f}±{test_result["micro_f1"]["std"]:.4f},'
+          f' F1Ma={test_result["macro_f1"]["mean"]:.4f}±{test_result["macro_f1"]["std"]:.4f}')
 
 
 if __name__ == '__main__':

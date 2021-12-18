@@ -3,10 +3,12 @@ import os.path as osp
 import GCL.loss as L
 import torch_geometric.transforms as T
 
-from torch import nn
 from tqdm import tqdm
+from torch import nn
+from functools import partial
 from torch.optim import Adam
-from GCL.eval import get_split, LREvaluator
+from sklearn.metrics import f1_score
+from GCL.eval import random_split, LRTrainableEvaluator
 from GCL.model import SingleBranchContrast
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.inits import uniform
@@ -61,12 +63,15 @@ def train(encoder_model, contrast_model, data, optimizer):
     return loss.item()
 
 
-def test(encoder_model, data):
+def eval(encoder_model, data):
     encoder_model.eval()
     z, _, _ = encoder_model(data.x, data.edge_index)
-    split = get_split(num_samples=z.size()[0], train_ratio=0.1, test_ratio=0.8)
-    result = LREvaluator()(z, data.y, split)
-    return result
+    split = random_split(num_samples=z.size(0), num_splits=10, train_ratio=0.1, test_ratio=0.8)
+    evaluator = LRTrainableEvaluator(
+        input_dim=z.size(1), num_classes=data.y.max().item() + 1,
+        metrics={'micro_f1': partial(f1_score, average='micro'), 'macro_f1': partial(f1_score, average='macro')},
+        split=split, device=data.x.device, test_metric='micro_f1')
+    return evaluator(z, data.y)
 
 
 def main():
@@ -87,8 +92,9 @@ def main():
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
-    test_result = test(encoder_model, data)
-    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    test_result = eval(encoder_model, data)
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]["mean"]:.4f}±{test_result["micro_f1"]["std"]:.4f},'
+          f' F1Ma={test_result["macro_f1"]["mean"]:.4f}±{test_result["macro_f1"]["std"]:.4f}')
 
 
 if __name__ == '__main__':

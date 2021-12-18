@@ -2,11 +2,13 @@ import torch
 import os.path as osp
 import GCL.loss as L
 
-from torch import nn
 from tqdm import tqdm
+from torch import nn
 from torch.optim import Adam
-from GCL.eval import get_split, LREvaluator
+from functools import partial
+from GCL.eval import random_split, LRTrainableEvaluator
 from GCL.model import SingleBranchContrast
+from sklearn.metrics import f1_score
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import uniform
 from torch_geometric.data import NeighborSampler
@@ -66,7 +68,7 @@ def train(encoder_model, contrast_model, data, dataloader, optimizer):
     return total_loss / total_examples
 
 
-def test(encoder_model, data, dataloader):
+def eval(encoder_model, data, dataloader):
     encoder_model.eval()
     zs = []
     for i, (batch_size, node_id, adjs) in enumerate(dataloader):
@@ -75,9 +77,12 @@ def test(encoder_model, data, dataloader):
         zs.append(z)
     x = torch.cat(zs, dim=0)
 
-    split = get_split(num_samples=x.size()[0], train_ratio=0.1, test_ratio=0.8)
-    result = LREvaluator()(x, data.y, split)
-    return result
+    split = random_split(num_samples=x.size(0), num_splits=10, train_ratio=0.1, test_ratio=0.8)
+    evaluator = LRTrainableEvaluator(
+        input_dim=x.size(1), num_classes=data.y.max().item() + 1,
+        metrics={'micro_f1': partial(f1_score, average='micro'), 'macro_f1': partial(f1_score, average='macro')},
+        split=split, device=data.x.device, test_metric='micro_f1')
+    return evaluator(x, data.y)
 
 
 def main():
@@ -89,12 +94,14 @@ def main():
     dataset = Reddit(path)
     data = dataset[0].to(device)
 
-    train_loader = NeighborSampler(data.edge_index, node_idx=None,
-                                   sizes=[10, 10, 25], batch_size=128,
-                                   shuffle=True, num_workers=32)
-    test_loader = NeighborSampler(data.edge_index, node_idx=None,
-                                  sizes=[10, 10, 25], batch_size=128,
-                                  shuffle=False, num_workers=32)
+    train_loader = NeighborSampler(
+        data.edge_index, node_idx=None,
+        sizes=[10, 10, 25], batch_size=128,
+        shuffle=True, num_workers=32)
+    test_loader = NeighborSampler(
+        data.edge_index, node_idx=None,
+        sizes=[10, 10, 25], batch_size=128,
+        shuffle=False, num_workers=32)
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=3).to(device)
     encoder_model = Encoder(encoder=gconv, hidden_dim=512).to(device)
@@ -108,8 +115,9 @@ def main():
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
-    test_result = test(encoder_model, data, test_loader)
-    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    test_result = eval(encoder_model, data, test_loader)
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]["mean"]:.4f}±{test_result["micro_f1"]["std"]:.4f},'
+          f' F1Ma={test_result["macro_f1"]["mean"]:.4f}±{test_result["macro_f1"]["std"]:.4f}')
 
 
 if __name__ == '__main__':
