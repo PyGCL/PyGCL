@@ -23,7 +23,8 @@ class Loss(ABC):
         raise NotImplementedError
 
     def __call__(self, contrast_instance: ContrastInstance, *args, **kwargs) -> torch.FloatTensor:
-        anchor, sample, pos_mask, neg_mask = contrast_instance
+        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
+                                             contrast_instance.pos_mask, contrast_instance.neg_mask
         if pos_mask is None and neg_mask is None:
             loss = self.compute_default_positive(contrast_instance, *args, **kwargs)
         else:

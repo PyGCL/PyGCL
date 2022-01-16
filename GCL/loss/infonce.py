@@ -17,7 +17,8 @@ class InfoNCE(Loss):
         self.tau = tau
 
     def compute(self, contrast_instance, *args, **kwargs):
-        anchor, sample, pos_mask, neg_mask = contrast_instance
+        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
+                                             contrast_instance.pos_mask, contrast_instance.neg_mask
         sim = _similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
@@ -26,7 +27,7 @@ class InfoNCE(Loss):
         return -loss.mean()
 
     def compute_default_positive(self, contrast_instance, *args, **kwargs):
-        anchor, sample, _, _ = contrast_instance
+        anchor, sample = contrast_instance.anchor, contrast_instance.sample
         sim = torch.exp((_similarity(anchor, sample)) / self.tau)  # anchor x sample
         pos = sim.diag()
         neg = sim.sum(dim=1) - sim.diag()

@@ -34,7 +34,8 @@ class DenseSampler(ABC):
 
     @staticmethod
     def add_intraview_negs(contrast_instance: ContrastInstance) -> ContrastInstance:
-        anchor, sample, pos_mask, neg_mask = contrast_instance
+        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
+                                             contrast_instance.pos_mask, contrast_instance.neg_mask
         num_nodes = anchor.size(0)
         device = anchor.device
         intraview_pos_mask = torch.zeros_like(pos_mask, device=device)

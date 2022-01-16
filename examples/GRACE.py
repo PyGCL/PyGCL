@@ -41,10 +41,13 @@ class Encoder(torch.nn.Module):
         self.fc1 = torch.nn.Linear(hidden_dim, proj_dim)
         self.fc2 = torch.nn.Linear(proj_dim, hidden_dim)
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, data):
         aug1, aug2 = self.augmentor
-        x1, edge_index1, edge_weight1 = aug1(x, edge_index, edge_weight)
-        x2, edge_index2, edge_weight2 = aug2(x, edge_index, edge_weight)
+        data1 = aug1(data)
+        data2 = aug2(data)
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+        x1, edge_index1, edge_weight1 = data1.x, data1.edge_index, data1.edge_attr
+        x2, edge_index2, edge_weight2 = data2.x, data2.edge_index, data2.edge_attr
         z = self.encoder(x, edge_index, edge_weight)
         z1 = self.encoder(x1, edge_index1, edge_weight1)
         z2 = self.encoder(x2, edge_index2, edge_weight2)
@@ -58,7 +61,7 @@ class Encoder(torch.nn.Module):
 def train(encoder_model, contrast_model, data, optimizer):
     encoder_model.train()
     optimizer.zero_grad()
-    z, z1, z2 = encoder_model(data.x, data.edge_index, data.edge_attr)
+    z, z1, z2 = encoder_model(data)
     h1, h2 = [encoder_model.project(x) for x in [z1, z2]]
     loss = contrast_model(h1, h2)
     loss.backward()
@@ -68,7 +71,7 @@ def train(encoder_model, contrast_model, data, optimizer):
 
 def eval(encoder_model, data):
     encoder_model.eval()
-    z, _, _ = encoder_model(data.x, data.edge_index, data.edge_attr)
+    z, _, _ = encoder_model(data)
     split = random_split(num_samples=z.size(0), num_splits=10, train_ratio=0.1, test_ratio=0.8)
     evaluator = LRTrainableEvaluator(
         input_dim=z.size(1), num_classes=data.y.max().item() + 1,
