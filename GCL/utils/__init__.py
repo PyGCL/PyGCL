@@ -1,4 +1,4 @@
-from .utils import split_dataset, seed_everything, normalize, batchify_dict
+from .utils import split_dataset, seed_everything, normalize, batchify_dict, sinkhorn
 from .convert import from_pyggraph_to_dglgraph, from_dglgraph_to_pyggraph
 
 __all__ = [
