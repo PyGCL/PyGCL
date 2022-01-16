@@ -9,7 +9,7 @@ class NodeDropping(Augmentor):
 
     def pyg_augment(self, g: PyGGraph):
         g = g.clone()
-        edge_index, edge_weights = drop_node(g.edge_index, g.edge_weights, keep_prob=1. - self.pn)
+        edge_index, edge_weights = drop_node(g.edge_index, g.edge_attr, keep_prob=1. - self.pn)
         g.edge_index = edge_index
         g.edge_attr = edge_weights
         return g

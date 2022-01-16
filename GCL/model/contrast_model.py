@@ -14,8 +14,6 @@ def add_extra_mask(contrast_instance: ContrastInstance, extra_pos_mask=None, ext
         contrast_instance.pos_mask = torch.bitwise_or(pos_mask.bool(), extra_pos_mask.bool()).float()
     if extra_neg_mask is not None:
         contrast_instance.neg_mask = torch.bitwise_and(neg_mask.bool(), extra_neg_mask.bool()).float()
-    else:
-        contrast_instance.neg_mask = 1. - pos_mask
 
 
 class SingleBranchContrast(torch.nn.Module):
