@@ -28,7 +28,7 @@ class InfoNCE(Loss):
 
     def compute_default_positive(self, contrast_instance, *args, **kwargs):
         anchor, sample = contrast_instance.anchor, contrast_instance.sample
-        sim = torch.exp((_similarity(anchor, sample)) / self.tau)  # anchor x sample
+        sim = torch.exp(_similarity(anchor, sample) / self.tau)  # anchor x sample
         pos = sim.diag()
         neg = sim.sum(dim=1) - sim.diag()
         loss = pos / (pos + neg)
@@ -175,3 +175,24 @@ class RingLoss(torch.nn.Module):
         loss = loss.mean()
 
         return loss
+
+
+class ReweightedInfoNCE(Loss):
+    def __init__(self, tau):
+        super(ReweightedInfoNCE, self).__init__()
+        self.tau = tau
+
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
+                                             contrast_instance.pos_mask, contrast_instance.neg_mask
+        sim = torch.exp(_similarity(anchor, sample) / self.tau)
+        n = anchor.size(0)
+        norm_factor = n / neg_mask.sum(dim=1)
+        pos = sim.diag()
+        neg = (norm_factor * (neg_mask * sim).T).T
+        loss = pos / (pos + neg)
+        loss = -torch.log(loss)
+        return loss.mean()
+
+    def compute_default_positive(self, contrast_instance, *args, **kwargs):
+        raise RuntimeError('Reweighted sampler does not support compute default positive loss')

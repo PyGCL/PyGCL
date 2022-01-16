@@ -9,7 +9,7 @@ from torch import nn
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator
-from GCL.model import DualBranchContrast
+from GCL.model import DualBranchContrast, SameScaleCustomizedDenseSampler
 from GCL.utils import sinkhorn
 from sklearn.metrics import f1_score
 from sklearn.exceptions import ConvergenceWarning
@@ -99,12 +99,41 @@ def train(encoder_model, contrast_model, dataloader, optimizer, temperature=1.0,
             q1 = sinkhorn(scores1)
             q2 = sinkhorn(scores2)
 
-        p1 = F.softmax(scores1 / temperature, dim=1)
-        p2 = F.softmax(scores2 / temperature, dim=1)
+        p1 = F.softmax(scores1 / temperature, dim=1)  # (128 * 10)
+        p2 = F.softmax(scores2 / temperature, dim=1)  # (128 * 10)
 
         loss_consistency = -0.5 * (q2 * torch.log(p1) + q1 * torch.log(p2)).mean()
 
-        loss = contrast_model(g1=g1, g2=g2, batch=data.batch) + coef * loss_consistency
+        c1 = torch.argmax(p1, dim=1)
+        c2 = torch.argmax(p2, dim=1)
+
+        norm_g1 = F.normalize(g1, dim=1)
+        norm_g2 = F.normalize(g2, dim=1)
+
+        cos_sim1 = norm_g1 @ norm_g2.T
+        cos_dist1 = torch.ones_like(cos_sim1) - cos_sim1
+        mean1 = torch.mean(cos_dist1, dim=1)
+        var1 = torch.var(cos_dist1, dim=1)
+        gaussian1 = torch.exp(-((cos_dist1.T - mean1) * (cos_dist1.T - mean1)) / (2 * var1 * var1)).T
+
+        cos_sim2 = norm_g2 @ norm_g1.T
+        cos_dist2 = torch.ones_like(cos_sim2) - cos_sim2
+        mean2 = torch.mean(cos_dist2, dim=1)
+        var2 = torch.var(cos_dist2, dim=1)
+        gaussian2 = torch.exp(-((cos_dist2.T - mean2) * (cos_dist2.T - mean2)) / (2 * var2 * var2)).T
+
+        num_graphs = g1.size(0)
+        neg_mask1 = torch.zeros(num_graphs, num_graphs).to('cuda')
+        neg_mask2 = torch.zeros(num_graphs, num_graphs).to('cuda')
+        for i in range(num_graphs):
+            for j in range(num_graphs):
+                if i != j and c1[i] != c2[j]:
+                    neg_mask1[i][j] = gaussian1[i][j]
+                if i != j and c2[i] != c1[j]:
+                    neg_mask2[i][j] = gaussian2[i][j]
+
+        loss = contrast_model(g1=g1, g2=g2, batch=data.batch, customized_neg_mask1=neg_mask1,
+                              customized_neg_mask2=neg_mask2) + coef * loss_consistency
         loss.backward()
         optimizer.step()
 
@@ -155,7 +184,8 @@ def main():
         A.EdgeRemoving(pe=0.1)], 1)
     gconv = GConv(input_dim=input_dim, hidden_dim=32, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), num_clusters=20).to(device)
-    contrast_model = DualBranchContrast(loss=L.InfoNCE(tau=0.2), mode='G2G').to(device)
+    sampler = SameScaleCustomizedDenseSampler()
+    contrast_model = DualBranchContrast(loss=L.ReweightedInfoNCE(tau=0.2), mode='G2G', sampler=sampler).to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
 

@@ -1,6 +1,6 @@
 from .jsd import JSD, DebiasedJSD, HardnessJSD
 from .vicreg import VICReg
-from .infonce import InfoNCE, DebiasedInfoNCE, HardnessInfoNCE
+from .infonce import InfoNCE, DebiasedInfoNCE, HardnessInfoNCE, ReweightedInfoNCE
 from .triplet import TripletMargin, TripletMarginSP
 from .bootstrap import BootstrapLatent
 from .barlow_twins import BarlowTwins

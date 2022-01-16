@@ -93,6 +93,26 @@ class CrossScaleDenseSampler(DenseSampler):
         return ContrastInstance(anchor=anchor, sample=sample, pos_mask=pos_mask, neg_mask=neg_mask)
 
 
+class SameScaleCustomizedDenseSampler(DenseSampler):
+    def __init__(self, *args, **kwargs):
+        super(SameScaleCustomizedDenseSampler, self).__init__(*args, **kwargs)
+
+    def sample(self, anchor: torch.Tensor, sample: torch.Tensor, customized_pos_mask=None, customized_neg_mask=None,
+               *args, **kwargs) -> ContrastInstance:
+        assert anchor.size(0) == sample.size(0)
+        num_nodes = anchor.size(0)
+        device = anchor.device
+        if customized_pos_mask is not None:
+            pos_mask = customized_pos_mask
+        else:
+            pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
+        if customized_neg_mask is not None:
+            neg_mask = customized_neg_mask
+        else:
+            neg_mask = 1. - pos_mask
+        return ContrastInstance(anchor=anchor, sample=sample, pos_mask=pos_mask, neg_mask=neg_mask)
+
+
 def get_dense_sampler(mode: str, intraview_negs: bool) -> DenseSampler:
     if mode in {'L2L', 'G2G'}:
         return SameScaleDenseSampler(intraview_negs=intraview_negs)

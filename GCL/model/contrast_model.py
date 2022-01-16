@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 from GCL.loss import Loss
 from GCL.model import get_dense_sampler
-from GCL.model.sampler import DenseSampler, DefaultSampler, ContrastInstance
+from GCL.model.sampler import DenseSampler, DefaultSampler, ContrastInstance, SameScaleCustomizedDenseSampler
 
 
 def add_extra_mask(contrast_instance: ContrastInstance, extra_pos_mask=None, extra_neg_mask=None):
@@ -55,15 +55,19 @@ class DualBranchContrast(torch.nn.Module):
         self.kwargs = kwargs
 
     def forward(self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None,
-                extra_pos_mask=None, extra_neg_mask=None):
+                extra_pos_mask=None, extra_neg_mask=None, customized_neg_mask1 = None, customized_neg_mask2 = None):
         if self.mode == 'L2L':
             assert h1 is not None and h2 is not None
             ci1 = self.sampler(anchor=h1, sample=h2)
             ci2 = self.sampler(anchor=h2, sample=h1)
         elif self.mode == 'G2G':
             assert g1 is not None and g2 is not None
-            ci1 = self.sampler(anchor=g1, sample=g2)
-            ci2 = self.sampler(anchor=g2, sample=g1)
+            if isinstance(self.sampler, SameScaleCustomizedDenseSampler):
+                ci1 = self.sampler(anchor=g1, sample=g2, customized_neg_mask=customized_neg_mask1)
+                ci2 = self.sampler(anchor=g2, sample=g1, customized_neg_mask=customized_neg_mask2)
+            else:
+                ci1 = self.sampler(anchor=g1, sample=g2)
+                ci2 = self.sampler(anchor=g2, sample=g1)
         else:  # global-to-local
             if batch is None or batch.max().item() + 1 <= 1:  # single graph
                 assert all(v is not None for v in [h1, h2, g1, g2, h3, h4])
