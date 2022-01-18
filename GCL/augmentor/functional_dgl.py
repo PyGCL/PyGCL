@@ -14,3 +14,17 @@ def add_edge(g: dgl.DGLGraph, ratio: float) -> dgl.DGLGraph:
 
     g.add_edges(u_new, v_new)
     return dgl.to_simple(g)
+
+
+def drop_edge(g: dgl.DGLGraph, drop_prob: float) -> dgl.DGLGraph:
+    assert 0 <= drop_prob <= 1, 'Dropping probability should be between 0 and 1.'
+    g = g.clone()
+
+    mask = torch.zeros((g.num_edges(),), dtype=torch.float32).to(g.device)
+    torch.fill_(mask, drop_prob)
+    mask = torch.bernoulli(mask).to(torch.bool)
+
+    remove_eids = g.edges(form='eid')[mask]
+    g.remove_edges(eids=remove_eids)
+
+    return g

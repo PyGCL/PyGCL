@@ -5,7 +5,9 @@ import torch_geometric.transforms as T
 from functools import partial
 from torch_geometric.data import Data
 from GCL.augmentor import PyGAugmentor, DGLAugmentor, Compose
-from GCL.augmentor import EdgeAdding
+from GCL.augmentor import EdgeAdding, EdgeRemoving
+
+import testing_utils
 
 
 def test_pygaugmentor():
@@ -58,3 +60,18 @@ def test_edge_adding_dgl():
     aug_g = aug(g)
 
     assert aug_g.num_edges() >= g.num_edges()
+
+
+def test_edge_removing():
+    aug = EdgeRemoving(pe=0.5)
+    data = testing_utils.random_pyg_graph(num_nodes=3, num_edges=4)
+    aug_data = aug(data)
+    assert aug_data.edge_index.shape[0] == 2
+    assert aug_data.edge_index.shape[1] <= data.edge_index.shape[1]
+
+
+def test_edge_removing_dgl():
+    aug = EdgeRemoving(pe=0.5)
+    g = testing_utils.random_dgl_graph(num_nodes=3, num_edges=4)
+    aug_g = aug(g)
+    assert aug_g.num_edges() <= g.num_edges()
