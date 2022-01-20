@@ -28,3 +28,15 @@ def drop_edge(g: dgl.DGLGraph, drop_prob: float) -> dgl.DGLGraph:
     g.remove_edges(eids=remove_eids)
 
     return g
+
+
+def drop_node(g: dgl.DGLGraph, drop_prob: float) -> dgl.DGLGraph:
+    g = g.clone()
+    mask = torch.zeros((g.num_nodes(),), dtype=torch.float32).to(g.device)
+    torch.fill_(mask, drop_prob)
+    mask = torch.bernoulli(mask)
+
+    remove_nids = torch.nonzero(mask).view(-1)
+    g.remove_edges(remove_nids)
+
+    return g
