@@ -8,7 +8,7 @@ from GCL.augmentor import PyGAugmentor, DGLAugmentor, Compose
 from GCL.augmentor import \
     EdgeAdding, EdgeRemoving, EdgeAttrMasking, \
     FeatureDropout, FeatureMasking, \
-    NodeDropping
+    NodeDropping, NodeShuffling
 
 import testing_utils
 
@@ -130,3 +130,19 @@ def test_node_dropping_dgl():
     aug_g = aug(g)
 
     assert aug_g.num_nodes() <= g.num_nodes()
+
+
+def test_node_shuffling():
+    aug = NodeShuffling()
+    g = testing_utils.random_pyg_graph(num_nodes=100, num_edges=1000, feature_dim=128)
+    aug_g = aug(g)
+
+    assert (g.x.mean().item() - aug_g.x.mean().item()) < 1e-8
+
+
+def test_node_shuffling_dgl():
+    aug = NodeShuffling()
+    g = testing_utils.random_dgl_graph(num_nodes=100, num_edges=1000, feature_dim=128)
+    aug_g = aug(g)
+
+    assert (g.ndata['x'].mean().item() - aug_g.ndata['x'].mean().item()) < 1e-8
