@@ -5,7 +5,7 @@ import torch_geometric.transforms as T
 from functools import partial
 from torch_geometric.data import Data
 from GCL.augmentor import PyGAugmentor, DGLAugmentor, Compose
-from GCL.augmentor import EdgeAdding, EdgeRemoving
+from GCL.augmentor import EdgeAdding, EdgeRemoving, EdgeAttrMasking, FeatureDropout, FeatureMasking
 
 import testing_utils
 
@@ -75,3 +75,39 @@ def test_edge_removing_dgl():
     g = testing_utils.random_dgl_graph(num_nodes=3, num_edges=4)
     aug_g = aug(g)
     assert aug_g.num_edges() <= g.num_edges()
+
+
+def test_feature_dropout():
+    aug = FeatureDropout(pf=0.5)
+    g = testing_utils.random_pyg_graph(num_nodes=3, num_edges=5, feature_dim=10)
+    aug_g = aug(g)
+
+    assert aug_g.x.shape == g.x.shape
+    # assert aug_g.x.abs().mean().item() < g.x.abs().mean().item()
+
+
+def test_feature_dropout_dgl():
+    aug = FeatureDropout(pf=0.5)
+    g = testing_utils.random_dgl_graph(num_nodes=3, num_edges=5, feature_dim=10)
+    aug_g = aug(g)
+
+    assert aug_g.ndata['x'].shape == g.ndata['x'].shape
+    # assert aug_g.x.abs().mean().item() < g.x.abs().mean().item()
+
+
+def test_feature_masking():
+    aug = FeatureMasking(pf=0.5)
+    g = testing_utils.random_pyg_graph(num_nodes=3, num_edges=5, feature_dim=10)
+    aug_g = aug(g)
+
+    assert aug_g.x.shape == g.x.shape
+    # assert aug_g.x.abs().mean().item() < g.x.abs().mean().item()
+
+
+def test_feature_masking_dgl():
+    aug = FeatureMasking(pf=0.5)
+    g = testing_utils.random_dgl_graph(num_nodes=3, num_edges=5, feature_dim=10)
+    aug_g = aug(g)
+
+    assert aug_g.ndata['x'].shape == g.ndata['x'].shape
+    # assert aug_g.x.abs().mean().item() < g.x.abs().mean().item()
