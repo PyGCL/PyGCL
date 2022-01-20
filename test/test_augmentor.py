@@ -5,7 +5,10 @@ import torch_geometric.transforms as T
 from functools import partial
 from torch_geometric.data import Data
 from GCL.augmentor import PyGAugmentor, DGLAugmentor, Compose
-from GCL.augmentor import EdgeAdding, EdgeRemoving, EdgeAttrMasking, FeatureDropout, FeatureMasking
+from GCL.augmentor import \
+    EdgeAdding, EdgeRemoving, EdgeAttrMasking, \
+    FeatureDropout, FeatureMasking, \
+    NodeDropping
 
 import testing_utils
 
@@ -111,3 +114,19 @@ def test_feature_masking_dgl():
 
     assert aug_g.ndata['x'].shape == g.ndata['x'].shape
     # assert aug_g.x.abs().mean().item() < g.x.abs().mean().item()
+
+
+def test_node_dropping():
+    aug = NodeDropping(pn=0.5)
+    g = testing_utils.random_pyg_graph(num_nodes=100, num_edges=500, feature_dim=32)
+    aug_g = aug(g)
+
+    assert aug_g.edge_index.max().item() + 1 <= g.edge_index.max().item() + 1
+
+
+def test_node_dropping_dgl():
+    aug = NodeDropping(pn=0.5)
+    g = testing_utils.random_dgl_graph(num_nodes=100, num_edges=500, feature_dim=32)
+    aug_g = aug(g)
+
+    assert aug_g.num_nodes() <= g.num_nodes()
