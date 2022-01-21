@@ -12,4 +12,6 @@ class NodeShuffling(Augmentor):
         return g
 
     def dgl_augment(self, g: DGLGraph):
-        raise NotImplementedError
+        g = g.clone()
+        g.ndata['x'] = permute(g.ndata['x'])
+        return g

@@ -1,5 +1,6 @@
 from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
 from GCL.augmentor.functional import dropout_adj
+import GCL.augmentor.functional_dgl as F_dgl
 
 
 class EdgeRemoving(Augmentor):
@@ -15,4 +16,4 @@ class EdgeRemoving(Augmentor):
         return g
 
     def dgl_augment(self, g: DGLGraph):
-        raise NotImplementedError
+        return F_dgl.drop_edge(g, drop_prob=self.pe)
