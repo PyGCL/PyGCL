@@ -24,6 +24,7 @@ PyGCL is a [PyTorch](https://pytorch.org)-based open-source Graph Contrastive Le
 [![GitHub forks][fork-img]][fork-url]
 [![Total lines][lines-img]][pygcl-url]
 [![visitors][visitors-img]][pygcl-url]
+
 ---
 
 # What is Graph Contrastive Learning?
@@ -61,12 +62,12 @@ Then, you can import `GCL` from your current environment.
 
 Our PyGCL implements four main components of graph contrastive learning algorithms:
 
-* Graph augmentation: transforms input graphs into congruent graph views.
-* Contrasting architectures and modes: generate positive and negative pairs according to node and graph embeddings.
-* Contrastive objectives: computes the likelihood score for positive and negative pairs.
-* Negative mining strategies: improves the negative sample set by considering the relative similarity (the hardness) of negative sample.
+* **Graph augmentation** transforms input graphs into congruent graph views.
+* **Contrasting architectures and modes** generate positive and negative pairs according to node and graph embeddings.
+* **Contrastive objectives** compute the likelihood scores for positive and negative pairs.
+* **Negative mining strategies** improve the negative sample set by considering the relative similarity (i.e. hardness) of negative samples.
 
-We also implement utilities for training models, evaluating model performance, and managing experiments.
+PyGCL also implements utility functions for model training, performance evaluation, and experiment management.
 
 # Implementations and Examples
 
@@ -112,7 +113,7 @@ In `GCL.augmentor`, PyGCL provides the `Augmentor` base class, which offers a un
 Call these augmentation functions by feeding with a `Graph` in a tuple form of node features, edge index, and edge features `(x, edge_index, edge_attrs)` will produce corresponding augmented graphs.
 
 ### Composite Augmentations
-PyGCL supports composing arbitrary numbers of augmentations together. To compose a list of augmentation instances `augmentor`, you need to use the `Compose` class:
+PyGCL supports composing arbitrary numbers of augmentation functions together. The `Compose `class can be used for jointly using a list of augmentation instances `augmentor` consecutively:
 
 ```python
 import GCL.augmentor as A
@@ -120,16 +121,19 @@ import GCL.augmentor as A
 aug = A.Compose([A.EdgeRemoving(pe=0.3), A.FeatureMasking(pf=0.3)])
 ```
 
-You can also use the `RandomChoice` class to randomly draw a few augmentations each time:
+You can also use the `RandomChoice` class to randomly draw a few augmentation functions each time:
 
 ```python
 import GCL.augmentor as A
 
-aug = A.RandomChoice([A.RWSampling(num_seeds=1000, walk_length=10),
-                      A.NodeDropping(pn=0.1),
-                      A.FeatureMasking(pf=0.1),
-                      A.EdgeRemoving(pe=0.1)],
-                     num_choices=1)
+aug = A.RandomChoice(
+  [
+    A.RWSampling(num_seeds=1000, walk_length=10),
+  	A.NodeDropping(pn=0.1),
+  	A.FeatureMasking(pf=0.1),
+  	A.EdgeRemoving(pe=0.1)
+  ],
+  num_choices=1)
 ```
 
 ### Customizing Your Own Augmentation
@@ -152,7 +156,7 @@ Existing GCL architectures could be grouped into two lines: negative-sample-base
 
 Moreover, you can use `add_extra_mask` if you want to add positives or remove negatives. This function performs bitwise ADD to extra positive masks specified by `extra_pos_mask` and bitwise OR to extra negative masks specified by `extra_neg_mask`. It is helpful, for example, when you have supervision signals from labels and want to train the model in a semi-supervised manner.
 
-Internally, PyGCL calls `Sampler` classes in `GCL.model` that receive embeddings and produce positive/negative masks. PyGCL implements three contrasting modes: (a) Local-Local (L2L), (b) Global-Global (G2G), and (c) Global-Local (G2L) modes. L2L and G2G modes contrast embeddings at the same scale and the latter G2L one performs cross-scale contrasting. To implement your own GCL model, you may also use these provided sampler models:
+Internally, PyGCL calls `DefaultSampler `classes in `GCL.model` that receive embeddings and produce positive/negative masks. PyGCL implements three contrasting modes: (a) Local-Local (LL), (b) Global-Global (G–G), and (c) Global-Local (G–L) modes. Methods of L–L and G–G modes contrast embeddings at the same scale and the latter G–L one performs cross-scale contrasting.
 
 | Contrastive modes                    | Class name          |
 | ------------------------------------ | ------------------- |
@@ -177,7 +181,7 @@ In `GCL.loss`, PyGCL implements the following contrastive objectives:
 | Barlow Twins (BT) loss               | `BarlowTwins`     |
 | VICReg loss                          | `VICReg`          |
 
-All these objectives are able to contrast any arbitrary positive and negative pairs, except for Barlow Twins and VICReg losses that perform contrastive learning within embeddings. Moreover, for InfoNCE and Triplet losses, we further provide `SP` variants that computes contrastive objectives given only one positive pair per sample to speed up computation and avoid excessive memory consumption. 
+All these objectives are able to contrast any arbitrary positive and negative pairs, except for Barlow Twins and VICReg losses that perform contrastive learning within embeddings.
 
 ## Negative Sampling Strategies
 
@@ -193,17 +197,18 @@ PyGCL further implements several negative sampling strategies:
 
 The former three models serve as an additional sampling step similar to existing `Sampler ` ones and can be used in conjunction with any objectives. The last two objectives are only for InfoNCE and JSD losses.
 
-## Utilities
+## Utilities for Evaluating Embeddings
 
-PyGCL provides a variety of evaluator functions to evaluate the embedding quality:
+PyGCL further provides a variety of evaluator functions to evaluate the embedding quality in `GCL.eval`. Specifically, we provide two kinds of evaluator base classes: `BaseTrainableEvaluator` for trainable (e.g., logistic regression) evaluation and `BaseSKLearnEvaluator` for evaluation based on Scikit-learn. These two base classes share almost identical call signatures. After feeding the evaluator with embeddings and ground-truths, evaluation results with metrics as keys and mean and standard deviation as values will be returned. Users can define their own evaluation by inheriting one of the two base classes.
 
-| Evaluator              | Class name     |
-| ---------------------- | -------------- |
-| Logistic regression    | `LREvaluator`  |
-| Support vector machine | `SVMEvaluator` |
-| Random forest          | `RFEvaluator`  |
+| Evaluator                                    | Class name             |
+| -------------------------------------------- | ---------------------- |
+| Trainable Logistic regression                | `LRTrainableEvaluator` |
+| Logistic regression based on scikit-learn    | `LRSklearnEvaluator`   |
+| Support vector machine based on scikit-learn | `SVMEvaluator`         |
+| Random forest based on scikit-learn          | `RFEvaluator`          |
 
-To use these evaluators, you first need to generate dataset splits by `get_split` (random split) or by `from_predefined_split` (according to preset splits).
+In addition, we provide two functions to generate dataset splits: `random_split` (for generating split indices for training, test, and validation sets) and `from_PyG_split` (for converting from predefined PyG split indices of training, test, and validation sets).
 
 # Contribution
 
