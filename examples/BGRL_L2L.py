@@ -84,10 +84,14 @@ class Encoder(torch.nn.Module):
             next_p = momentum * p.data + (1 - momentum) * new_p.data
             p.data = next_p
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, data, is_no_edge_attr=True):
         aug1, aug2 = self.augmentor
-        x1, edge_index1, edge_weight1 = aug1(x, edge_index, edge_weight)
-        x2, edge_index2, edge_weight2 = aug2(x, edge_index, edge_weight)
+        if is_no_edge_attr:
+            data.edge_attr = None
+        data1 = aug1(data)
+        data2 = aug2(data)
+        x1, edge_index1, edge_weight1 = data1.x, data1.edge_index, data1.attr
+        x2, edge_index2, edge_weight2 = data2.x, data2.edge_index, data2.attr
 
         h1, h1_online = self.online_encoder(x1, edge_index1, edge_weight1)
         h2, h2_online = self.online_encoder(x2, edge_index2, edge_weight2)
@@ -105,7 +109,7 @@ class Encoder(torch.nn.Module):
 def train(encoder_model, contrast_model, data, optimizer):
     encoder_model.train()
     optimizer.zero_grad()
-    _, _, h1_pred, h2_pred, h1_target, h2_target = encoder_model(data.x, data.edge_index, data.edge_attr)
+    _, _, h1_pred, h2_pred, h1_target, h2_target = encoder_model(data, is_no_edge_attr=False)
     loss = contrast_model(h1_pred=h1_pred, h2_pred=h2_pred, h1_target=h1_target.detach(), h2_target=h2_target.detach())
     loss.backward()
     optimizer.step()
@@ -115,7 +119,7 @@ def train(encoder_model, contrast_model, data, optimizer):
 
 def eval(encoder_model, data):
     encoder_model.eval()
-    h1, h2, _, _, _, _ = encoder_model(data.x, data.edge_index)
+    h1, h2, _, _, _, _ = encoder_model(data, is_no_edge_attr=True)
     z = torch.cat([h1, h2], dim=1)
     split = from_PyG_split(data)
     evaluator = LRTrainableEvaluator(

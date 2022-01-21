@@ -68,9 +68,14 @@ class Encoder(torch.nn.Module):
         self.aug1 = aug1
         self.aug2 = aug2
 
-    def forward(self, x, edge_index, batch):
-        x1, edge_index1, edge_weight1 = self.aug1(x, edge_index)
-        x2, edge_index2, edge_weight2 = self.aug2(x, edge_index)
+    def forward(self, data, is_no_edge_attr=True):
+        batch = data.batch
+        if is_no_edge_attr:
+            data.edge_attr = None
+        data1 = self.aug1(data)
+        data2 = self.aug2(data)
+        x1, edge_index1 = data1.x, data1.edge_index
+        x2, edge_index2 = data2.x, data2.edge_index
         z1, g1 = self.gcn1(x1, edge_index1, batch)
         z2, g2 = self.gcn2(x2, edge_index2, batch)
         h1, h2 = [self.mlp1(h) for h in [z1, z2]]
@@ -89,7 +94,7 @@ def train(encoder_model, contrast_model, dataloader, optimizer):
             num_nodes = data.batch.size(0)
             data.x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
 
-        h1, h2, g1, g2 = encoder_model(data.x, data.edge_index, data.batch)
+        h1, h2, g1, g2 = encoder_model(data, is_no_edge_attr=True)
         loss = contrast_model(h1=h1, h2=h2, g1=g1, g2=g2, batch=data.batch)
         loss.backward()
         optimizer.step()
@@ -107,7 +112,7 @@ def eval(encoder_model, dataloader):
         if data.x is None:
             num_nodes = data.batch.size(0)
             data.x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
-        _, _, g1, g2 = encoder_model(data.x, data.edge_index, data.batch)
+        _, _, g1, g2 = encoder_model(data, is_no_edge_attr=True)
         x.append(g1 + g2)
         y.append(data.y)
     x = torch.cat(x, dim=0)

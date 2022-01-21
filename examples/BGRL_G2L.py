@@ -9,7 +9,7 @@ from tqdm import tqdm
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator
-from GCL.models import BootstrapContrast
+from GCL.model import BootstrapContrast
 from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.exceptions import ConvergenceWarning
@@ -95,10 +95,15 @@ class Encoder(torch.nn.Module):
             next_p = momentum * p.data + (1 - momentum) * new_p.data
             p.data = next_p
 
-    def forward(self, x, edge_index, edge_weight=None, batch=None):
+    def forward(self, data, is_no_edge_attr=True):
+        batch = data.batch
         aug1, aug2 = self.augmentor
-        x1, edge_index1, edge_weight1 = aug1(x, edge_index, edge_weight)
-        x2, edge_index2, edge_weight2 = aug2(x, edge_index, edge_weight)
+        if is_no_edge_attr:
+            data.edge_attr = None
+        data1 = aug1(data)
+        data2 = aug2(data)
+        x1, edge_index1, edge_weight1 = data1.x, data1.edge_index, data1.edge_attr
+        x2, edge_index2, edge_weight2 = data2.x, data2.edge_index, data2.edge_attr
 
         h1, h1_online = self.online_encoder(x1, edge_index1, edge_weight1)
         h2, h2_online = self.online_encoder(x2, edge_index2, edge_weight2)
@@ -128,7 +133,7 @@ def train(encoder_model, contrast_model, dataloader, optimizer):
             data.x = torch.ones((num_nodes, 1), dtype=torch.float32).to(data.batch.device)
 
         optimizer.zero_grad()
-        _, _, h1_pred, h2_pred, g1_target, g2_target = encoder_model(data.x, data.edge_index, batch=data.batch)
+        _, _, h1_pred, h2_pred, g1_target, g2_target = encoder_model(data, is_no_edge_attr=True)
 
         loss = contrast_model(h1_pred=h1_pred, h2_pred=h2_pred,
                               g1_target=g1_target.detach(), g2_target=g2_target.detach(), batch=data.batch)
@@ -151,7 +156,7 @@ def eval(encoder_model, dataloader):
         if data.x is None:
             num_nodes = data.batch.size(0)
             data.x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
-        g1, g2, _, _, _, _ = encoder_model(data.x, data.edge_index, batch=data.batch)
+        g1, g2, _, _, _, _ = encoder_model(data, is_no_edge_attr=True)
         z = torch.cat([g1, g2], dim=1)
         x.append(z)
         y.append(data.y)
