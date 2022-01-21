@@ -13,4 +13,8 @@ class FeatureMasking(Augmentor):
         return g
 
     def dgl_augment(self, g: DGLGraph):
-        raise NotImplementedError
+        g = g.clone()
+        new_x = drop_feature(g.ndata['x'], self.pf)
+        g.ndata['x'] = new_x
+
+        return g
