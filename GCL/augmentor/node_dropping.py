@@ -1,5 +1,6 @@
 from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
 from GCL.augmentor.functional import drop_node
+import GCL.augmentor.functional_dgl as F_dgl
 
 
 class NodeDropping(Augmentor):
@@ -15,4 +16,4 @@ class NodeDropping(Augmentor):
         return g
 
     def dgl_augment(self, g: DGLGraph):
-        raise NotImplementedError
+        return F_dgl.drop_node(g, self.pn)

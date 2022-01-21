@@ -14,4 +14,11 @@ class EdgeAttrMasking(Augmentor):
         return g
 
     def dgl_augment(self, g: DGLGraph):
-        raise NotImplementedError
+        g = g.clone()
+
+        edata_keys = list(g.edata.keys())
+
+        for edata_key in edata_keys:
+            g.edata[edata_key] = drop_feature(g.edata[edata_key], self.pf)
+
+        return g

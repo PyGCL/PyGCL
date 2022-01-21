@@ -11,10 +11,11 @@
 [lines-img]: https://img.shields.io/tokei/lines/github/GraphCL/PyGCL?color=red
 [visitors-img]: https://visitor-badge.glitch.me/badge?page_id=GraphCL.PyGCL
 
+<p align="center">
+<img src="logo.png" width="75%" class="center" alt="logo"/>
+</p>
 
-# 🌝🌚PyGCL: Graph Contrastive Learning for PyTorch
-
-PyGCL is an open-source Graph Contrastive Learning (GCL) library for [PyTorch](https://pytorch.org), which features modularized GCL components from published papers, standardized evaluation, and experiment management.
+PyGCL is a [PyTorch](https://pytorch.org)-based open-source Graph Contrastive Learning (GCL) library, which features modularized GCL components from published papers, standardized evaluation, and experiment management.
 
 [![Made with Python][python-img]][pygcl-url]
 [![PyPI version][pypi-img]][pypi-url]
@@ -26,13 +27,13 @@ PyGCL is an open-source Graph Contrastive Learning (GCL) library for [PyTorch](h
 
 ---
 
-# 🌘What is Graph Contrastive Learning?
+# What is Graph Contrastive Learning?
 
 Graph Contrastive Learning (GCL) establishes a new paradigm for learning graph representations without human annotations. A typical GCL algorithm firstly constructs multiple graph views via stochastic augmentation of the input and then learns representations by contrasting positive samples against negative ones.
 
 👉 For a general introduction of GCL, please refer to our [paper](https://arxiv.org/abs/2109.01116) and [blog](https://sxkdz.github.io/research/GraphCL/). Also, this [repo](https://github.com/SXKDZ/awesome-self-supervised-learning-for-graphs) tracks newly published GCL papers.
 
-# 🌑Install
+# Install
 
 ## Prerequisites
 
@@ -57,18 +58,18 @@ pip install PyGCL
 
 Then, you can import `GCL` from your current environment.
 
-# 🌒Package Overview
+# Package Overview
 
 Our PyGCL implements four main components of graph contrastive learning algorithms:
 
-* Graph augmentation: transforms input graphs into congruent graph views.
-* Contrasting architectures and modes: generate positive and negative pairs according to node and graph embeddings.
-* Contrastive objectives: computes the likelihood score for positive and negative pairs.
-* Negative mining strategies: improves the negative sample set by considering the relative similarity (the hardness) of negative sample.
+* **Graph augmentation** transforms input graphs into congruent graph views.
+* **Contrasting architectures and modes** generate positive and negative pairs according to node and graph embeddings.
+* **Contrastive objectives** compute the likelihood scores for positive and negative pairs.
+* **Negative mining strategies** improve the negative sample set by considering the relative similarity (i.e. hardness) of negative samples.
 
-We also implement utilities for training models, evaluating model performance, and managing experiments.
+PyGCL also implements utility functions for model training, performance evaluation, and experiment management.
 
-# 🌓Implementations and Examples
+# Implementations and Examples
 
 For a quick start, please check out the `examples` folder. We currently implemented the following methods:
 
@@ -87,13 +88,13 @@ For a quick start, please check out the `examples` folder. We currently implemen
 * **G-BT** (P. Bielak et al., Graph Barlow Twins: A Self-Supervised Representation Learning Framework for Graphs, arXiv, 2021) [[Example](examples/GBT.py)]
 * **VICReg** (A. Bardes et al., VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning, arXiv, 2021)
 
-# 🌕Building Your Own GCL Algorithms
+# Building Your Own GCL Algorithms
 
 Besides try the above examples for node and graph classification tasks, you can also build your own graph contrastive learning algorithms straightforwardly.
 
 ## Graph Augmentation
 
-In `GCL.augmentors`, PyGCL provides the `Augmentor` base class, which offers a universal interface for graph augmentation functions. Specifically, PyGCL implements the following augmentation functions:
+In `GCL.augmentor`, PyGCL provides the `Augmentor` base class, which offers a universal interface for graph augmentation functions. Specifically, PyGCL implements the following augmentation functions:
 
 | Augmentation                            | Class name        |
 | --------------------------------------- | ----------------- |
@@ -112,24 +113,27 @@ In `GCL.augmentors`, PyGCL provides the `Augmentor` base class, which offers a u
 Call these augmentation functions by feeding with a `Graph` in a tuple form of node features, edge index, and edge features `(x, edge_index, edge_attrs)` will produce corresponding augmented graphs.
 
 ### Composite Augmentations
-PyGCL supports composing arbitrary numbers of augmentations together. To compose a list of augmentation instances `augmentors`, you need to use the `Compose` class:
+PyGCL supports composing arbitrary numbers of augmentation functions together. The `Compose `class can be used for jointly using a list of augmentation instances `augmentor` consecutively:
 
 ```python
-import GCL.augmentors as A
+import GCL.augmentor as A
 
 aug = A.Compose([A.EdgeRemoving(pe=0.3), A.FeatureMasking(pf=0.3)])
 ```
 
-You can also use the `RandomChoice` class to randomly draw a few augmentations each time:
+You can also use the `RandomChoice` class to randomly draw a few augmentation functions each time:
 
 ```python
-import GCL.augmentors as A
+import GCL.augmentor as A
 
-aug = A.RandomChoice([A.RWSampling(num_seeds=1000, walk_length=10),
-                      A.NodeDropping(pn=0.1),
-                      A.FeatureMasking(pf=0.1),
-                      A.EdgeRemoving(pe=0.1)],
-                     num_choices=1)
+aug = A.RandomChoice(
+  [
+    A.RWSampling(num_seeds=1000, walk_length=10),
+  	A.NodeDropping(pn=0.1),
+  	A.FeatureMasking(pf=0.1),
+  	A.EdgeRemoving(pe=0.1)
+  ],
+  num_choices=1)
 ```
 
 ### Customizing Your Own Augmentation
@@ -152,7 +156,7 @@ Existing GCL architectures could be grouped into two lines: negative-sample-base
 
 Moreover, you can use `add_extra_mask` if you want to add positives or remove negatives. This function performs bitwise ADD to extra positive masks specified by `extra_pos_mask` and bitwise OR to extra negative masks specified by `extra_neg_mask`. It is helpful, for example, when you have supervision signals from labels and want to train the model in a semi-supervised manner.
 
-Internally, PyGCL calls `Sampler` classes in `GCL.models` that receive embeddings and produce positive/negative masks. PyGCL implements three contrasting modes: (a) Local-Local (L2L), (b) Global-Global (G2G), and (c) Global-Local (G2L) modes. L2L and G2G modes contrast embeddings at the same scale and the latter G2L one performs cross-scale contrasting. To implement your own GCL model, you may also use these provided sampler models:
+Internally, PyGCL calls `DefaultSampler `classes in `GCL.model` that receive embeddings and produce positive/negative masks. PyGCL implements three contrasting modes: (a) Local-Local (LL), (b) Global-Global (G–G), and (c) Global-Local (G–L) modes. Methods of L–L and G–G modes contrast embeddings at the same scale and the latter G–L one performs cross-scale contrasting.
 
 | Contrastive modes                    | Class name          |
 | ------------------------------------ | ------------------- |
@@ -166,7 +170,7 @@ Internally, PyGCL calls `Sampler` classes in `GCL.models` that receive embedding
 
 ## Contrastive Objectives
 
-In `GCL.losses`, PyGCL implements the following contrastive objectives:
+In `GCL.loss`, PyGCL implements the following contrastive objectives:
 
 | Contrastive objectives               | Class name        |
 | ------------------------------------ | ----------------- |
@@ -177,7 +181,7 @@ In `GCL.losses`, PyGCL implements the following contrastive objectives:
 | Barlow Twins (BT) loss               | `BarlowTwins`     |
 | VICReg loss                          | `VICReg`          |
 
-All these objectives are able to contrast any arbitrary positive and negative pairs, except for Barlow Twins and VICReg losses that perform contrastive learning within embeddings. Moreover, for InfoNCE and Triplet losses, we further provide `SP` variants that computes contrastive objectives given only one positive pair per sample to speed up computation and avoid excessive memory consumption. 
+All these objectives are able to contrast any arbitrary positive and negative pairs, except for Barlow Twins and VICReg losses that perform contrastive learning within embeddings.
 
 ## Negative Sampling Strategies
 
@@ -185,33 +189,34 @@ PyGCL further implements several negative sampling strategies:
 
 | Negative sampling strategies      | Class name                                              |
 | --------------------------------- | ------------------------------------------------------- |
-| Subsampling                       | `GCL.models.SubSampler`                                 |
-| Hard negative mixing              | `GCL.models.HardMixing`                                 |
-| Conditional negative sampling     | `GCL.models.Ring`                                       |
-| Debiased contrastive objective    | `GCL.losses.DebiasedInfoNCE `, `GCL.losses.DebiasedJSD` |
-| Hardness-biased negative sampling | `GCL.losses.HardnessInfoNCE`, `GCL.losses.HardnessJSD`  |
+| Subsampling                       | `GCL.model.SubSampler`                                 |
+| Hard negative mixing              | `GCL.model.HardMixing`                                 |
+| Conditional negative sampling     | `GCL.model.Ring`                                       |
+| Debiased contrastive objective    | `GCL.loss.DebiasedInfoNCE `, `GCL.loss.DebiasedJSD` |
+| Hardness-biased negative sampling | `GCL.loss.HardnessInfoNCE`, `GCL.loss.HardnessJSD`  |
 
 The former three models serve as an additional sampling step similar to existing `Sampler ` ones and can be used in conjunction with any objectives. The last two objectives are only for InfoNCE and JSD losses.
 
-## Utilities
+## Utilities for Evaluating Embeddings
 
-PyGCL provides a variety of evaluator functions to evaluate the embedding quality:
+PyGCL further provides a variety of evaluator functions to evaluate the embedding quality in `GCL.eval`. Specifically, we provide two kinds of evaluator base classes: `BaseTrainableEvaluator` for trainable (e.g., logistic regression) evaluation and `BaseSKLearnEvaluator` for evaluation based on Scikit-learn. These two base classes share almost identical call signatures. After feeding the evaluator with embeddings and ground-truths, evaluation results with metrics as keys and mean and standard deviation as values will be returned. Users can define their own evaluation by inheriting one of the two base classes.
 
-| Evaluator              | Class name     |
-| ---------------------- | -------------- |
-| Logistic regression    | `LREvaluator`  |
-| Support vector machine | `SVMEvaluator` |
-| Random forest          | `RFEvaluator`  |
+| Evaluator                                    | Class name             |
+| -------------------------------------------- | ---------------------- |
+| Trainable Logistic regression                | `LRTrainableEvaluator` |
+| Logistic regression based on scikit-learn    | `LRSklearnEvaluator`   |
+| Support vector machine based on scikit-learn | `SVMEvaluator`         |
+| Random forest based on scikit-learn          | `RFEvaluator`          |
 
-To use these evaluators, you first need to generate dataset splits by `get_split` (random split) or by `from_predefined_split` (according to preset splits).
+In addition, we provide two functions to generate dataset splits: `random_split` (for generating split indices for training, test, and validation sets) and `from_PyG_split` (for converting from predefined PyG split indices of training, test, and validation sets).
 
-# 🌗Contribution
+# Contribution
 
 Feel free to open an [issue](issues/new) should you find anything unexpected or [create pull requests](pulls) to add your own work! We are motivated to continuously make PyGCL even better.
 
-# 🌔Citation
+# Citation
 
-Please cite [our paper](https://arxiv.org/abs/2109.01116) if you use this code in your own work:
+Please cite [our paper](https://datasets-benchmarks-proceedings.neurips.cc/paper/2021/hash/0e01938fc48a2cfb5f2217fbfb00722d-Abstract-round2.html) if you use this code in your work:
 
 ```
 @inproceedings{Zhu:2021tu,

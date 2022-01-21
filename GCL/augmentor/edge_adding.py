@@ -1,5 +1,6 @@
 from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
 from GCL.augmentor.functional import add_edge
+import GCL.augmentor.functional_dgl as F_dgl
 
 
 class EdgeAdding(Augmentor):
@@ -13,4 +14,4 @@ class EdgeAdding(Augmentor):
         return g
 
     def dgl_augment(self, g: DGLGraph):
-        raise NotImplementedError
+        return F_dgl.add_edge(g, self.pe)
