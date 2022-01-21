@@ -11,10 +11,12 @@
 [lines-img]: https://img.shields.io/tokei/lines/github/GraphCL/PyGCL?color=red
 [visitors-img]: https://visitor-badge.glitch.me/badge?page_id=GraphCL.PyGCL
 
+<p align="center">
+<img src="logo.png" width="75%" class="center" alt="logo"/>
+</p>
 
-# 🌝🌚PyGCL: Graph Contrastive Learning for PyTorch
 
-PyGCL is an open-source Graph Contrastive Learning (GCL) library for [PyTorch](https://pytorch.org), which features modularized GCL components from published papers, standardized evaluation, and experiment management.
+PyGCL is a [PyTorch](https://pytorch.org)-based open-source Graph Contrastive Learning (GCL) library, which features modularized GCL components from published papers, standardized evaluation, and experiment management.
 
 [![Made with Python][python-img]][pygcl-url]
 [![PyPI version][pypi-img]][pypi-url]
