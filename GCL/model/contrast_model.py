@@ -46,7 +46,8 @@ class DualBranchContrast(torch.nn.Module):
         self.kwargs = kwargs
 
     def forward(self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None,
-                extra_pos_mask=None, extra_neg_mask=None, customized_neg_mask1=None, customized_neg_mask2=None):
+                extra_pos_mask=None, extra_neg_mask=None, customized_pos_mask1=None, customized_pos_mask2=None,
+                customized_neg_mask1=None, customized_neg_mask2=None):
         if self.mode == 'L2L':
             assert h1 is not None and h2 is not None
             ci1 = self.sampler(anchor=h1, sample=h2)
@@ -54,8 +55,10 @@ class DualBranchContrast(torch.nn.Module):
         elif self.mode == 'G2G':
             assert g1 is not None and g2 is not None
             if isinstance(self.sampler, CustomizedSameScaleDenseSampler):
-                ci1 = self.sampler(anchor=g1, sample=g2, customized_neg_mask=customized_neg_mask1)
-                ci2 = self.sampler(anchor=g2, sample=g1, customized_neg_mask=customized_neg_mask2)
+                ci1 = self.sampler(anchor=g1, sample=g2,
+                                   customized_pos_mask=customized_pos_mask1, customized_neg_mask=customized_neg_mask1)
+                ci2 = self.sampler(anchor=g2, sample=g1,
+                                   customized_pos_mask=customized_pos_mask2, customized_neg_mask=customized_neg_mask2)
             elif isinstance(self.sampler, SemiSupSameScaleDenseSampler):
                 ci1 = self.sampler(anchor=g1, sample=g2, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
                 ci2 = self.sampler(anchor=g2, sample=g1, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
