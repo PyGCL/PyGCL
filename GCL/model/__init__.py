@@ -1,4 +1,5 @@
-from .sampler import SameScaleDenseSampler, CrossScaleDenseSampler, SameScaleCustomizedDenseSampler, get_dense_sampler
+from .sampler import SameScaleDenseSampler, CrossScaleDenseSampler, CustomizedSameScaleDenseSampler, \
+    SemiSupSameScaleDenseSampler, get_dense_sampler
 from .contrast_model import SingleBranchContrast, DualBranchContrast, WithinEmbedContrast, BootstrapContrast
 
 

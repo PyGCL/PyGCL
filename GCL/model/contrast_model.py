@@ -4,16 +4,8 @@ from typing import Optional, Union
 
 from GCL.loss import Loss
 from GCL.model import get_dense_sampler
-from GCL.model.sampler import DenseSampler, DefaultSampler, ContrastInstance, SameScaleCustomizedDenseSampler
-
-
-def add_extra_mask(contrast_instance: ContrastInstance, extra_pos_mask=None, extra_neg_mask=None):
-    # In-place specifying additional positive and negative samples
-    pos_mask, neg_mask = contrast_instance.pos_mask, contrast_instance.neg_mask
-    if extra_pos_mask is not None:
-        contrast_instance.pos_mask = torch.bitwise_or(pos_mask.bool(), extra_pos_mask.bool()).float()
-    if extra_neg_mask is not None:
-        contrast_instance.neg_mask = torch.bitwise_and(neg_mask.bool(), extra_neg_mask.bool()).float()
+from GCL.model.sampler import DenseSampler, DefaultSampler, ContrastInstance, CustomizedSameScaleDenseSampler, \
+    SemiSupSameScaleDenseSampler
 
 
 class SingleBranchContrast(torch.nn.Module):
@@ -33,7 +25,6 @@ class SingleBranchContrast(torch.nn.Module):
             assert batch is not None
             ci = self.sampler(anchor=g, sample=h, batch=batch)
 
-        add_extra_mask(ci, extra_pos_mask, extra_neg_mask)
         loss = self.loss(contrast_instance=ci, **self.kwargs)
         return loss
 
@@ -55,16 +46,19 @@ class DualBranchContrast(torch.nn.Module):
         self.kwargs = kwargs
 
     def forward(self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None,
-                extra_pos_mask=None, extra_neg_mask=None, customized_neg_mask1 = None, customized_neg_mask2 = None):
+                extra_pos_mask=None, extra_neg_mask=None, customized_neg_mask1=None, customized_neg_mask2=None):
         if self.mode == 'L2L':
             assert h1 is not None and h2 is not None
             ci1 = self.sampler(anchor=h1, sample=h2)
             ci2 = self.sampler(anchor=h2, sample=h1)
         elif self.mode == 'G2G':
             assert g1 is not None and g2 is not None
-            if isinstance(self.sampler, SameScaleCustomizedDenseSampler):
+            if isinstance(self.sampler, CustomizedSameScaleDenseSampler):
                 ci1 = self.sampler(anchor=g1, sample=g2, customized_neg_mask=customized_neg_mask1)
                 ci2 = self.sampler(anchor=g2, sample=g1, customized_neg_mask=customized_neg_mask2)
+            elif isinstance(self.sampler, SemiSupSameScaleDenseSampler):
+                ci1 = self.sampler(anchor=g1, sample=g2, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+                ci2 = self.sampler(anchor=g2, sample=g1, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
             else:
                 ci1 = self.sampler(anchor=g1, sample=g2)
                 ci2 = self.sampler(anchor=g2, sample=g1)
@@ -81,8 +75,6 @@ class DualBranchContrast(torch.nn.Module):
         if isinstance(self.sampler, DefaultSampler) \
                 and not (extra_neg_mask is None and extra_pos_mask is None):  # sanity check
             raise RuntimeError('Default sampler does not support additional positive and negative samples')
-        add_extra_mask(ci1, extra_pos_mask, extra_neg_mask)
-        add_extra_mask(ci2, extra_pos_mask, extra_neg_mask)
         l1 = self.loss(contrast_instance=ci1, **self.kwargs)
         l2 = self.loss(contrast_instance=ci2, **self.kwargs)
 
@@ -123,8 +115,6 @@ class BootstrapContrast(torch.nn.Module):
                 ci1 = self.sampler(anchor=g1_target, sample=h2_pred, batch=batch)
                 ci2 = self.sampler(anchor=g2_target, sample=h1_pred, batch=batch)
 
-        add_extra_mask(ci1, extra_pos_mask=extra_pos_mask)
-        add_extra_mask(ci2, extra_pos_mask=extra_pos_mask)
         l1 = self.loss(contrast_instance=ci1)
         l2 = self.loss(contrast_instance=ci2)
 

@@ -9,7 +9,7 @@ from tqdm import tqdm
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import from_PyG_split, LRTrainableEvaluator
-from GCL.model import DualBranchContrast
+from GCL.model import DualBranchContrast, SemiSupSameScaleDenseSampler
 from sklearn.metrics import f1_score
 from torch_geometric.nn import GCNConv
 from torch_geometric.datasets import Planetoid
@@ -41,10 +41,13 @@ class Encoder(torch.nn.Module):
         self.fc1 = torch.nn.Linear(hidden_dim, proj_dim)
         self.fc2 = torch.nn.Linear(proj_dim, hidden_dim)
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, data):
         aug1, aug2 = self.augmentor
-        x1, edge_index1, edge_weight1 = aug1(x, edge_index, edge_weight)
-        x2, edge_index2, edge_weight2 = aug2(x, edge_index, edge_weight)
+        data1 = aug1(data)
+        data2 = aug2(data)
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+        x1, edge_index1, edge_weight1 = data1.x, data1.edge_index, data1.edge_attr
+        x2, edge_index2, edge_weight2 = data2.x, data2.edge_index, data2.edge_attr
         z = self.encoder(x, edge_index, edge_weight)
         z1 = self.encoder(x1, edge_index1, edge_weight1)
         z2 = self.encoder(x2, edge_index2, edge_weight2)
@@ -58,24 +61,9 @@ class Encoder(torch.nn.Module):
 def train(encoder_model, contrast_model, data, optimizer):
     encoder_model.train()
     optimizer.zero_grad()
-    z, z1, z2 = encoder_model(data.x, data.edge_index, data.edge_attr)
+    z, z1, z2 = encoder_model(data)
     h1, h2 = [encoder_model.project(x) for x in [z1, z2]]
-
-    # compute extra pos and neg masks for semi-supervised learning
-    extra_pos_mask = torch.eq(data.y, data.y.unsqueeze(dim=1)).to('cuda')
-    # construct extra supervision signals for only training samples
-    extra_pos_mask[~data.train_mask][:, ~data.train_mask] = False
-    extra_pos_mask.fill_diagonal_(False)
-    # pos_mask: [N, 2N] for both inter-view and intra-view samples
-    extra_pos_mask = torch.cat([extra_pos_mask, extra_pos_mask], dim=1).to('cuda')
-    # fill interview positives only; pos_mask for intraview samples should have zeros in diagonal
-    extra_pos_mask.fill_diagonal_(True)
-
-    extra_neg_mask = torch.ne(data.y, data.y.unsqueeze(dim=1)).to('cuda')
-    extra_neg_mask[~data.train_mask][:, ~data.train_mask] = True
-    extra_neg_mask.fill_diagonal_(False)
-    extra_neg_mask = torch.cat([extra_neg_mask, extra_neg_mask], dim=1).to('cuda')
-
+    extra_pos_mask, extra_neg_mask = contrast_model.sampler.compute_extra_mask(data)
     loss = contrast_model(h1=h1, h2=h2, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
     loss.backward()
     optimizer.step()
@@ -84,7 +72,7 @@ def train(encoder_model, contrast_model, data, optimizer):
 
 def eval(encoder_model, data):
     encoder_model.eval()
-    z, _, _ = encoder_model(data.x, data.edge_index, data.edge_attr)
+    z, _, _ = encoder_model(data)
     split = from_PyG_split(data=data)
     evaluator = LRTrainableEvaluator(
         input_dim=z.size(1), num_classes=data.y.max().item() + 1,
@@ -104,7 +92,9 @@ def main():
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=32, proj_dim=32).to(device)
-    contrast_model = DualBranchContrast(loss=L.InfoNCE(tau=0.2), mode='L2L', intraview_negs=True).to(device)
+    sampler = SemiSupSameScaleDenseSampler()
+    contrast_model = DualBranchContrast(loss=L.InfoNCE(tau=0.2), mode='L2L', intraview_negs=True,
+                                        sampler=sampler).to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
 

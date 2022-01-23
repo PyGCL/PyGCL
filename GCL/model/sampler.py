@@ -93,9 +93,9 @@ class CrossScaleDenseSampler(DenseSampler):
         return ContrastInstance(anchor=anchor, sample=sample, pos_mask=pos_mask, neg_mask=neg_mask)
 
 
-class SameScaleCustomizedDenseSampler(DenseSampler):
+class CustomizedSameScaleDenseSampler(DenseSampler):
     def __init__(self, *args, **kwargs):
-        super(SameScaleCustomizedDenseSampler, self).__init__(*args, **kwargs)
+        super(CustomizedSameScaleDenseSampler, self).__init__(*args, **kwargs)
 
     def sample(self, anchor: torch.Tensor, sample: torch.Tensor, customized_pos_mask=None, customized_neg_mask=None,
                *args, **kwargs) -> ContrastInstance:
@@ -111,6 +111,38 @@ class SameScaleCustomizedDenseSampler(DenseSampler):
         else:
             neg_mask = 1. - pos_mask
         return ContrastInstance(anchor=anchor, sample=sample, pos_mask=pos_mask, neg_mask=neg_mask)
+
+
+class SemiSupSameScaleDenseSampler(SameScaleDenseSampler):
+    def __init__(self, *args, **kwargs):
+        super(SemiSupSameScaleDenseSampler, self).__init__(*args, **kwargs)
+
+    def compute_extra_mask(self, data):
+        # compute extra pos and neg masks for semi-supervised learning
+        extra_pos_mask = torch.eq(data.y, data.y.unsqueeze(dim=1)).to('cuda')
+        # construct extra supervision signals for only training samples
+        extra_pos_mask[~data.train_mask][:, ~data.train_mask] = False
+        extra_pos_mask.fill_diagonal_(False)
+        # pos_mask: [N, 2N] for both inter-view and intra-view samples
+        extra_pos_mask = torch.cat([extra_pos_mask, extra_pos_mask], dim=1).to('cuda')
+        # fill interview positives only; pos_mask for intraview samples should have zeros in diagonal
+        extra_pos_mask.fill_diagonal_(True)
+
+        extra_neg_mask = torch.ne(data.y, data.y.unsqueeze(dim=1)).to('cuda')
+        extra_neg_mask[~data.train_mask][:, ~data.train_mask] = True
+        extra_neg_mask.fill_diagonal_(False)
+        extra_neg_mask = torch.cat([extra_neg_mask, extra_neg_mask], dim=1).to('cuda')
+        return extra_pos_mask, extra_neg_mask
+
+    def sample(self, anchor: torch.Tensor, sample: torch.Tensor, extra_pos_mask=None, extra_neg_mask=None,
+               *args, **kwargs) -> ContrastInstance:
+        contrast_instance = super(SemiSupSameScaleDenseSampler, self).sample(anchor, sample)
+        pos_mask, neg_mask = contrast_instance.pos_mask, contrast_instance.neg_mask
+        if extra_pos_mask is not None:
+            contrast_instance.pos_mask = torch.bitwise_or(pos_mask.bool(), extra_pos_mask.bool()).float()
+        if extra_neg_mask is not None:
+            contrast_instance.neg_mask = torch.bitwise_and(neg_mask.bool(), extra_neg_mask.bool()).float()
+        return contrast_instance
 
 
 def get_dense_sampler(mode: str, intraview_negs: bool) -> DenseSampler:
