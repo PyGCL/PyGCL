@@ -78,7 +78,7 @@ class Encoder(torch.nn.Module):
         return z, g, z1, z2, g1, g2
 
 
-def train(encoder_model, contrast_model, dataloader, optimizer, temperature=1.0, coef=1.0):
+def train(encoder_model, contrast_model, dataloader, optimizer, temperature=1.0, coef=1.0, use_reweight_loss=False):
     encoder_model.train()
     epoch_loss = 0
     for data in dataloader:
@@ -107,30 +107,36 @@ def train(encoder_model, contrast_model, dataloader, optimizer, temperature=1.0,
         c1 = torch.argmax(p1, dim=1)
         c2 = torch.argmax(p2, dim=1)
 
-        norm_g1 = F.normalize(g1, dim=1)
-        norm_g2 = F.normalize(g2, dim=1)
+        if use_reweight_loss:
+            norm_g1 = F.normalize(g1, dim=1)
+            norm_g2 = F.normalize(g2, dim=1)
 
-        cos_sim1 = norm_g1 @ norm_g2.T
-        cos_dist1 = torch.ones_like(cos_sim1) - cos_sim1
-        mean1 = torch.mean(cos_dist1, dim=1)
-        var1 = torch.var(cos_dist1, dim=1)
-        gaussian1 = torch.exp(-((cos_dist1.T - mean1) * (cos_dist1.T - mean1)) / (2 * var1 * var1)).T
+            cos_sim1 = norm_g1 @ norm_g2.T
+            cos_dist1 = torch.ones_like(cos_sim1) - cos_sim1
+            mean1 = torch.mean(cos_dist1, dim=1)
+            var1 = torch.var(cos_dist1, dim=1)
+            gaussian1 = torch.exp(-((cos_dist1.T - mean1) * (cos_dist1.T - mean1)) / (2 * var1 * var1)).T
 
-        cos_sim2 = norm_g2 @ norm_g1.T
-        cos_dist2 = torch.ones_like(cos_sim2) - cos_sim2
-        mean2 = torch.mean(cos_dist2, dim=1)
-        var2 = torch.var(cos_dist2, dim=1)
-        gaussian2 = torch.exp(-((cos_dist2.T - mean2) * (cos_dist2.T - mean2)) / (2 * var2 * var2)).T
+            cos_sim2 = norm_g2 @ norm_g1.T
+            cos_dist2 = torch.ones_like(cos_sim2) - cos_sim2
+            mean2 = torch.mean(cos_dist2, dim=1)
+            var2 = torch.var(cos_dist2, dim=1)
+            gaussian2 = torch.exp(-((cos_dist2.T - mean2) * (cos_dist2.T - mean2)) / (2 * var2 * var2)).T
 
-        num_graphs = g1.size(0)
-        neg_mask1 = torch.zeros(num_graphs, num_graphs).to('cuda')
-        neg_mask2 = torch.zeros(num_graphs, num_graphs).to('cuda')
-        for i in range(num_graphs):
-            for j in range(num_graphs):
-                if i != j and c1[i] != c2[j]:
-                    neg_mask1[i][j] = gaussian1[i][j]
-                if i != j and c2[i] != c1[j]:
-                    neg_mask2[i][j] = gaussian2[i][j]
+            num_graphs = g1.size(0)
+            neg_mask1 = torch.zeros(num_graphs, num_graphs).to('cuda')
+            neg_mask2 = torch.zeros(num_graphs, num_graphs).to('cuda')
+            for i in range(num_graphs):
+                for j in range(num_graphs):
+                    if i != j and c1[i] != c2[j]:
+                        neg_mask1[i][j] = gaussian1[i][j]
+                    if i != j and c2[i] != c1[j]:
+                        neg_mask2[i][j] = gaussian2[i][j]
+        else:
+            neg_mask1 = (~torch.eq(c1, c2.unsqueeze(dim=1))).float().to('cuda')
+            neg_mask2 = (~torch.eq(c2, c1.unsqueeze(dim=1))).float().to('cuda')
+            neg_mask1.fill_diagonal_(False)
+            neg_mask2.fill_diagonal_(False)
 
         loss = contrast_model(g1=g1, g2=g2, batch=data.batch, customized_neg_mask1=neg_mask1,
                               customized_neg_mask2=neg_mask2) + coef * loss_consistency
