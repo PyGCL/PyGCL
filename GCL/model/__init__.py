@@ -1,4 +1,5 @@
-from .samplers import SameScaleSampler, CrossScaleSampler, get_sampler
+from .sampler import SameScaleDenseSampler, CrossScaleDenseSampler, CustomizedSameScaleDenseSampler, \
+    SemiSupSameScaleDenseSampler, get_dense_sampler
 from .contrast_model import SingleBranchContrast, DualBranchContrast, WithinEmbedContrast, BootstrapContrast
 
 
@@ -7,9 +8,9 @@ __all__ = [
     'DualBranchContrast',
     'WithinEmbedContrast',
     'BootstrapContrast',
-    'SameScaleSampler',
-    'CrossScaleSampler',
-    'get_sampler'
+    'SameScaleDenseSampler',
+    'CrossScaleDenseSampler',
+    'get_dense_sampler'
 ]
 
 classes = __all__

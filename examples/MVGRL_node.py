@@ -1,6 +1,6 @@
 import torch
 import os.path as osp
-import GCL.losses as L
+import GCL.loss as L
 import GCL.augmentor as A
 import torch_geometric.transforms as T
 
@@ -9,7 +9,7 @@ from tqdm import tqdm
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import random_split, LRTrainableEvaluator
-from GCL.models import DualBranchContrast
+from GCL.model import DualBranchContrast
 from sklearn.metrics import f1_score
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.inits import uniform
@@ -48,10 +48,14 @@ class Encoder(torch.nn.Module):
     def corruption(x, edge_index, edge_weight):
         return x[torch.randperm(x.size(0))], edge_index, edge_weight
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, data, is_no_edge_attr=True):
         aug1, aug2 = self.augmentor
-        x1, edge_index1, edge_weight1 = aug1(x, edge_index, edge_weight)
-        x2, edge_index2, edge_weight2 = aug2(x, edge_index, edge_weight)
+        if is_no_edge_attr:
+            data.edge_attr = None
+        data1 = aug1(data)
+        data2 = aug2(data)
+        x1, edge_index1, edge_weight1 = data1.x, data1.edge_index, data1.edge_attr
+        x2, edge_index2, edge_weight2 = data2.x, data2.edge_index, data2.edge_attr
         z1 = self.encoder1(x1, edge_index1, edge_weight1)
         z2 = self.encoder2(x2, edge_index2, edge_weight2)
         g1 = self.project(torch.sigmoid(z1.mean(dim=0, keepdim=True)))
@@ -64,7 +68,7 @@ class Encoder(torch.nn.Module):
 def train(encoder_model, contrast_model, data, optimizer):
     encoder_model.train()
     optimizer.zero_grad()
-    z1, z2, g1, g2, z1n, z2n = encoder_model(data.x, data.edge_index)
+    z1, z2, g1, g2, z1n, z2n = encoder_model(data, is_no_edge_attr=True)
     loss = contrast_model(h1=z1, h2=z2, g1=g1, g2=g2, h3=z1n, h4=z2n)
     loss.backward()
     optimizer.step()
@@ -73,7 +77,7 @@ def train(encoder_model, contrast_model, data, optimizer):
 
 def eval(encoder_model, data):
     encoder_model.eval()
-    z1, z2, _, _, _, _ = encoder_model(data.x, data.edge_index)
+    z1, z2, _, _, _, _ = encoder_model(data, is_no_edge_attr=True)
     z = z1 + z2
     split = random_split(num_samples=z.size(0), num_splits=10, train_ratio=0.1, test_ratio=0.8)
     evaluator = LRTrainableEvaluator(

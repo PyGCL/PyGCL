@@ -9,7 +9,8 @@ from torch import nn
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator
-from GCL.model import DualBranchContrast
+from GCL.model import DualBranchContrast, CustomizedSameScaleDenseSampler
+from GCL.utils import sinkhorn
 from sklearn.metrics import f1_score
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils._testing import ignore_warnings
@@ -56,10 +57,12 @@ class GConv(nn.Module):
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, encoder, augmentor):
+    def __init__(self, encoder, augmentor, num_clusters):
         super(Encoder, self).__init__()
         self.encoder = encoder
         self.augmentor = augmentor
+        self.C = torch.nn.Parameter(torch.FloatTensor(64, num_clusters), requires_grad=True).to('cuda')  # prototypes
+        torch.nn.init.xavier_uniform_(self.C)
 
     def forward(self, data):
         aug1, aug2 = self.augmentor
@@ -75,7 +78,7 @@ class Encoder(torch.nn.Module):
         return z, g, z1, z2, g1, g2
 
 
-def train(encoder_model, contrast_model, dataloader, optimizer):
+def train(encoder_model, contrast_model, dataloader, optimizer, temperature=1.0, coef=1.0, use_reweight_loss=False):
     encoder_model.train()
     epoch_loss = 0
     for data in dataloader:
@@ -88,9 +91,60 @@ def train(encoder_model, contrast_model, dataloader, optimizer):
 
         _, _, _, _, g1, g2 = encoder_model(data)
         g1, g2 = [encoder_model.encoder.project(g) for g in [g1, g2]]
-        loss = contrast_model(g1=g1, g2=g2, batch=data.batch)
+
+        scores1 = g1 @ encoder_model.C
+        scores2 = g2 @ encoder_model.C
+
+        with torch.no_grad():
+            q1 = sinkhorn(scores1)
+            q2 = sinkhorn(scores2)
+
+        p1 = F.softmax(scores1 / temperature, dim=1)  # (128 * 10)
+        p2 = F.softmax(scores2 / temperature, dim=1)  # (128 * 10)
+
+        loss_consistency = -0.5 * (q2 * torch.log(p1) + q1 * torch.log(p2)).mean()
+
+        c1 = torch.argmax(p1, dim=1)
+        c2 = torch.argmax(p2, dim=1)
+
+        if use_reweight_loss:
+            norm_g1 = F.normalize(g1, dim=1)
+            norm_g2 = F.normalize(g2, dim=1)
+
+            cos_sim1 = norm_g1 @ norm_g2.T
+            cos_dist1 = torch.ones_like(cos_sim1) - cos_sim1
+            mean1 = torch.mean(cos_dist1, dim=1)
+            var1 = torch.var(cos_dist1, dim=1)
+            gaussian1 = torch.exp(-((cos_dist1.T - mean1) * (cos_dist1.T - mean1)) / (2 * var1 * var1)).T
+
+            cos_sim2 = norm_g2 @ norm_g1.T
+            cos_dist2 = torch.ones_like(cos_sim2) - cos_sim2
+            mean2 = torch.mean(cos_dist2, dim=1)
+            var2 = torch.var(cos_dist2, dim=1)
+            gaussian2 = torch.exp(-((cos_dist2.T - mean2) * (cos_dist2.T - mean2)) / (2 * var2 * var2)).T
+
+            num_graphs = g1.size(0)
+            neg_mask1 = torch.zeros(num_graphs, num_graphs).to('cuda')
+            neg_mask2 = torch.zeros(num_graphs, num_graphs).to('cuda')
+            for i in range(num_graphs):
+                for j in range(num_graphs):
+                    if i != j and c1[i] != c2[j]:
+                        neg_mask1[i][j] = gaussian1[i][j]
+                    if i != j and c2[i] != c1[j]:
+                        neg_mask2[i][j] = gaussian2[i][j]
+        else:
+            neg_mask1 = (~torch.eq(c1, c2.unsqueeze(dim=1))).float().to('cuda')
+            neg_mask2 = (~torch.eq(c2, c1.unsqueeze(dim=1))).float().to('cuda')
+            neg_mask1.fill_diagonal_(False)
+            neg_mask2.fill_diagonal_(False)
+
+        loss = contrast_model(g1=g1, g2=g2, batch=data.batch, customized_neg_mask1=neg_mask1,
+                              customized_neg_mask2=neg_mask2) + coef * loss_consistency
         loss.backward()
         optimizer.step()
+
+        with torch.no_grad():
+            encoder_model.C = F.normalize(encoder_model.C, dim=0, p=2)
 
         epoch_loss += loss.item()
     return epoch_loss
@@ -121,10 +175,11 @@ def eval(encoder_model, dataloader):
 
 
 def main():
+    batch_size = 128
     device = torch.device('cuda')
     path = osp.join(osp.expanduser('~'), 'datasets')
     dataset = TUDataset(path, name='PTC_MR')
-    dataloader = DataLoader(dataset, batch_size=128)
+    dataloader = DataLoader(dataset, batch_size=batch_size)
     input_dim = max(dataset.num_features, 1)
 
     aug1 = A.Identity()
@@ -134,8 +189,9 @@ def main():
         A.FeatureMasking(pf=0.1),
         A.EdgeRemoving(pe=0.1)], 1)
     gconv = GConv(input_dim=input_dim, hidden_dim=32, num_layers=2).to(device)
-    encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2)).to(device)
-    contrast_model = DualBranchContrast(loss=L.InfoNCE(tau=0.2), mode='G2G').to(device)
+    encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), num_clusters=20).to(device)
+    sampler = CustomizedSameScaleDenseSampler()
+    contrast_model = DualBranchContrast(loss=L.ReweightedInfoNCE(tau=0.2), mode='G2G', sampler=sampler).to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
 

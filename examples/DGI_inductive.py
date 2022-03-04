@@ -1,13 +1,13 @@
 import torch
 import os.path as osp
-import GCL.losses as L
+import GCL.loss as L
 
 from tqdm import tqdm
 from torch import nn
 from torch.optim import Adam
 from functools import partial
 from GCL.eval import random_split, LRTrainableEvaluator
-from GCL.models import SingleBranchContrast
+from GCL.model import SingleBranchContrast
 from sklearn.metrics import f1_score
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import uniform

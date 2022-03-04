@@ -67,3 +67,15 @@ def batchify_dict(dicts: List[dict], aggr_func=lambda x: x):
     res = {k: aggr_func(v) for k, v in res.items()}
     return res
 
+
+def sinkhorn(scores, eps=1.0, niters=3):
+    Q = torch.exp(scores / eps).T
+    Q /= Q.sum()
+    K, N = Q.shape
+    u, r, c = torch.zeros(K).to('cuda'), torch.ones(K).to('cuda') / K, torch.ones(N).to('cuda') / N
+    for _ in range(niters):
+        # u = sum(Q, dim=1)
+        u = Q.sum(dim=1)
+        Q *= (r / u).unsqueeze(1)
+        Q *= (c / Q.sum(dim=0)).unsqueeze(0)
+    return (Q / Q.sum(dim=0, keepdim=True)).T

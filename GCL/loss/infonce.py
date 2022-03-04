@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
-from .losses import Loss
+from .loss import Loss
 
 
 def _similarity(h1: torch.Tensor, h2: torch.Tensor):
@@ -11,41 +11,29 @@ def _similarity(h1: torch.Tensor, h2: torch.Tensor):
     return h1 @ h2.t()
 
 
-class InfoNCESP(Loss):
-    """
-    InfoNCE loss for single positive.
-    """
-    def __init__(self, tau):
-        super(InfoNCESP, self).__init__()
-        self.tau = tau
-
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
-        f = lambda x: torch.exp(x / self.tau)
-        sim = f(_similarity(anchor, sample))  # anchor x sample
-        assert sim.size() == pos_mask.size()  # sanity check
-
-        neg_mask = 1 - pos_mask
-        pos = (sim * pos_mask).sum(dim=1)
-        neg = (sim * neg_mask).sum(dim=1)
-
-        loss = pos / (pos + neg)
-        loss = -torch.log(loss)
-
-        return loss.mean()
-
-
 class InfoNCE(Loss):
     def __init__(self, tau):
         super(InfoNCE, self).__init__()
         self.tau = tau
 
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
+                                             contrast_instance.pos_mask, contrast_instance.neg_mask
         sim = _similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
         loss = log_prob * pos_mask
         loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
         return -loss.mean()
+
+    def compute_default_positive(self, contrast_instance, *args, **kwargs):
+        anchor, sample = contrast_instance.anchor, contrast_instance.sample
+        sim = torch.exp(_similarity(anchor, sample) / self.tau)  # anchor x sample
+        pos = sim.diag()
+        neg = sim.sum(dim=1) - sim.diag()
+        loss = pos / (pos + neg)
+        loss = -torch.log(loss)
+        return loss.mean()
 
 
 class DebiasedInfoNCE(Loss):
@@ -187,3 +175,24 @@ class RingLoss(torch.nn.Module):
         loss = loss.mean()
 
         return loss
+
+
+class ReweightedInfoNCE(Loss):
+    def __init__(self, tau):
+        super(ReweightedInfoNCE, self).__init__()
+        self.tau = tau
+
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
+                                             contrast_instance.pos_mask, contrast_instance.neg_mask
+        sim = torch.exp(_similarity(anchor, sample) / self.tau)
+        n = anchor.size(0)
+        norm_factor = n / neg_mask.sum(dim=1)
+        pos = sim.diag()
+        neg = (norm_factor * (neg_mask * sim).T).T
+        loss = pos / (pos + neg)
+        loss = -torch.log(loss)
+        return loss.mean()
+
+    def compute_default_positive(self, contrast_instance, *args, **kwargs):
+        raise RuntimeError('Reweighted sampler does not support compute default positive loss')

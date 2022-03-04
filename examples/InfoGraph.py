@@ -1,13 +1,13 @@
 import torch
 import os.path as osp
-import GCL.losses as L
+import GCL.loss as L
 
 from tqdm import tqdm
 from torch import nn
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator
-from GCL.models import SingleBranchContrast
+from GCL.model import SingleBranchContrast
 from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.data import DataLoader
 from torch_geometric.datasets import TUDataset
