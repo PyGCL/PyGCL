@@ -4,6 +4,11 @@ from GCL.augmentor.functional import dropout_feature
 
 class FeatureDropout(Augmentor):
     def __init__(self, pf: float):
+        """
+        This augmentor drops out feature dimensions of the graph with probability pf.
+        Args:
+            pf: probability of dropping out a feature dimension.
+        """
         super(FeatureDropout, self).__init__()
         self.pf = pf
 

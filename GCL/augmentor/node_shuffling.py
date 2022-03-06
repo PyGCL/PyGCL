@@ -4,6 +4,9 @@ from GCL.augmentor.functional import permute
 
 class NodeShuffling(Augmentor):
     def __init__(self):
+        """
+        Shuffle the nodes of the graph.
+        """
         super(NodeShuffling, self).__init__()
 
     def pyg_augment(self, g: PyGGraph):

@@ -1,3 +1,4 @@
+"""PyTorch utilities for graph augmentation functions."""
 import torch
 import networkx as nx
 import torch.nn.functional as F

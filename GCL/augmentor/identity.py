@@ -3,6 +3,9 @@ from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
 
 class Identity(Augmentor):
     def __init__(self):
+        """
+        Identity augmentor.
+        """
         super(Identity, self).__init__()
 
     def pyg_augment(self, g: PyGGraph):

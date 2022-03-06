@@ -5,6 +5,12 @@ import GCL.augmentor.functional_dgl as F_dgl
 
 class EdgeRemoving(Augmentor):
     def __init__(self, pe: float):
+        """This augmentor removes edges from the graph.
+
+        Args:
+            pe (float): Probability of edge removal.
+        """
+        self.pe = pe
         super(EdgeRemoving, self).__init__()
         self.pe = pe
 
