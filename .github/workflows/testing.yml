@@ -1,10 +1,12 @@
 name: Testing and Reporting
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
+#on:
+#  push:
+#    branches:
+#      - main
+#  pull_request:
+
+on: [push, pull_request]
 
 jobs:
   flake8-lint:
