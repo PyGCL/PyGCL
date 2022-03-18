@@ -29,11 +29,11 @@ class GConv(nn.Module):
             else:
                 self.layers.append(GCNConv(hidden_dim, hidden_dim))
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, edge_weight, batch):
         z = x
         zs = []
         for conv in self.layers:
-            z = conv(z, edge_index)
+            z = conv(z, edge_index, edge_weight)
             z = self.activation(z)
             zs.append(z)
         gs = [global_add_pool(z, batch) for z in zs]
@@ -74,10 +74,10 @@ class Encoder(torch.nn.Module):
             data.edge_attr = None
         data1 = self.aug1(data)
         data2 = self.aug2(data)
-        x1, edge_index1 = data1.x, data1.edge_index
-        x2, edge_index2 = data2.x, data2.edge_index
-        z1, g1 = self.gcn1(x1, edge_index1, batch)
-        z2, g2 = self.gcn2(x2, edge_index2, batch)
+        x1, edge_index1, edge_weight1 = data1.x, data1.edge_index, data1.edge_attr
+        x2, edge_index2, edge_weight2 = data2.x, data2.edge_index, data2.edge_attr
+        z1, g1 = self.gcn1(x1, edge_index1, edge_weight1, batch)
+        z2, g2 = self.gcn2(x2, edge_index2, edge_weight2, batch)
         h1, h2 = [self.mlp1(h) for h in [z1, z2]]
         g1, g2 = [self.mlp2(g) for g in [g1, g2]]
         return h1, h2, g1, g2
