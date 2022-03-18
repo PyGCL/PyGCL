@@ -1,6 +1,6 @@
 import torch
 import os.path as osp
-import GCL.loss as L
+import GCL.losses as L
 import torch_geometric.transforms as T
 
 from tqdm import tqdm
@@ -9,7 +9,7 @@ from functools import partial
 from torch.optim import Adam
 from sklearn.metrics import f1_score
 from GCL.eval import random_split, LRTrainableEvaluator
-from GCL.model import SingleBranchContrast
+from GCL.models import SingleBranchContrast
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.inits import uniform
 from torch_geometric.datasets import Planetoid

@@ -4,12 +4,12 @@
 ## Available Augmentors
 
 ```{eval-rst}
-.. currentmodule:: GCL.augmentor
+.. currentmodule:: GCL.augmentors
 
 .. autosummary::
    :nosignatures:
    
-   {% for cls in GCL.augmentor.classes %}
+   {% for cls in GCL.augmentors.classes %}
      {{ cls }}
    {% endfor %}
 ```
@@ -21,7 +21,7 @@
 ## Functional Interface
 
 ```{eval-rst}
-.. automodule:: GCL.augmentor.functional
+.. automodule:: GCL.augmentors.functional
   :members:
   :undoc-members:
 ```

@@ -1,5 +1,5 @@
-from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
-from GCL.augmentor.functional import dropout_feature
+from GCL.augmentors.augmentor import PyGGraph, DGLGraph, Augmentor
+from GCL.augmentors.functional import dropout_feature
 
 
 class FeatureDropout(Augmentor):

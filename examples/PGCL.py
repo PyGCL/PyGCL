@@ -1,7 +1,7 @@
 import torch
 import os.path as osp
-import GCL.loss as L
-import GCL.augmentor as A
+import GCL.losses as L
+import GCL.augmentors as A
 import torch.nn.functional as F
 
 from tqdm import tqdm
@@ -9,7 +9,7 @@ from torch import nn
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator
-from GCL.model import DualBranchContrast, CustomizedSameScaleDenseSampler
+from GCL.models import DualBranchContrast, CustomizedSameScaleDenseSampler
 from GCL.utils import sinkhorn
 from sklearn.metrics import f1_score
 from sklearn.exceptions import ConvergenceWarning

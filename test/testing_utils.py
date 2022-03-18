@@ -4,7 +4,7 @@ import dgl
 from torch_geometric.data import Data
 from torch_geometric.utils import sort_edge_index
 
-import GCL.augmentor.functional as F
+import GCL.augmentors.functional as F
 
 
 def random_pyg_graph(num_nodes: int, num_edges: int, feature_dim: int = 256) -> Data:

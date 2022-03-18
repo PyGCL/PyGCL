@@ -27,7 +27,7 @@ notes/installation
 :caption: "Package Reference"
 :glob:
 
-modules/augmentor
+modules/augmentors
 modules/eval
 ```
 

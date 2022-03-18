@@ -1,4 +1,4 @@
-from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
+from GCL.augmentors.augmentor import PyGGraph, DGLGraph, Augmentor
 
 
 class Identity(Augmentor):

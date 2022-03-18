@@ -1,5 +1,5 @@
-from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
-from GCL.augmentor.functional import permute
+from GCL.augmentors.augmentor import PyGGraph, DGLGraph, Augmentor
+from GCL.augmentors.functional import permute
 
 
 class NodeShuffling(Augmentor):

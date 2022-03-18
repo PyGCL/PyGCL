@@ -1,6 +1,6 @@
-from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
-from GCL.augmentor.functional import add_edge
-import GCL.augmentor.functional_dgl as F_dgl
+from GCL.augmentors.augmentor import PyGGraph, DGLGraph, Augmentor
+from GCL.augmentors.functional import add_edge
+import GCL.augmentors.functional_dgl as F_dgl
 
 
 class EdgeAdding(Augmentor):

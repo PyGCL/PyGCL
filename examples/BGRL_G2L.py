@@ -1,15 +1,15 @@
 import copy
 import torch
 import os.path as osp
-import GCL.loss as L
-import GCL.augmentor as A
+import GCL.losses as L
+import GCL.augmentors as A
 import torch.nn.functional as F
 
 from tqdm import tqdm
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator
-from GCL.model import BootstrapContrast
+from GCL.models import BootstrapContrast
 from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.exceptions import ConvergenceWarning

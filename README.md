@@ -116,7 +116,7 @@ Call these augmentation functions by feeding with a `Graph` in a tuple form of n
 PyGCL supports composing arbitrary numbers of augmentation functions together. The `Compose `class can be used for jointly using a list of augmentation instances `augmentor` consecutively:
 
 ```python
-import GCL.augmentor as A
+import GCL.augmentors as A
 
 aug = A.Compose([A.EdgeRemoving(pe=0.3), A.FeatureMasking(pf=0.3)])
 ```
@@ -124,16 +124,16 @@ aug = A.Compose([A.EdgeRemoving(pe=0.3), A.FeatureMasking(pf=0.3)])
 You can also use the `RandomChoice` class to randomly draw a few augmentation functions each time:
 
 ```python
-import GCL.augmentor as A
+import GCL.augmentors as A
 
 aug = A.RandomChoice(
-  [
-    A.RWSampling(num_seeds=1000, walk_length=10),
-  	A.NodeDropping(pn=0.1),
-  	A.FeatureMasking(pf=0.1),
-  	A.EdgeRemoving(pe=0.1)
-  ],
-  num_choices=1)
+    [
+        A.RWSampling(num_seeds=1000, walk_length=10),
+        A.NodeDropping(pn=0.1),
+        A.FeatureMasking(pf=0.1),
+        A.EdgeRemoving(pe=0.1)
+    ],
+    num_choices=1)
 ```
 
 ### Customizing Your Own Augmentation

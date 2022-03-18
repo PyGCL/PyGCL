@@ -1,7 +1,7 @@
 import torch
 import os.path as osp
-import GCL.loss as L
-import GCL.augmentor as A
+import GCL.losses as L
+import GCL.augmentors as A
 import torch_geometric.transforms as T
 
 from torch import nn
@@ -9,7 +9,7 @@ from tqdm import tqdm
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import random_split, LRTrainableEvaluator
-from GCL.model import DualBranchContrast
+from GCL.models import DualBranchContrast
 from sklearn.metrics import f1_score
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.inits import uniform

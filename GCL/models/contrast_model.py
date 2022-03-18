@@ -2,9 +2,9 @@ import torch
 
 from typing import Optional, Union
 
-from GCL.loss import Loss
-from GCL.model import get_dense_sampler
-from GCL.model.sampler import DenseSampler, DefaultSampler, ContrastInstance, CustomizedSameScaleDenseSampler, \
+from GCL.losses import Loss
+from GCL.models import get_dense_sampler
+from GCL.models.sampler import DenseSampler, DefaultSampler, ContrastInstance, CustomizedSameScaleDenseSampler, \
     SemiSupSameScaleDenseSampler
 
 

@@ -1,6 +1,6 @@
-from GCL.augmentor.augmentor import PyGGraph, DGLGraph, Augmentor
-from GCL.augmentor.functional import dropout_adj
-import GCL.augmentor.functional_dgl as F_dgl
+from GCL.augmentors.augmentor import PyGGraph, DGLGraph, Augmentor
+from GCL.augmentors.functional import dropout_adj
+import GCL.augmentors.functional_dgl as F_dgl
 
 
 class EdgeRemoving(Augmentor):

@@ -2,7 +2,7 @@ import torch
 
 from abc import ABC, abstractmethod
 from torch_scatter import scatter
-from GCL.loss import ContrastInstance
+from GCL.losses import ContrastInstance
 
 
 class DefaultSampler:

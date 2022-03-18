@@ -4,8 +4,8 @@ import torch_geometric.transforms as T
 
 from functools import partial
 from torch_geometric.data import Data
-from GCL.augmentor import PyGAugmentor, DGLAugmentor, Compose
-from GCL.augmentor import \
+from GCL.augmentors import PyGAugmentor, DGLAugmentor, Compose
+from GCL.augmentors import \
     EdgeAdding, EdgeRemoving, EdgeAttrMasking, \
     FeatureDropout, FeatureMasking, \
     NodeDropping, NodeShuffling
