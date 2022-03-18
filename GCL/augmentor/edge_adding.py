@@ -4,7 +4,13 @@ import GCL.augmentor.functional_dgl as F_dgl
 
 
 class EdgeAdding(Augmentor):
+    """Augment the graph by adding edges."""
+
     def __init__(self, pe: float):
+        """
+        Args:
+            pe: Probability of adding an edge.
+        """
         super(EdgeAdding, self).__init__()
         self.pe = pe
 

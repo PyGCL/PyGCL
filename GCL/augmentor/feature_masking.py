@@ -4,6 +4,11 @@ from GCL.augmentor.functional import drop_feature
 
 class FeatureMasking(Augmentor):
     def __init__(self, pf: float):
+        """
+        Masks features with probability pf.
+        Args:
+            pf: probability of feature masking.
+        """
         super(FeatureMasking, self).__init__()
         self.pf = pf
 

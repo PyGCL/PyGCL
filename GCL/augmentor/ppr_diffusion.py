@@ -4,6 +4,14 @@ from GCL.augmentor.functional import compute_ppr
 
 class PPRDiffusion(Augmentor):
     def __init__(self, alpha: float = 0.2, eps: float = 1e-4, use_cache: bool = True, add_self_loop: bool = True):
+        """
+        Run PPR diffusion on the graph.
+        Args:
+            alpha: The probability of returning to the original node.
+            eps: Epsilon for sparsification.
+            use_cache: Whether to use cache.
+            add_self_loop: Whether to add self loop.
+        """
         super(PPRDiffusion, self).__init__()
         self.alpha = alpha
         self.eps = eps

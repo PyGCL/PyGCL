@@ -5,6 +5,15 @@ from GCL.augmentor.functional import compute_markov_diffusion
 class MarkovDiffusion(Augmentor):
     def __init__(self, alpha: float = 0.05, order: int = 16, sp_eps: float = 1e-4, use_cache: bool = True,
                  add_self_loop: bool = True):
+        """
+        The augmentor performs Markov diffusion on the graph.
+        Args:
+            alpha: The probability of self-loop.
+            order: The order of Markov diffusion.
+            sp_eps: The epsilon sparsifying the diffusion matrix.
+            use_cache: Whether to use cache.
+            add_self_loop: Whether to add self-loop.
+        """
         super(MarkovDiffusion, self).__init__()
         self.alpha = alpha
         self.order = order

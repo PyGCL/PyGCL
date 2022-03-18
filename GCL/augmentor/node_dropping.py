@@ -5,6 +5,11 @@ import GCL.augmentor.functional_dgl as F_dgl
 
 class NodeDropping(Augmentor):
     def __init__(self, pn: float):
+        """
+        This augmentor drops nodes from the graph with probability pn.
+        Args:
+            pn: Probability of dropping a node.
+        """
         super(NodeDropping, self).__init__()
         self.pn = pn
 

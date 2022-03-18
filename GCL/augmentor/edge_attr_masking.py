@@ -4,6 +4,11 @@ from GCL.augmentor.functional import drop_feature
 
 class EdgeAttrMasking(Augmentor):
     def __init__(self, pf: float):
+        """
+        This augmentor masks the edge attributes with probability pf.
+        Args:
+            pf: the probability of masking the edge attributes.
+        """
         super(EdgeAttrMasking, self).__init__()
         self.pf = pf
 
