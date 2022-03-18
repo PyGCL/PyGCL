@@ -41,7 +41,7 @@ PyGCL needs the following packages to be installed beforehand:
 
 * Python 3.8+
 * PyTorch 1.9+
-* PyTorch-Geometric 1.7
+* PyTorch-Geometric 2.0+
 * DGL 0.7+
 * Scikit-learn 0.24+
 * Numpy

@@ -9,7 +9,7 @@ import GCL.augmentors.functional as F
 
 def random_pyg_graph(num_nodes: int, num_edges: int, feature_dim: int = 256) -> Data:
     edge_index = torch.randint(0, num_nodes - 1, size=(2, num_edges))
-    edge_index = sort_edge_index(edge_index)[0]
+    edge_index = sort_edge_index(edge_index)
     edge_index = F.coalesce_edge_index(edge_index)[0]
 
     x = torch.randn((num_nodes, feature_dim), dtype=torch.float32)

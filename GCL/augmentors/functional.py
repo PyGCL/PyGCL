@@ -303,7 +303,7 @@ def add_edge(edge_index: torch.Tensor, ratio: float) -> torch.Tensor:
     new_edge_index = torch.randint(0, num_nodes - 1, size=(2, num_add)).to(edge_index.device)
     edge_index = torch.cat([edge_index, new_edge_index], dim=1)
 
-    edge_index = sort_edge_index(edge_index)[0]
+    edge_index = sort_edge_index(edge_index)
 
     return coalesce_edge_index(edge_index)[0]
 
