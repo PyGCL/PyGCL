@@ -26,7 +26,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install internal dependencies
         run: |
-          cd test && pip install --requirement requirements_test.txt
+          cd docs && pip install --requirement requirements_basic.txt
       - name: Install main package
         run: |
           pip install -e .[test]
