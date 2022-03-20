@@ -11,10 +11,11 @@
 [lines-img]: https://img.shields.io/tokei/lines/github/GraphCL/PyGCL?color=red
 [visitors-img]: https://visitor-badge.glitch.me/badge?page_id=GraphCL.PyGCL
 
+<p align="center">
+<img src="logo.png" width="75%" class="center" alt="logo"/>
+</p>
 
-# 🌝🌚PyGCL: Graph Contrastive Learning for PyTorch
-
-PyGCL is an open-source Graph Contrastive Learning (GCL) library for [PyTorch](https://pytorch.org), which features modularized GCL components from published papers, standardized evaluation, and experiment management.
+PyGCL is a [PyTorch](https://pytorch.org)-based open-source Graph Contrastive Learning (GCL) library, which features modularized GCL components from published papers, standardized evaluation, and experiment management.
 
 [![Made with Python][python-img]][pygcl-url]
 [![PyPI version][pypi-img]][pypi-url]
@@ -26,13 +27,13 @@ PyGCL is an open-source Graph Contrastive Learning (GCL) library for [PyTorch](h
 
 ---
 
-# 🌘What is Graph Contrastive Learning?
+# What is Graph Contrastive Learning?
 
 Graph Contrastive Learning (GCL) establishes a new paradigm for learning graph representations without human annotations. A typical GCL algorithm firstly constructs multiple graph views via stochastic augmentation of the input and then learns representations by contrasting positive samples against negative ones.
 
 👉 For a general introduction of GCL, please refer to our [paper](https://arxiv.org/abs/2109.01116) and [blog](https://sxkdz.github.io/research/GraphCL/). Also, this [repo](https://github.com/SXKDZ/awesome-self-supervised-learning-for-graphs) tracks newly published GCL papers.
 
-# 🌑Install
+# Install
 
 ## Prerequisites
 
@@ -57,7 +58,11 @@ pip install PyGCL
 
 Then, you can import `GCL` from your current environment.
 
-# 🌒Package Overview
+> **A note regarding DGL**
+>
+> Currently the DGL team maintains two versions, `dgl` for CPU support and `dgl-cu***` for CUDA support. Since `pip` treats them as different packages, it is hard for PyGCL to check for the version requirement of `dgl`. We have removed such dependency checks for `dgl` in our setup configuration and require the users to [install a proper version](https://www.dgl.ai/pages/start.html) by themselves.
+
+# Package Overview
 
 Our PyGCL implements four main components of graph contrastive learning algorithms:
 
@@ -68,7 +73,7 @@ Our PyGCL implements four main components of graph contrastive learning algorith
 
 We also implement utilities for training models, evaluating model performance, and managing experiments.
 
-# 🌓Implementations and Examples
+# Implementations and Examples
 
 For a quick start, please check out the `examples` folder. We currently implemented the following methods:
 
@@ -87,7 +92,7 @@ For a quick start, please check out the `examples` folder. We currently implemen
 * **G-BT** (P. Bielak et al., Graph Barlow Twins: A Self-Supervised Representation Learning Framework for Graphs, arXiv, 2021) [[Example](examples/GBT.py)]
 * **VICReg** (A. Bardes et al., VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning, arXiv, 2021)
 
-# 🌕Building Your Own GCL Algorithms
+# Building Your Own GCL Algorithms
 
 Besides try the above examples for node and graph classification tasks, you can also build your own graph contrastive learning algorithms straightforwardly.
 
@@ -205,11 +210,11 @@ PyGCL provides a variety of evaluator functions to evaluate the embedding qualit
 
 To use these evaluators, you first need to generate dataset splits by `get_split` (random split) or by `from_predefined_split` (according to preset splits).
 
-# 🌗Contribution
+# Contribution
 
 Feel free to open an [issue](issues/new) should you find anything unexpected or [create pull requests](pulls) to add your own work! We are motivated to continuously make PyGCL even better.
 
-# 🌔Citation
+# Citation
 
 Please cite [our paper](https://arxiv.org/abs/2109.01116) if you use this code in your own work:
 
