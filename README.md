@@ -57,6 +57,10 @@ pip install PyGCL
 
 Then, you can import `GCL` from your current environment.
 
+> **A note regarding DGL**
+>
+> Currently the DGL team maintains two versions, `dgl` for CPU support and `dgl-cu***` for CUDA support. Since `pip` treats them as different packages, it is hard for PyGCL to check for the version requirement of `dgl`. We have removed such dependency checks for `dgl` in our setup configuration and require the users to [install a proper version](https://www.dgl.ai/pages/start.html) by themselves.
+
 # 🌒Package Overview
 
 Our PyGCL implements four main components of graph contrastive learning algorithms:
