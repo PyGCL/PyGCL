@@ -1,14 +1,14 @@
-[pygcl-url]: https://github.com/GraphCL/PyGCL
+[pygcl-url]: https://github.com/PyGCL/PyGCL
 [pypi-img]: https://img.shields.io/pypi/v/PyGCL
 [pypi-url]: https://pypi.org/project/PyGCL
-[python-img]: https://img.shields.io/github/languages/top/GraphCL/PyGCL?color=lightgrey
-[stars-img]: https://img.shields.io/github/stars/GraphCL/PyGCL?color=yellow
-[stars-url]: https://github.com/GraphCL/PyGCL/stargazers
-[fork-img]: https://img.shields.io/github/forks/GraphCL/PyGCL?color=lightblue&label=fork
-[fork-url]: https://github.com/GraphCL/PyGCL/network/members
+[python-img]: https://img.shields.io/github/languages/top/PyGCL/PyGCL?color=lightgrey
+[stars-img]: https://img.shields.io/github/stars/PyGCL/PyGCL?color=yellow
+[stars-url]: https://github.com/PyGCL/PyGCL/stargazers
+[fork-img]: https://img.shields.io/github/forks/PyGCL/PyGCL?color=lightblue&label=fork
+[fork-url]: https://github.com/PyGCL/PyGCL/network/members
 [doc-img]: https://readthedocs.org/projects/pygcl/badge/?version=latest
 [doc-url]: https://pygcl.readthedocs.io/en/latest/?badge=latest
-[lines-img]: https://img.shields.io/tokei/lines/github/GraphCL/PyGCL?color=red
+[lines-img]: https://img.shields.io/tokei/lines/github/PyGCL/PyGCL?color=red
 [visitors-img]: https://visitor-badge.glitch.me/badge?page_id=GraphCL.PyGCL
 
 <p align="center">
@@ -47,6 +47,8 @@ PyGCL needs the following packages to be installed beforehand:
 * Numpy
 * tqdm
 * NetworkX
+
+> Currently the DGL team maintains two versions, `dgl` for CPU support and `dgl-cu***` for CUDA support. Since `pip` treats them as different packages, it is hard for PyGCL to check for the version requirement of `dgl`. We have removed such dependency checks for `dgl` in our setup configuration and require the users to [install a proper version](https://www.dgl.ai/pages/start.html) by themselves.
 
 ## Installation via PyPI
 
