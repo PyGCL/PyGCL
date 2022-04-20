@@ -138,8 +138,9 @@ def train(encoder_model, contrast_model, dataloader, optimizer, temperature=1.0,
             neg_mask1.fill_diagonal_(False)
             neg_mask2.fill_diagonal_(False)
 
-        loss = contrast_model(g1=g1, g2=g2, batch=data.batch, customized_neg_mask1=neg_mask1,
-                              customized_neg_mask2=neg_mask2) + coef * loss_consistency
+        loss = contrast_model(
+            g1=g1, g2=g2, batch=data.batch,
+            neg_mask1=neg_mask1, neg_mask2=neg_mask2) + coef * loss_consistency
         loss.backward()
         optimizer.step()
 

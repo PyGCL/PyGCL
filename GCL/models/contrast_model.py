@@ -45,23 +45,28 @@ class DualBranchContrast(torch.nn.Module):
                 self.sampler = get_dense_sampler(mode, intraview_negs=intraview_negs)
         self.kwargs = kwargs
 
-    def forward(self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None,
-                extra_pos_mask=None, extra_neg_mask=None, customized_pos_mask1=None, customized_pos_mask2=None,
-                customized_neg_mask1=None, customized_neg_mask2=None):
+    def forward(
+            self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None,
+            extra_pos_mask=None, extra_neg_mask=None,
+            pos_mask1=None, pos_mask2=None, neg_mask1=None, neg_mask2=None):
         if self.mode == 'L2L':
             assert h1 is not None and h2 is not None
-            ci1 = self.sampler(anchor=h1, sample=h2)
-            ci2 = self.sampler(anchor=h2, sample=h1)
+            if isinstance(self.sampler, CustomizedSameScaleDenseSampler):
+                ci1 = self.sampler(anchor=h1, sample=h2, pos_mask=pos_mask1, neg_mask=neg_mask1)
+                ci2 = self.sampler(anchor=h2, sample=h1, pos_mask=pos_mask2, neg_mask=neg_mask2)
+            else:
+                ci1 = self.sampler(anchor=h1, sample=h2)
+                ci2 = self.sampler(anchor=h2, sample=h1)
         elif self.mode == 'G2G':
             assert g1 is not None and g2 is not None
             if isinstance(self.sampler, CustomizedSameScaleDenseSampler):
-                ci1 = self.sampler(anchor=g1, sample=g2,
-                                   customized_pos_mask=customized_pos_mask1, customized_neg_mask=customized_neg_mask1)
-                ci2 = self.sampler(anchor=g2, sample=g1,
-                                   customized_pos_mask=customized_pos_mask2, customized_neg_mask=customized_neg_mask2)
+                ci1 = self.sampler(anchor=g1, sample=g2, pos_mask=pos_mask1, neg_mask=neg_mask1)
+                ci2 = self.sampler(anchor=g2, sample=g1, pos_mask=pos_mask2, neg_mask=neg_mask2)
             elif isinstance(self.sampler, SemiSupSameScaleDenseSampler):
-                ci1 = self.sampler(anchor=g1, sample=g2, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
-                ci2 = self.sampler(anchor=g2, sample=g1, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+                ci1 = self.sampler(
+                    anchor=g1, sample=g2, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+                ci2 = self.sampler(
+                    anchor=g2, sample=g1, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
             else:
                 ci1 = self.sampler(anchor=g1, sample=g2)
                 ci2 = self.sampler(anchor=g2, sample=g1)
@@ -97,9 +102,10 @@ class BootstrapContrast(torch.nn.Module):
             else:
                 self.sampler = get_dense_sampler(mode, intraview_negs=False)
 
-    def forward(self, h1_pred=None, h2_pred=None, h1_target=None, h2_target=None,
-                g1_pred=None, g2_pred=None, g1_target=None, g2_target=None,
-                batch=None, extra_pos_mask=None):
+    def forward(
+            self, h1_pred=None, h2_pred=None, h1_target=None, h2_target=None,
+            g1_pred=None, g2_pred=None, g1_target=None, g2_target=None,
+            batch=None, extra_pos_mask=None):
         if self.mode == 'L2L':
             assert all(v is not None for v in [h1_pred, h2_pred, h1_target, h2_target])
             ci1 = self.sampler(anchor=h1_target, sample=h2_pred)
@@ -111,7 +117,7 @@ class BootstrapContrast(torch.nn.Module):
         else:
             assert all(v is not None for v in [h1_pred, h2_pred, g1_target, g2_target])
             if batch is None or batch.max().item() + 1 <= 1:  # single graph
-                pos_mask1 = pos_mask2 = torch.ones([1, h1_pred.shape[0]], device=h1_pred.device)
+                # pos_mask1 = pos_mask2 = torch.ones([1, h1_pred.shape[0]], device=h1_pred.device)
                 ci1 = ContrastInstance(anchor=g1_target, sample=h2_pred)
                 ci2 = ContrastInstance(anchor=g2_target, sample=h1_pred)
             else:

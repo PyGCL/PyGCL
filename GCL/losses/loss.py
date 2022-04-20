@@ -12,6 +12,12 @@ class ContrastInstance:
     pos_mask: Optional[torch.Tensor] = None
     neg_mask: Optional[torch.Tensor] = None
 
+    def unpack(self):
+        return self.anchor, self.sample, self.pos_mask, self.neg_mask
+
+    def masks(self):
+        return self.pos_mask, self.neg_mask
+
 
 class Loss(ABC):
     @abstractmethod
@@ -23,8 +29,7 @@ class Loss(ABC):
         raise NotImplementedError
 
     def __call__(self, contrast_instance: ContrastInstance, *args, **kwargs) -> torch.FloatTensor:
-        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
-                                             contrast_instance.pos_mask, contrast_instance.neg_mask
+        pos_mask, neg_mask = contrast_instance.masks()
         if pos_mask is None and neg_mask is None:
             loss = self.compute_default_positive(contrast_instance, *args, **kwargs)
         else:

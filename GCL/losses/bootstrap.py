@@ -9,7 +9,7 @@ class BootstrapLatent(Loss):
         super(BootstrapLatent, self).__init__()
 
     def compute(self, contrast_instance: ContrastInstance, *args, **kwargs) -> torch.FloatTensor:
-        anchor, sample, pos_mask = contrast_instance.anchor, contrast_instance.sample, contrast_instance.pos_mask
+        anchor, sample, pos_mask, _ = contrast_instance.unpack()
         anchor = F.normalize(anchor, dim=-1, p=2)
         sample = F.normalize(sample, dim=-1, p=2)
 
@@ -18,7 +18,7 @@ class BootstrapLatent(Loss):
         return loss.mean()
 
     def compute_default_positive(self, contrast_instance: ContrastInstance, *args, **kwargs) -> torch.FloatTensor:
-        anchor, sample = contrast_instance.anchor, contrast_instance.sample
+        anchor, sample, _, _ = contrast_instance.unpack()
         anchor = F.normalize(anchor, dim=-1, p=2)
         sample = F.normalize(sample, dim=-1, p=2)
 

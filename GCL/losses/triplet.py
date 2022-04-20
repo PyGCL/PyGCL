@@ -1,40 +1,17 @@
 import torch
 
-from .loss import Loss
-
-
-class TripletMarginSP(Loss):
-    def __init__(self, margin: float = 1.0, p: float = 2, *args, **kwargs):
-        super(TripletMarginSP, self).__init__()
-        self.loss_fn = torch.nn.TripletMarginLoss(margin=margin, p=p, reduction='none')
-        self.margin = margin
-
-    def compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
-        neg_mask = 1. - pos_mask
-
-        num_pos = pos_mask.to(torch.long).sum(dim=1)
-        num_neg = neg_mask.to(torch.long).sum(dim=1)
-
-        dist = torch.cdist(anchor, sample, p=2)  # [num_anchors, num_samples]
-
-        pos_dist = pos_mask * dist
-        neg_dist = neg_mask * dist
-
-        pos_dist, neg_dist = pos_dist.sum(dim=1), neg_dist.sum(dim=1)
-
-        loss = pos_dist / num_pos - neg_dist / num_neg + self.margin
-        loss = torch.where(loss > 0, loss, torch.zeros_like(loss))
-
-        return loss.mean()
+from .loss import Loss, ContrastInstance
 
 
 class TripletMargin(Loss):
-    def __init__(self, margin: float = 1.0, p: float = 2, *args, **kwargs):
+    def __init__(self, margin: float = 1.0, p: float = 2):
         super(TripletMargin, self).__init__()
         self.loss_fn = torch.nn.TripletMarginLoss(margin=margin, p=p, reduction='none')
         self.margin = margin
 
-    def compute(self, anchor, sample, pos_mask, neg_mask=None, *args, **kwargs):
+    def compute(self, contrast_instance: ContrastInstance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
         num_anchors = anchor.size()[0]
         num_samples = sample.size()[0]
 
@@ -80,3 +57,21 @@ class TripletMargin(Loss):
         loss = loss.sum()
 
         return loss / num_pairs
+
+    def compute_default_positive(self, contrast_instance: ContrastInstance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
+        num_pos = pos_mask.to(torch.long).sum(dim=1)
+        num_neg = neg_mask.to(torch.long).sum(dim=1)
+
+        dist = torch.cdist(anchor, sample, p=2)  # [num_anchors, num_samples]
+
+        pos_dist = pos_mask * dist
+        neg_dist = neg_mask * dist
+
+        pos_dist, neg_dist = pos_dist.sum(dim=1), neg_dist.sum(dim=1)
+
+        loss = pos_dist / num_pos - neg_dist / num_neg + self.margin
+        loss = torch.where(loss > 0, loss, torch.zeros_like(loss))
+
+        return loss.mean()
