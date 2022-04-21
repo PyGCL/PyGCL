@@ -42,16 +42,24 @@ class InfoNCE(Loss):
 
 
 class RobustInfoNCE(Loss):
-    def __init__(self, p, q):
+    def __init__(self, tau, p, q, _lambda):
         super(RobustInfoNCE, self).__init__()
         self.p = p
         self.q = q
+        self.tau = tau
+        self._lambda = _lambda
 
     def compute(self, contrast_instance, *args, **kwargs):
+        # TODO (Yanqiao): Implement this method
         pass
 
     def compute_default_positive(self, contrast_instance, *args, **kwargs) -> torch.FloatTensor:
-        pass
+        anchor, sample = contrast_instance.anchor, contrast_instance.sample
+        sim = torch.exp(similarity(anchor, sample) / self.tau)  # [anchor, sample]
+        pos = sim.diag()                                        # [anchor]
+        neg = sim.sum(dim=1) - sim.diag()                       # [anchor]
+        loss = -pos ** self.q / self.q + (self._lambda * (pos + neg)) ** self.q / self.q
+        return loss.mean()
 
 
 class DebiasedInfoNCE(Loss):
