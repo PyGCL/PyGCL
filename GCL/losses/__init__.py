@@ -1,6 +1,6 @@
 from .jsd import JSD, DebiasedJSD, HardnessJSD
 from .vicreg import VICReg
-from .infonce import InfoNCE, DebiasedInfoNCE, HardnessInfoNCE, ReweightedInfoNCE
+from .infonce import InfoNCE, DebiasedInfoNCE, HardnessInfoNCE, ReweightedInfoNCE, RobustInfoNCE
 from .triplet import TripletMargin
 from .bootstrap import BootstrapLatent
 from .barlow_twins import BarlowTwins
@@ -12,6 +12,7 @@ __all__ = [
     'InfoNCE',
     'DebiasedInfoNCE',
     'HardnessInfoNCE',
+    'RobustInfoNCE',
     'JSD',
     'DebiasedJSD',
     'HardnessJSD',
