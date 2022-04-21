@@ -45,11 +45,11 @@ class DenseSampler(ABC):
             self, anchor: torch.Tensor, sample: torch.Tensor,
             extra_pos_mask: torch.Tensor=None, extra_neg_mask: torch.Tensor=None,
             *args, **kwargs) -> ContrastInstance:
-        ret = self.sample(anchor, sample, *args, **kwargs)
+        contrast_instance = self.sample(anchor, sample, *args, **kwargs)
         if self.intraview_negs:
-            ret = self.add_intraview_negs(ret)
-        self.combine_extra_masks(ret, extra_pos_mask, extra_neg_mask)
-        return ret
+            contrast_instance = self.add_intraview_negs(contrast_instance)
+        self.combine_extra_masks(contrast_instance, extra_pos_mask, extra_neg_mask)
+        return contrast_instance
 
     @abstractmethod
     def sample(self, anchor: torch.Tensor, sample: torch.Tensor, *args, **kwargs) -> ContrastInstance:

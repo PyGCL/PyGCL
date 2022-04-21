@@ -92,7 +92,7 @@ def main():
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=32, proj_dim=32).to(device)
-    sampler = SameScaleDenseSampler()
+    sampler = SameScaleDenseSampler(intraview_negs=True)
     contrast_model = DualBranchContrast(
         loss=L.InfoNCE(tau=0.2), mode='L2L', intraview_negs=True, sampler=sampler).to(device)
 
