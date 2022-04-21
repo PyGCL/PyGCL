@@ -90,6 +90,8 @@ For a quick start, please check out the `examples` folder. We currently implemen
 * **BGRL** (S. Thakoor et al., Bootstrapped Representation Learning on Graphs, arXiv, 2021) [[Example1](examples/BGRL_L2L.py), [Example2](examples/BGRL_G2L.py)]
 * **G-BT** (P. Bielak et al., Graph Barlow Twins: A Self-Supervised Representation Learning Framework for Graphs, arXiv, 2021) [[Example](examples/GBT.py)]
 * **VICReg** (A. Bardes et al., VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning, arXiv, 2021)
+* **PGCL** (S. Lin et al., Prototypical Graph Contrastive Learning, arXiv, 2021) [[Example](examples/PGCL.py)]
+* **RINCE** (C.-Y. Chuang et al., Robust Contrastive Learning against Noisy Views, arXiv, 2022)
 
 # Building Your Own GCL Algorithms
 

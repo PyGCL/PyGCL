@@ -35,7 +35,9 @@ class VICReg(Loss):
         cov_loss = cov_z1[~diag.bool()].pow_(2).sum() / hidden_dim + cov_z2[~diag.bool()].pow_(2).sum() / hidden_dim
         return cov_loss
 
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs) -> torch.FloatTensor:
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
         sim_loss = self.invariance_loss(anchor, sample)
         var_loss = self.variance_loss(anchor, sample)
         cov_loss = self.covariance_loss(anchor, sample)

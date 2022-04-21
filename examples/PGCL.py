@@ -9,7 +9,7 @@ from torch import nn
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator
-from GCL.models import DualBranchContrast, CustomizedSameScaleDenseSampler
+from GCL.models import DualBranchContrast, SameScaleDenseSampler
 from GCL.utils import sinkhorn
 from sklearn.metrics import f1_score
 from sklearn.exceptions import ConvergenceWarning
@@ -138,8 +138,9 @@ def train(encoder_model, contrast_model, dataloader, optimizer, temperature=1.0,
             neg_mask1.fill_diagonal_(False)
             neg_mask2.fill_diagonal_(False)
 
-        loss = contrast_model(g1=g1, g2=g2, batch=data.batch, customized_neg_mask1=neg_mask1,
-                              customized_neg_mask2=neg_mask2) + coef * loss_consistency
+        loss = contrast_model(
+            g1=g1, g2=g2, batch=data.batch,
+            neg_mask1=neg_mask1, neg_mask2=neg_mask2) + coef * loss_consistency
         loss.backward()
         optimizer.step()
 
@@ -190,7 +191,7 @@ def main():
         A.EdgeRemoving(pe=0.1)], 1)
     gconv = GConv(input_dim=input_dim, hidden_dim=32, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), num_clusters=20).to(device)
-    sampler = CustomizedSameScaleDenseSampler()
+    sampler = SameScaleDenseSampler()
     contrast_model = DualBranchContrast(loss=L.ReweightedInfoNCE(tau=0.2), mode='G2G', sampler=sampler).to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)

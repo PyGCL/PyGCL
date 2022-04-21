@@ -5,10 +5,16 @@ import torch.nn.functional as F
 from .loss import Loss
 
 
-def _similarity(h1: torch.Tensor, h2: torch.Tensor):
+def similarity(h1: torch.Tensor, h2: torch.Tensor):
     h1 = F.normalize(h1)
     h2 = F.normalize(h2)
     return h1 @ h2.t()
+
+
+def tensor_similarity(z1: torch.Tensor, z2: torch.Tensor):
+    z1 = F.normalize(z1, dim=-1)  # [N, d]
+    z2 = F.normalize(z2, dim=-1)  # [N, s, d]
+    return torch.bmm(z2, z1.unsqueeze(dim=-1)).squeeze()
 
 
 class InfoNCE(Loss):
@@ -17,9 +23,8 @@ class InfoNCE(Loss):
         self.tau = tau
 
     def compute(self, contrast_instance, *args, **kwargs):
-        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
-                                             contrast_instance.pos_mask, contrast_instance.neg_mask
-        sim = _similarity(anchor, sample) / self.tau
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+        sim = similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim) * (pos_mask + neg_mask)
         log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True))
         loss = log_prob * pos_mask
@@ -28,11 +33,32 @@ class InfoNCE(Loss):
 
     def compute_default_positive(self, contrast_instance, *args, **kwargs):
         anchor, sample = contrast_instance.anchor, contrast_instance.sample
-        sim = torch.exp(_similarity(anchor, sample) / self.tau)  # anchor x sample
+        sim = torch.exp(similarity(anchor, sample) / self.tau)  # anchor x sample
         pos = sim.diag()
         neg = sim.sum(dim=1) - sim.diag()
         loss = pos / (pos + neg)
         loss = -torch.log(loss)
+        return loss.mean()
+
+
+class RobustInfoNCE(Loss):
+    def __init__(self, tau, p, q, _lambda):
+        super(RobustInfoNCE, self).__init__()
+        self.p = p
+        self.q = q
+        self.tau = tau
+        self._lambda = _lambda
+
+    def compute(self, contrast_instance, *args, **kwargs):
+        # TODO (Yanqiao): Implement this method
+        pass
+
+    def compute_default_positive(self, contrast_instance, *args, **kwargs) -> torch.FloatTensor:
+        anchor, sample = contrast_instance.anchor, contrast_instance.sample
+        sim = torch.exp(similarity(anchor, sample) / self.tau)  # [anchor, sample]
+        pos = sim.diag()                                        # [anchor]
+        neg = sim.sum(dim=1) - sim.diag()                       # [anchor]
+        loss = -pos ** self.q / self.q + (self._lambda * (pos + neg)) ** self.q / self.q
         return loss.mean()
 
 
@@ -42,9 +68,11 @@ class DebiasedInfoNCE(Loss):
         self.tau = tau
         self.tau_plus = tau_plus
 
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
         num_neg = neg_mask.int().sum()
-        sim = _similarity(anchor, sample) / self.tau
+        sim = similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim)
 
         pos_sum = (exp_sim * pos_mask).sum(dim=1)
@@ -58,6 +86,10 @@ class DebiasedInfoNCE(Loss):
         loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
         return loss.mean()
 
+    def compute_default_positive(self, contrast_instance, *args, **kwargs):
+        # TODO (Yanqiao): Implement this method
+        pass
+
 
 class HardnessInfoNCE(Loss):
     def __init__(self, tau, tau_plus=0.1, beta=1.0):
@@ -66,9 +98,11 @@ class HardnessInfoNCE(Loss):
         self.tau_plus = tau_plus
         self.beta = beta
 
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
         num_neg = neg_mask.int().sum()
-        sim = _similarity(anchor, sample) / self.tau
+        sim = similarity(anchor, sample) / self.tau
         exp_sim = torch.exp(sim)
 
         pos = (exp_sim * pos_mask).sum(dim=1) / pos_mask.int().sum(dim=1)
@@ -82,30 +116,29 @@ class HardnessInfoNCE(Loss):
         loss = loss.sum(dim=1) / pos_mask.sum(dim=1)
         return loss.mean()
 
+    def compute_default_positive(self, contrast_instance, *args, **kwargs):
+        # TODO (Yanqiao): Implement this method
+        pass
+
 
 class HardMixingLoss(torch.nn.Module):
     def __init__(self, projection):
         super(HardMixingLoss, self).__init__()
         self.projection = projection
 
-    @staticmethod
-    def tensor_similarity(z1, z2):
-        z1 = F.normalize(z1, dim=-1)  # [N, d]
-        z2 = F.normalize(z2, dim=-1)  # [N, s, d]
-        return torch.bmm(z2, z1.unsqueeze(dim=-1)).squeeze()
-
     def forward(self, z1: torch.Tensor, z2: torch.Tensor, threshold=0.1, s=150, mixup=0.2, *args, **kwargs):
+        # TODO (Yichen): Rewrite this method
         f = lambda x: torch.exp(x / self.tau)
         num_samples = z1.shape[0]
         device = z1.device
 
         threshold = int(num_samples * threshold)
 
-        refl1 = _similarity(z1, z1).diag()
-        refl2 = _similarity(z2, z2).diag()
-        pos_similarity = f(_similarity(z1, z2))
-        neg_similarity1 = torch.cat([_similarity(z1, z1), _similarity(z1, z2)], dim=1)  # [n, 2n]
-        neg_similarity2 = torch.cat([_similarity(z2, z1), _similarity(z2, z2)], dim=1)
+        refl1 = similarity(z1, z1).diag()
+        refl2 = similarity(z2, z2).diag()
+        pos_similarity = f(similarity(z1, z2))
+        neg_similarity1 = torch.cat([similarity(z1, z1), similarity(z1, z2)], dim=1)  # [n, 2n]
+        neg_similarity2 = torch.cat([similarity(z2, z1), similarity(z2, z2)], dim=1)
         neg_similarity1, indices1 = torch.sort(neg_similarity1, descending=True)
         neg_similarity2, indices2 = torch.sort(neg_similarity2, descending=True)
         neg_similarity1 = f(neg_similarity1)
@@ -124,8 +157,8 @@ class HardMixingLoss(torch.nn.Module):
         h_m1 = self.projection(hard_sample_mixing1)
         h_m2 = self.projection(hard_sample_mixing2)
 
-        neg_m1 = f(self.tensor_similarity(z1, h_m1)).sum(dim=1)
-        neg_m2 = f(self.tensor_similarity(z2, h_m2)).sum(dim=1)
+        neg_m1 = f(tensor_similarity(z1, h_m1)).sum(dim=1)
+        neg_m2 = f(tensor_similarity(z2, h_m2)).sum(dim=1)
         pos = pos_similarity.diag()
         neg1 = neg_similarity1.sum(dim=1)
         neg2 = neg_similarity2.sum(dim=1)
@@ -141,6 +174,7 @@ class RingLoss(torch.nn.Module):
         super(RingLoss, self).__init__()
 
     def forward(self, h1: torch.Tensor, h2: torch.Tensor, y: torch.Tensor, tau, threshold=0.1, *args, **kwargs):
+        # TODO (Yichen): Rewrite this method
         f = lambda x: torch.exp(x / tau)
         num_samples = h1.shape[0]
         device = h1.device
@@ -150,9 +184,9 @@ class RingLoss(torch.nn.Module):
         for i in range(num_samples):
             false_neg_mask[i] = (y == y[i]).repeat(2)
 
-        pos_sim = f(_similarity(h1, h2))
-        neg_sim1 = torch.cat([_similarity(h1, h1), _similarity(h1, h2)], dim=1)  # [n, 2n]
-        neg_sim2 = torch.cat([_similarity(h2, h1), _similarity(h2, h2)], dim=1)
+        pos_sim = f(similarity(h1, h2))
+        neg_sim1 = torch.cat([similarity(h1, h1), similarity(h1, h2)], dim=1)  # [n, 2n]
+        neg_sim2 = torch.cat([similarity(h2, h1), similarity(h2, h2)], dim=1)
         neg_sim1, indices1 = torch.sort(neg_sim1, descending=True)
         neg_sim2, indices2 = torch.sort(neg_sim2, descending=True)
 
@@ -183,9 +217,8 @@ class ReweightedInfoNCE(Loss):
         self.tau = tau
 
     def compute(self, contrast_instance, *args, **kwargs):
-        anchor, sample, pos_mask, neg_mask = contrast_instance.anchor, contrast_instance.sample, \
-                                             contrast_instance.pos_mask, contrast_instance.neg_mask
-        sim = torch.exp(_similarity(anchor, sample) / self.tau)
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+        sim = torch.exp(similarity(anchor, sample) / self.tau)
         n = anchor.size(0)
         norm_factor = n / neg_mask.sum(dim=1)
         pos = sim.diag()
@@ -195,4 +228,4 @@ class ReweightedInfoNCE(Loss):
         return loss.mean()
 
     def compute_default_positive(self, contrast_instance, *args, **kwargs):
-        raise RuntimeError('Reweighted sampler does not support compute default positive loss')
+        raise RuntimeError('Reweighted sampler does not support computation with default positive samples')
