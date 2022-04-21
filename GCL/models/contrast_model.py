@@ -4,8 +4,7 @@ from typing import Optional, Union
 
 from GCL.losses import Loss
 from GCL.models import get_dense_sampler
-from GCL.models.sampler import DenseSampler, DefaultSampler, ContrastInstance, CustomizedSameScaleDenseSampler, \
-    SemiSupSameScaleDenseSampler
+from GCL.models.sampler import DenseSampler, DefaultSampler, ContrastInstance
 
 
 class SingleBranchContrast(torch.nn.Module):
@@ -49,40 +48,45 @@ class DualBranchContrast(torch.nn.Module):
             self, h1=None, h2=None, g1=None, g2=None, batch=None, h3=None, h4=None,
             extra_pos_mask=None, extra_neg_mask=None,
             pos_mask1=None, pos_mask2=None, neg_mask1=None, neg_mask2=None):
-        if self.mode == 'L2L':
-            assert h1 is not None and h2 is not None
-            if isinstance(self.sampler, CustomizedSameScaleDenseSampler):
-                ci1 = self.sampler(anchor=h1, sample=h2, pos_mask=pos_mask1, neg_mask=neg_mask1)
-                ci2 = self.sampler(anchor=h2, sample=h1, pos_mask=pos_mask2, neg_mask=neg_mask2)
-            else:
-                ci1 = self.sampler(anchor=h1, sample=h2)
-                ci2 = self.sampler(anchor=h2, sample=h1)
-        elif self.mode == 'G2G':
-            assert g1 is not None and g2 is not None
-            if isinstance(self.sampler, CustomizedSameScaleDenseSampler):
-                ci1 = self.sampler(anchor=g1, sample=g2, pos_mask=pos_mask1, neg_mask=neg_mask1)
-                ci2 = self.sampler(anchor=g2, sample=g1, pos_mask=pos_mask2, neg_mask=neg_mask2)
-            elif isinstance(self.sampler, SemiSupSameScaleDenseSampler):
-                ci1 = self.sampler(
-                    anchor=g1, sample=g2, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
-                ci2 = self.sampler(
-                    anchor=g2, sample=g1, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
-            else:
-                ci1 = self.sampler(anchor=g1, sample=g2)
-                ci2 = self.sampler(anchor=g2, sample=g1)
-        else:  # global-to-local
-            if batch is None or batch.max().item() + 1 <= 1:  # single graph
-                assert all(v is not None for v in [h1, h2, g1, g2, h3, h4])
-                ci1 = self.sampler(anchor=g1, sample=h2, neg_sample=h4)
-                ci2 = self.sampler(anchor=g2, sample=h1, neg_sample=h3)
-            else:  # multiple graphs
-                assert all(v is not None for v in [h1, h2, g1, g2, batch])
-                ci1 = self.sampler(anchor=g1, sample=h2, batch=batch)
-                ci2 = self.sampler(anchor=g2, sample=h1, batch=batch)
 
         if isinstance(self.sampler, DefaultSampler) \
                 and not (extra_neg_mask is None and extra_pos_mask is None):  # sanity check
             raise RuntimeError('Default sampler does not support additional positive and negative samples')
+
+        if self.mode == 'L2L':
+            assert h1 is not None and h2 is not None
+            ci1 = self.sampler(
+                anchor=h1, sample=h2, pos_mask=pos_mask1, neg_mask=neg_mask1,
+                extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+            ci2 = self.sampler(
+                anchor=h2, sample=h1, pos_mask=pos_mask2, neg_mask=neg_mask2,
+                extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+        elif self.mode == 'G2G':
+            assert g1 is not None and g2 is not None
+            ci1 = self.sampler(
+                anchor=g1, sample=g2, pos_mask=pos_mask1, neg_mask=neg_mask1,
+                extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+            ci2 = self.sampler(
+                anchor=g2, sample=g1, pos_mask=pos_mask2, neg_mask=neg_mask2,
+                extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+        else:  # global-to-local
+            if batch is None or batch.max().item() + 1 <= 1:  # single graph
+                assert all(v is not None for v in [h1, h2, g1, g2, h3, h4])
+                ci1 = self.sampler(
+                    anchor=g1, sample=h2, neg_sample=h4,
+                    extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+                ci2 = self.sampler(
+                    anchor=g2, sample=h1, neg_sample=h3,
+                    extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+            else:  # multiple graphs
+                assert all(v is not None for v in [h1, h2, g1, g2, batch])
+                ci1 = self.sampler(
+                    anchor=g1, sample=h2, batch=batch,
+                    extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+                ci2 = self.sampler(
+                    anchor=g2, sample=h1, batch=batch,
+                    extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
+
         l1 = self.loss(contrast_instance=ci1, **self.kwargs)
         l2 = self.loss(contrast_instance=ci2, **self.kwargs)
 

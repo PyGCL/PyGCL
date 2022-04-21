@@ -9,7 +9,7 @@ from tqdm import tqdm
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import from_PyG_split, LRTrainableEvaluator
-from GCL.models import DualBranchContrast, SemiSupSameScaleDenseSampler
+from GCL.models import DualBranchContrast, SameScaleDenseSampler, compute_supervised_masks
 from sklearn.metrics import f1_score
 from torch_geometric.nn import GCNConv
 from torch_geometric.datasets import Planetoid
@@ -63,7 +63,7 @@ def train(encoder_model, contrast_model, data, optimizer):
     optimizer.zero_grad()
     z, z1, z2 = encoder_model(data)
     h1, h2 = [encoder_model.project(x) for x in [z1, z2]]
-    extra_pos_mask, extra_neg_mask = contrast_model.sampler.compute_extra_mask(data)
+    extra_pos_mask, extra_neg_mask = compute_supervised_masks(data)
     loss = contrast_model(h1=h1, h2=h2, extra_pos_mask=extra_pos_mask, extra_neg_mask=extra_neg_mask)
     loss.backward()
     optimizer.step()
@@ -92,9 +92,9 @@ def main():
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=32, activation=torch.nn.ReLU, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), hidden_dim=32, proj_dim=32).to(device)
-    sampler = SemiSupSameScaleDenseSampler()
-    contrast_model = DualBranchContrast(loss=L.InfoNCE(tau=0.2), mode='L2L', intraview_negs=True,
-                                        sampler=sampler).to(device)
+    sampler = SameScaleDenseSampler()
+    contrast_model = DualBranchContrast(
+        loss=L.InfoNCE(tau=0.2), mode='L2L', intraview_negs=True, sampler=sampler).to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
 
