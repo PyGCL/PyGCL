@@ -9,7 +9,7 @@ from torch import nn
 from functools import partial
 from torch.optim import Adam
 from GCL.eval import SVMEvaluator
-from GCL.models import DualBranchContrast, CustomizedSameScaleDenseSampler
+from GCL.models import DualBranchContrast, SameScaleDenseSampler
 from GCL.utils import sinkhorn
 from sklearn.metrics import f1_score
 from sklearn.exceptions import ConvergenceWarning
@@ -191,7 +191,7 @@ def main():
         A.EdgeRemoving(pe=0.1)], 1)
     gconv = GConv(input_dim=input_dim, hidden_dim=32, num_layers=2).to(device)
     encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2), num_clusters=20).to(device)
-    sampler = CustomizedSameScaleDenseSampler()
+    sampler = SameScaleDenseSampler()
     contrast_model = DualBranchContrast(loss=L.ReweightedInfoNCE(tau=0.2), mode='G2G', sampler=sampler).to(device)
 
     optimizer = Adam(encoder_model.parameters(), lr=0.01)
