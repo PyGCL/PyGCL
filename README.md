@@ -81,6 +81,7 @@ For a quick start, please check out the `examples` folder. We currently implemen
 * **MVGRL** (K. Hassani et al., Contrastive Multi-View Representation Learning on Graphs, ICML, 2020) [[Example1](examples/MVGRL_node.py), [Example2](examples/MVGRL_graph.py)]
 * **GRACE** (Y. Zhu et al., Deep Graph Contrastive Representation Learning, GRL+@ICML, 2020) [[Example](examples/GRACE.py)]
 * **GraphCL** (Y. You et al., Graph Contrastive Learning with Augmentations, NeurIPS, 2020) [[Example](examples/GraphCL.py)]
+* **GCA** (Y. Zhu et al., Graph Contrastive Learning with Adaptive Augmentation, WWW 2021) [[Example](examples/GCA.py)]
 * **SupCon** (P. Khosla et al., Supervised Contrastive Learning, NeurIPS, 2020) [[Example](examples/GRACE_SupCon.py)]
 * **HardMixing** (Y. Kalantidis et al., Hard Negative Mixing for Contrastive Learning, NeurIPS, 2020)
 * **DCL** (C.-Y. Chuang et al., Debiased Contrastive Learning, NeurIPS, 2020)
