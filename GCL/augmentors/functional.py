@@ -225,7 +225,8 @@ def sample_nodes(x, edge_index, sample_size):
     return get_subgraph(x, edge_index, idx), idx
 
 
-def compute_ppr(edge_index, edge_weight=None, alpha=0.2, eps=0.1, ignore_edge_attr=True, add_self_loop=True):
+def compute_ppr(
+        edge_index, edge_weight=None, alpha=0.2, eps=0.1, ignore_edge_attr=True, add_self_loop=True):
     N = edge_index.max().item() + 1
     if ignore_edge_attr or edge_weight is None:
         edge_weight = torch.ones(
@@ -287,10 +288,13 @@ def compute_markov_diffusion(
     return GDC().sparsify_dense(adj_t, method='threshold', eps=sp_eps)
 
 
-def coalesce_edge_index(edge_index: torch.Tensor, edge_weights: Optional[torch.Tensor] = None) -> (torch.Tensor, torch.FloatTensor):
+def coalesce_edge_index(
+        edge_index: torch.Tensor, edge_weights: Optional[torch.Tensor] = None) \
+        -> (torch.Tensor, torch.FloatTensor):
     num_edges = edge_index.size()[1]
     num_nodes = edge_index.max().item() + 1
-    edge_weights = edge_weights if edge_weights is not None else torch.ones((num_edges,), dtype=torch.float32, device=edge_index.device)
+    edge_weights = edge_weights if edge_weights is not None \
+        else torch.ones((num_edges,), dtype=torch.float32, device=edge_index.device)
 
     return coalesce(edge_index, edge_weights, m=num_nodes, n=num_nodes)
 
@@ -308,7 +312,9 @@ def add_edge(edge_index: torch.Tensor, ratio: float) -> torch.Tensor:
     return coalesce_edge_index(edge_index)[0]
 
 
-def drop_node(edge_index: torch.Tensor, edge_weight: Optional[torch.Tensor] = None, keep_prob: float = 0.5) -> (torch.Tensor, Optional[torch.Tensor]):
+def drop_node(
+        edge_index: torch.Tensor, edge_weight: Optional[torch.Tensor] = None,
+        keep_prob: float = 0.5) -> (torch.Tensor, Optional[torch.Tensor]):
     num_nodes = edge_index.max().item() + 1
     probs = torch.tensor([keep_prob for _ in range(num_nodes)])
     dist = Bernoulli(probs)
@@ -319,7 +325,9 @@ def drop_node(edge_index: torch.Tensor, edge_weight: Optional[torch.Tensor] = No
     return edge_index, edge_weight
 
 
-def random_walk_subgraph(edge_index: torch.LongTensor, edge_weight: Optional[torch.FloatTensor] = None, batch_size: int = 1000, length: int = 10):
+def random_walk_subgraph(
+        edge_index: torch.LongTensor, edge_weight: Optional[torch.FloatTensor] = None,
+        batch_size: int = 1000, length: int = 10):
     num_nodes = edge_index.max().item() + 1
 
     row, col = edge_index
