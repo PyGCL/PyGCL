@@ -10,7 +10,6 @@ class EdgeRemoving(Augmentor):
         Args:
             pe (float): Probability of edge removal.
         """
-        self.pe = pe
         super(EdgeRemoving, self).__init__()
         self.pe = pe
 

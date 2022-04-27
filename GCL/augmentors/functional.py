@@ -142,21 +142,21 @@ def get_eigenvector_weights(data):
     evc = _eigenvector_centrality(data)
     scaled_evc = evc.where(evc > 0, torch.zeros_like(evc))
     scaled_evc = scaled_evc + 1e-8
-    s = scaled_evc.log()
+    s = (scaled_evc + 1.0).log()
 
     edge_index = data.edge_index
     s_row, s_col = s[edge_index[0]], s[edge_index[1]]
 
-    return normalize(s_col), evc
+    return normalize(s_col), normalize(s)
 
 
 def get_degree_weights(data):
     edge_index_ = to_undirected(data.edge_index)
     deg = degree(edge_index_[1])
-    deg_col = deg[data.edge_index[1]].to(torch.float32)
-    scaled_deg_col = torch.log(deg_col)
+    s = (deg + 1.0).log()
+    s_col = s[data.edge_index[1]].to(torch.float32)
 
-    return normalize(scaled_deg_col), deg
+    return normalize(s_col), normalize(s)
 
 
 def get_pagerank_weights(data, aggr: str = 'sink', k: int = 10):
@@ -174,10 +174,10 @@ def get_pagerank_weights(data, aggr: str = 'sink', k: int = 10):
         return x
 
     pv = _compute_pagerank(data.edge_index, k=k)
-    pv_row = pv[data.edge_index[0]].to(torch.float32)
-    pv_col = pv[data.edge_index[1]].to(torch.float32)
-    s_row = torch.log(pv_row)
-    s_col = torch.log(pv_col)
+    s = (pv + 1.0).log()
+    orig_s = s
+    s_row = s[data.edge_index[0]].to(torch.float32)
+    s_col = s[data.edge_index[1]].to(torch.float32)
     if aggr == 'sink':
         s = s_col
     elif aggr == 'source':
@@ -187,7 +187,7 @@ def get_pagerank_weights(data, aggr: str = 'sink', k: int = 10):
     else:
         s = s_col
 
-    return normalize(s), pv
+    return normalize(s), normalize(orig_s)
 
 
 def drop_edge_by_weight(edge_index, weights, drop_prob: float, threshold: float = 0.7):
@@ -339,3 +339,4 @@ def random_walk_subgraph(
     edge_index, edge_weight = subgraph(node_idx, edge_index, edge_weight)
 
     return edge_index, edge_weight
+
