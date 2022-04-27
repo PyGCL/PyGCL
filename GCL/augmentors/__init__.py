@@ -10,6 +10,8 @@ from .node_shuffling import NodeShuffling
 from .feature_masking import FeatureMasking
 from .feature_dropout import FeatureDropout
 from .edge_attr_masking import EdgeAttrMasking
+from .adaptive_edge_removing import AdaptiveEdgeRemoving, DegreeWeights, PageRankWeights, EigenVectorWeights
+from .adaptive_feature_masking import AdaptiveFeatureMasking
 
 __all__ = [
     'Augmentor',
@@ -27,7 +29,12 @@ __all__ = [
     'NodeShuffling',
     'RWSampling',
     'PyGAugmentor',
-    'DGLAugmentor'
+    'DGLAugmentor',
+    "AdaptiveEdgeRemoving",
+    "AdaptiveFeatureMasking",
+    "DegreeWeights",
+    "PageRankWeights",
+    "EigenVectorWeights"
 ]
 
 classes = __all__
