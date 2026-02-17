@@ -9,7 +9,7 @@ from torch.optim import Adam
 from GCL.eval import SVMEvaluator
 from GCL.models import SingleBranchContrast
 from torch_geometric.nn import GINConv, global_add_pool
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 from torch_geometric.datasets import TUDataset
 from sklearn.metrics import accuracy_score, make_scorer, f1_score
 from sklearn.exceptions import ConvergenceWarning

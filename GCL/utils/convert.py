@@ -1,12 +1,15 @@
-import dgl
-import torch
-from dgl import DGLGraph
-from torch_geometric.data import Data as PyGGraph
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dgl import DGLGraph
+    from torch_geometric.data import Data as PyGGraph
 
 
-def from_dglgraph_to_pyggraph(pyggraph: PyGGraph) -> DGLGraph:
+def from_dglgraph_to_pyggraph(pyggraph: 'PyGGraph') -> 'DGLGraph':
     raise NotImplementedError
 
 
-def from_pyggraph_to_dglgraph(dglgraph: DGLGraph) -> PyGGraph:
+def from_pyggraph_to_dglgraph(dglgraph: 'DGLGraph') -> 'PyGGraph':
     raise NotImplementedError

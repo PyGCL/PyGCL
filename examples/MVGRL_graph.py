@@ -14,7 +14,7 @@ from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils._testing import ignore_warnings
 from sklearn.model_selection import StratifiedKFold
 from torch_geometric.nn import GCNConv, global_add_pool
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 from torch_geometric.datasets import TUDataset
 
 

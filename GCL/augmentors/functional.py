@@ -3,15 +3,24 @@ import torch
 import networkx as nx
 import torch.nn.functional as F
 
-from typing import Optional
+from typing import Optional, Tuple
 from GCL.utils import normalize
-from torch_sparse import SparseTensor, coalesce
-from torch_scatter import scatter
+from torch_geometric.utils import coalesce, scatter
 from torch_geometric.transforms import GDC
 from torch.distributions import Uniform, Beta
-from torch_geometric.utils import dropout_adj, to_networkx, to_undirected, degree, to_scipy_sparse_matrix, \
+from torch_geometric.utils import to_networkx, to_undirected, degree, to_scipy_sparse_matrix, \
     from_scipy_sparse_matrix, sort_edge_index, add_self_loops, subgraph
+from torch_geometric.utils import dropout_edge
 from torch.distributions.bernoulli import Bernoulli
+
+
+def dropout_adj(edge_index: torch.Tensor, edge_attr: Optional[torch.Tensor] = None,
+                p: float = 0.5, training: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    """Compatibility wrapper: mimics the old dropout_adj API using dropout_edge."""
+    edge_index, edge_mask = dropout_edge(edge_index, p=p, training=training)
+    if edge_attr is not None:
+        edge_attr = edge_attr[edge_mask]
+    return edge_index, edge_attr
 
 
 def permute(x: torch.Tensor) -> torch.Tensor:
@@ -98,7 +107,7 @@ def drop_feature(x: torch.Tensor, drop_prob: float) -> torch.Tensor:
 
 
 def dropout_feature(x: torch.FloatTensor, drop_prob: float) -> torch.FloatTensor:
-    return F.dropout(x, p=1. - drop_prob)
+    return F.dropout(x, p=drop_prob)
 
 
 class AugmentTopologyAttributes(object):
@@ -234,14 +243,14 @@ def compute_ppr(
     if add_self_loop:
         edge_index, edge_weight = add_self_loops(
             edge_index, edge_weight, fill_value=1, num_nodes=N)
-        edge_index, edge_weight = coalesce(edge_index, edge_weight, N, N)
-    edge_index, edge_weight = coalesce(edge_index, edge_weight, N, N)
+        edge_index, edge_weight = coalesce(edge_index, edge_weight, num_nodes=N)
+    edge_index, edge_weight = coalesce(edge_index, edge_weight, num_nodes=N)
     edge_index, edge_weight = GDC().transition_matrix(
         edge_index, edge_weight, N, normalization='sym')
     diff_mat = GDC().diffusion_matrix_exact(
         edge_index, edge_weight, N, method='ppr', alpha=alpha)
     edge_index, edge_weight = GDC().sparsify_dense(diff_mat, method='threshold', eps=eps)
-    edge_index, edge_weight = coalesce(edge_index, edge_weight, N, N)
+    edge_index, edge_weight = coalesce(edge_index, edge_weight, num_nodes=N)
     edge_index, edge_weight = GDC().transition_matrix(
         edge_index, edge_weight, N, normalization='sym')
 
@@ -259,7 +268,7 @@ def get_sparse_adj(edge_index: torch.LongTensor, edge_weight: torch.FloatTensor 
     if add_self_loop:
         edge_index, edge_weight = add_self_loops(
             edge_index, edge_weight, fill_value=1, num_nodes=num_nodes)
-        edge_index, edge_weight = coalesce(edge_index, edge_weight, num_nodes, num_nodes)
+        edge_index, edge_weight = coalesce(edge_index, edge_weight, num_nodes=num_nodes)
 
     edge_index, edge_weight = GDC().transition_matrix(
         edge_index, edge_weight, num_nodes, normalization='sym')
@@ -296,7 +305,7 @@ def coalesce_edge_index(
     edge_weights = edge_weights if edge_weights is not None \
         else torch.ones((num_edges,), dtype=torch.float32, device=edge_index.device)
 
-    return coalesce(edge_index, edge_weights, m=num_nodes, n=num_nodes)
+    return coalesce(edge_index, edge_weights, num_nodes=num_nodes)
 
 
 def add_edge(edge_index: torch.Tensor, ratio: float) -> torch.Tensor:
@@ -330,11 +339,20 @@ def random_walk_subgraph(
         batch_size: int = 1000, length: int = 10):
     num_nodes = edge_index.max().item() + 1
 
+    try:
+        from torch_sparse import SparseTensor
+    except ImportError:
+        raise ImportError(
+            "torch-sparse is required for random_walk_subgraph. "
+            "Install it with: pip install torch-sparse"
+        )
+
     row, col = edge_index
     adj = SparseTensor(row=row, col=col, sparse_sizes=(num_nodes, num_nodes))
 
     start = torch.randint(0, num_nodes, size=(batch_size, ), dtype=torch.long).to(edge_index.device)
     node_idx = adj.random_walk(start.flatten(), length).view(-1)
+    node_idx = node_idx.clamp(0, num_nodes - 1).unique()
 
     edge_index, edge_weight = subgraph(node_idx, edge_index, edge_weight)
 

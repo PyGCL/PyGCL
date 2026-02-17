@@ -1,4 +1,6 @@
-from GCL.augmentors.augmentor import PyGGraph, DGLGraph, Augmentor
+from __future__ import annotations
+
+from GCL.augmentors.augmentor import PyGGraph, Augmentor
 from GCL.augmentors.functional import drop_feature
 
 

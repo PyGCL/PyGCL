@@ -1,5 +1,4 @@
 import torch
-import dgl
 
 from torch_geometric.data import Data
 from torch_geometric.utils import sort_edge_index
@@ -17,7 +16,8 @@ def random_pyg_graph(num_nodes: int, num_edges: int, feature_dim: int = 256) -> 
     return Data(edge_index=edge_index, num_nodes=num_nodes, x=x)
 
 
-def random_dgl_graph(num_nodes: int, num_edges: int, feature_dim: int = 256) -> dgl.DGLGraph:
+def random_dgl_graph(num_nodes: int, num_edges: int, feature_dim: int = 256):
+    import dgl
     edge_index = torch.randint(0, num_nodes - 1, size=(2, num_edges))
     u, v = edge_index
     g = dgl.graph((u, v))

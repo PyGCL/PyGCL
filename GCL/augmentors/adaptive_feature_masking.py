@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from typing import Callable, Union
 import torch
-from GCL.augmentors.augmentor import PyGGraph, DGLGraph, Augmentor
+from GCL.augmentors.augmentor import PyGGraph, Augmentor
 from GCL.augmentors.functional import get_feature_weights, drop_edge_by_weight, drop_feature_by_weight
 from functools import lru_cache
 

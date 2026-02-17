@@ -1,26 +1,27 @@
 import torch
 
 from abc import ABC, abstractmethod
-from torch_scatter import scatter
+from torch_geometric.utils import scatter
 from GCL.losses import ContrastInstance
 
 
 def compute_supervised_masks(data):
     # compute extra pos and neg masks for semi-supervised learning
-    extra_pos_mask = torch.eq(data.y, data.y.unsqueeze(dim=1)).to('cuda')
+    device = data.y.device
+    extra_pos_mask = torch.eq(data.y, data.y.unsqueeze(dim=1)).to(device)
     # construct extra supervision signals for only training samples
     extra_pos_mask[~data.train_mask][:, ~data.train_mask] = False
     extra_pos_mask.fill_diagonal_(False)
     # pos_mask: [N, 2N] for both inter-view and intra-view samples
-    extra_pos_mask = torch.cat([extra_pos_mask, extra_pos_mask], dim=1).to('cuda')
+    extra_pos_mask = torch.cat([extra_pos_mask, extra_pos_mask], dim=1).to(device)
     # fill inter-view positives only
     # pos_mask for intra-view samples should have zeros in diagonal
     extra_pos_mask.fill_diagonal_(True)
 
-    extra_neg_mask = torch.ne(data.y, data.y.unsqueeze(dim=1)).to('cuda')
+    extra_neg_mask = torch.ne(data.y, data.y.unsqueeze(dim=1)).to(device)
     extra_neg_mask[~data.train_mask][:, ~data.train_mask] = True
     extra_neg_mask.fill_diagonal_(False)
-    extra_neg_mask = torch.cat([extra_neg_mask, extra_neg_mask], dim=1).to('cuda')
+    extra_neg_mask = torch.cat([extra_neg_mask, extra_neg_mask], dim=1).to(device)
     return extra_pos_mask, extra_neg_mask
 
 

@@ -2,10 +2,21 @@
 from __future__ import annotations
 
 import torch
-from dgl import DGLGraph
 from abc import ABC, abstractmethod
-from typing import Union, List, Callable
+from typing import Union, List, Callable, TYPE_CHECKING
 from torch_geometric.data import Data as PyGGraph
+
+if TYPE_CHECKING:
+    from dgl import DGLGraph
+
+
+def _is_dgl_graph(g) -> bool:
+    """Check if g is a DGLGraph without requiring dgl import."""
+    try:
+        import dgl
+        return isinstance(g, dgl.DGLGraph)
+    except ImportError:
+        return False
 
 
 class Augmentor(ABC):
@@ -14,7 +25,7 @@ class Augmentor(ABC):
         """Initialize the augmentor."""
         pass
 
-    def augment(self, g: Union[DGLGraph, PyGGraph]):
+    def augment(self, g: Union['DGLGraph', PyGGraph]):
         """Augment the graph. It dynamically calls the appropriate augmentor.
 
         Args:
@@ -23,13 +34,13 @@ class Augmentor(ABC):
         Returns:
             Augmented graph.
         """
-        if isinstance(g, DGLGraph):
+        if _is_dgl_graph(g):
             return self.dgl_augment(g)
         elif isinstance(g, PyGGraph):
             return self.pyg_augment(g)
 
     @abstractmethod
-    def dgl_augment(self, g: DGLGraph):
+    def dgl_augment(self, g: 'DGLGraph'):
         """Augment the DGL graph.
 
         Args:
@@ -52,7 +63,7 @@ class Augmentor(ABC):
         """
         raise NotImplementedError
 
-    def __call__(self, g: Union[DGLGraph, PyGGraph]):
+    def __call__(self, g: Union['DGLGraph', PyGGraph]):
         """
         Call the augmentor.
         Args:
@@ -61,7 +72,7 @@ class Augmentor(ABC):
         Returns:
             Augmented graph.
         """
-        assert isinstance(g, DGLGraph) or isinstance(g, PyGGraph)
+        assert _is_dgl_graph(g) or isinstance(g, PyGGraph)
         return self.augment(g)
 
 
@@ -88,7 +99,7 @@ class PyGAugmentor(Augmentor):
         g_new = g.clone()
         return self.augmentor(g_new)
 
-    def dgl_augment(self, g: DGLGraph):
+    def dgl_augment(self, g: 'DGLGraph'):
         """
         Augment the DGL graph. It will raise an NotImplementedError.
         Args:
@@ -116,7 +127,7 @@ class DGLAugmentor(Augmentor):
         """
         raise NotImplementedError
 
-    def dgl_augment(self, g: DGLGraph):
+    def dgl_augment(self, g: 'DGLGraph'):
         """Augment the DGL graph.
 
         Args:
@@ -163,7 +174,7 @@ class Compose(Augmentor):
         """
         raise NotImplementedError
 
-    def dgl_augment(self, g: DGLGraph):
+    def dgl_augment(self, g: 'DGLGraph'):
         """Augment the DGL graph.
 
         Args:
@@ -210,5 +221,5 @@ class RandomChoice(Augmentor):
     def pyg_augment(self, g: PyGGraph):
         raise NotImplementedError
 
-    def dgl_augment(self, g: DGLGraph):
+    def dgl_augment(self, g: 'DGLGraph'):
         raise NotImplementedError

@@ -1,10 +1,21 @@
 """DGL utilities for graph augmentations."""
 import math
 import torch
-import dgl
 
 
-def add_edge(g: dgl.DGLGraph, ratio: float) -> dgl.DGLGraph:
+def _import_dgl():
+    try:
+        import dgl
+        return dgl
+    except ImportError:
+        raise ImportError(
+            "DGL is required for DGL graph augmentations. "
+            "Install it with: pip install dgl"
+        )
+
+
+def add_edge(g, ratio: float):
+    dgl = _import_dgl()
     g = g.clone()
     num_edges = g.num_edges()
     num_nodes = g.num_nodes()
@@ -17,7 +28,7 @@ def add_edge(g: dgl.DGLGraph, ratio: float) -> dgl.DGLGraph:
     return dgl.to_simple(g)
 
 
-def drop_edge(g: dgl.DGLGraph, drop_prob: float) -> dgl.DGLGraph:
+def drop_edge(g, drop_prob: float):
     assert 0 <= drop_prob <= 1, 'Dropping probability should be between 0 and 1.'
     g = g.clone()
 
@@ -31,7 +42,7 @@ def drop_edge(g: dgl.DGLGraph, drop_prob: float) -> dgl.DGLGraph:
     return g
 
 
-def drop_node(g: dgl.DGLGraph, drop_prob: float) -> dgl.DGLGraph:
+def drop_node(g, drop_prob: float):
     g = g.clone()
     mask = torch.zeros((g.num_nodes(),), dtype=torch.float32).to(g.device)
     torch.fill_(mask, drop_prob)

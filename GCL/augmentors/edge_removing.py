@@ -1,6 +1,7 @@
-from GCL.augmentors.augmentor import PyGGraph, DGLGraph, Augmentor
+from __future__ import annotations
+
+from GCL.augmentors.augmentor import PyGGraph, Augmentor
 from GCL.augmentors.functional import dropout_adj
-import GCL.augmentors.functional_dgl as F_dgl
 
 
 class EdgeRemoving(Augmentor):
@@ -20,5 +21,6 @@ class EdgeRemoving(Augmentor):
         g.edge_attr = edge_weights
         return g
 
-    def dgl_augment(self, g: DGLGraph):
+    def dgl_augment(self, g):
+        import GCL.augmentors.functional_dgl as F_dgl
         return F_dgl.drop_edge(g, drop_prob=self.pe)

@@ -17,11 +17,12 @@ class JSD(Loss):
         num_pos = pos_mask.int().sum()
         similarity = self.discriminator(anchor, sample)
 
-        E_pos = (np.log(2) - F.softplus(- similarity * pos_mask)).sum()
+        pos_sim = similarity[pos_mask.bool()]
+        E_pos = (np.log(2) - F.softplus(-pos_sim)).sum()
         E_pos /= num_pos
 
-        neg_sim = similarity * neg_mask
-        E_neg = (F.softplus(- neg_sim) + neg_sim - np.log(2)).sum()
+        neg_sim = similarity[neg_mask.bool()]
+        E_neg = (F.softplus(-neg_sim) + neg_sim - np.log(2)).sum()
         E_neg /= num_neg
 
         return E_neg - E_pos
@@ -37,11 +38,12 @@ class JSD(Loss):
         num_pos = pos_mask.int().sum()
         similarity = self.discriminator(anchor, sample)
 
-        E_pos = (np.log(2) - F.softplus(- similarity * pos_mask)).sum()
+        pos_sim = similarity[pos_mask.bool()]
+        E_pos = (np.log(2) - F.softplus(-pos_sim)).sum()
         E_pos /= num_pos
 
-        neg_sim = similarity * neg_mask
-        E_neg = (F.softplus(- neg_sim) + neg_sim - np.log(2)).sum()
+        neg_sim = similarity[neg_mask.bool()]
+        E_neg = (F.softplus(-neg_sim) + neg_sim - np.log(2)).sum()
         E_neg /= num_neg
 
         return E_neg - E_pos
