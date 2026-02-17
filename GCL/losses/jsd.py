@@ -1,7 +1,8 @@
 import numpy as np
+import torch
 import torch.nn.functional as F
 
-from .losses import Loss
+from .loss import Loss
 
 
 class JSD(Loss):
@@ -9,16 +10,40 @@ class JSD(Loss):
         super(JSD, self).__init__()
         self.discriminator = discriminator
 
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
         num_neg = neg_mask.int().sum()
         num_pos = pos_mask.int().sum()
         similarity = self.discriminator(anchor, sample)
 
-        E_pos = (np.log(2) - F.softplus(- similarity * pos_mask)).sum()
+        pos_sim = similarity[pos_mask.bool()]
+        E_pos = (np.log(2) - F.softplus(-pos_sim)).sum()
         E_pos /= num_pos
 
-        neg_sim = similarity * neg_mask
-        E_neg = (F.softplus(- neg_sim) + neg_sim - np.log(2)).sum()
+        neg_sim = similarity[neg_mask.bool()]
+        E_neg = (F.softplus(-neg_sim) + neg_sim - np.log(2)).sum()
+        E_neg /= num_neg
+
+        return E_neg - E_pos
+
+    def compute_default_positive(self, contrast_instance, *args, **kwargs):
+        anchor, sample, _, _ = contrast_instance.unpack()
+
+        num_nodes = anchor.size(0)
+        device = anchor.device
+        pos_mask = torch.eye(num_nodes, dtype=torch.float32, device=device)
+        neg_mask = 1. - pos_mask
+        num_neg = neg_mask.int().sum()
+        num_pos = pos_mask.int().sum()
+        similarity = self.discriminator(anchor, sample)
+
+        pos_sim = similarity[pos_mask.bool()]
+        E_pos = (np.log(2) - F.softplus(-pos_sim)).sum()
+        E_pos /= num_pos
+
+        neg_sim = similarity[neg_mask.bool()]
+        E_neg = (F.softplus(-neg_sim) + neg_sim - np.log(2)).sum()
         E_neg /= num_neg
 
         return E_neg - E_pos
@@ -30,7 +55,9 @@ class DebiasedJSD(Loss):
         self.discriminator = discriminator
         self.tau_plus = tau_plus
 
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
         num_neg = neg_mask.int().sum()
         num_pos = pos_mask.int().sum()
         similarity = self.discriminator(anchor, sample)
@@ -46,6 +73,10 @@ class DebiasedJSD(Loss):
 
         return E_neg - E_pos
 
+    def compute_default_positive(self, contrast_instance, *args, **kwargs):
+        # TODO: implement the default version
+        pass
+
 
 class HardnessJSD(Loss):
     def __init__(self, discriminator=lambda x, y: x @ y.t(), tau_plus=0.1, beta=0.05):
@@ -54,7 +85,9 @@ class HardnessJSD(Loss):
         self.tau_plus = tau_plus
         self.beta = beta
 
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs):
+    def compute(self, contrast_instance, *args, **kwargs):
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
         num_neg = neg_mask.int().sum()
         num_pos = pos_mask.int().sum()
         similarity = self.discriminator(anchor, sample)
@@ -75,3 +108,7 @@ class HardnessJSD(Loss):
         E_neg = E_neg.sum() / num_neg
 
         return E_neg - E_pos
+
+    def compute_default_positive(self, contrast_instance, *args, **kwargs):
+        # TODO: implement the default version
+        pass

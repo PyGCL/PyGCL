@@ -1,16 +1,18 @@
-from .eval import BaseEvaluator, BaseSKLearnEvaluator, get_split, from_predefined_split
-from .logistic_regression import LREvaluator
+from .eval import BaseTrainableEvaluator, BaseSKLearnEvaluator
+from .split import random_split, from_PyG_split
 from .svm import SVMEvaluator
+from .logistic_regression import LRTrainableEvaluator, LRSklearnEvaluator
 from .random_forest import RFEvaluator
 
 __all__ = [
-    'BaseEvaluator',
+    'BaseTrainableEvaluator',
     'BaseSKLearnEvaluator',
-    'LREvaluator',
+    'LRTrainableEvaluator',
+    'LRSklearnEvaluator',
     'SVMEvaluator',
     'RFEvaluator',
-    'get_split',
-    'from_predefined_split'
+    'random_split',
+    'from_PyG_split'
 ]
 
 classes = __all__

@@ -1,0 +1,7 @@
+Sphinx>=7.0
+myst-parser>=2.0
+sphinx-rtd-theme>=2.0
+sphinx-autodoc-typehints>=1.25
+livereload>=2.6
+
+-r requirements_basic.txt

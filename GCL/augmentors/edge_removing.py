@@ -1,13 +1,26 @@
-from GCL.augmentors.augmentor import Graph, Augmentor
+from __future__ import annotations
+
+from GCL.augmentors.augmentor import PyGGraph, Augmentor
 from GCL.augmentors.functional import dropout_adj
 
 
 class EdgeRemoving(Augmentor):
     def __init__(self, pe: float):
+        """This augmentor removes edges from the graph.
+
+        Args:
+            pe (float): Probability of edge removal.
+        """
         super(EdgeRemoving, self).__init__()
         self.pe = pe
 
-    def augment(self, g: Graph) -> Graph:
-        x, edge_index, edge_weights = g.unfold()
-        edge_index, edge_weights = dropout_adj(edge_index, edge_attr=edge_weights, p=self.pe)
-        return Graph(x=x, edge_index=edge_index, edge_weights=edge_weights)
+    def pyg_augment(self, g: PyGGraph):
+        g = g.clone()
+        edge_index, edge_weights = dropout_adj(g.edge_index, edge_attr=g.edge_attr, p=self.pe)
+        g.edge_index = edge_index
+        g.edge_attr = edge_weights
+        return g
+
+    def dgl_augment(self, g):
+        import GCL.augmentors.functional_dgl as F_dgl
+        return F_dgl.drop_edge(g, drop_prob=self.pe)

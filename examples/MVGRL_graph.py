@@ -5,11 +5,16 @@ import GCL.augmentors as A
 
 from torch import nn
 from tqdm import tqdm
+from functools import partial
 from torch.optim import Adam
-from GCL.eval import get_split, SVMEvaluator
+from GCL.eval import SVMEvaluator
 from GCL.models import DualBranchContrast
+from sklearn.metrics import f1_score
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils._testing import ignore_warnings
+from sklearn.model_selection import StratifiedKFold
 from torch_geometric.nn import GCNConv, global_add_pool
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 from torch_geometric.datasets import TUDataset
 
 
@@ -24,11 +29,11 @@ class GConv(nn.Module):
             else:
                 self.layers.append(GCNConv(hidden_dim, hidden_dim))
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, edge_weight, batch):
         z = x
         zs = []
         for conv in self.layers:
-            z = conv(z, edge_index)
+            z = conv(z, edge_index, edge_weight)
             z = self.activation(z)
             zs.append(z)
         gs = [global_add_pool(z, batch) for z in zs]
@@ -63,11 +68,16 @@ class Encoder(torch.nn.Module):
         self.aug1 = aug1
         self.aug2 = aug2
 
-    def forward(self, x, edge_index, batch):
-        x1, edge_index1, edge_weight1 = self.aug1(x, edge_index)
-        x2, edge_index2, edge_weight2 = self.aug2(x, edge_index)
-        z1, g1 = self.gcn1(x1, edge_index1, batch)
-        z2, g2 = self.gcn2(x2, edge_index2, batch)
+    def forward(self, data, is_no_edge_attr=True):
+        batch = data.batch
+        if is_no_edge_attr:
+            data.edge_attr = None
+        data1 = self.aug1(data)
+        data2 = self.aug2(data)
+        x1, edge_index1, edge_weight1 = data1.x, data1.edge_index, data1.edge_attr
+        x2, edge_index2, edge_weight2 = data2.x, data2.edge_index, data2.edge_attr
+        z1, g1 = self.gcn1(x1, edge_index1, edge_weight1, batch)
+        z2, g2 = self.gcn2(x2, edge_index2, edge_weight2, batch)
         h1, h2 = [self.mlp1(h) for h in [z1, z2]]
         g1, g2 = [self.mlp2(g) for g in [g1, g2]]
         return h1, h2, g1, g2
@@ -84,7 +94,7 @@ def train(encoder_model, contrast_model, dataloader, optimizer):
             num_nodes = data.batch.size(0)
             data.x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
 
-        h1, h2, g1, g2 = encoder_model(data.x, data.edge_index, data.batch)
+        h1, h2, g1, g2 = encoder_model(data, is_no_edge_attr=True)
         loss = contrast_model(h1=h1, h2=h2, g1=g1, g2=g2, batch=data.batch)
         loss.backward()
         optimizer.step()
@@ -93,23 +103,26 @@ def train(encoder_model, contrast_model, dataloader, optimizer):
     return epoch_loss
 
 
-def test(encoder_model, dataloader):
+@ignore_warnings(category=ConvergenceWarning)
+def eval(encoder_model, dataloader):
     encoder_model.eval()
-    x = []
-    y = []
+    x, y = [], []
     for data in dataloader:
         data = data.to('cuda')
         if data.x is None:
             num_nodes = data.batch.size(0)
             data.x = torch.ones((num_nodes, 1), dtype=torch.float32, device=data.batch.device)
-        _, _, g1, g2 = encoder_model(data.x, data.edge_index, data.batch)
+        _, _, g1, g2 = encoder_model(data, is_no_edge_attr=True)
         x.append(g1 + g2)
         y.append(data.y)
     x = torch.cat(x, dim=0)
     y = torch.cat(y, dim=0)
 
-    split = get_split(num_samples=x.size()[0], train_ratio=0.8, test_ratio=0.1)
-    result = SVMEvaluator(linear=True)(x, y, split)
+    split = StratifiedKFold(n_splits=10, shuffle=True, random_state=None)
+    evaluator = SVMEvaluator(
+        linear=True, split=split,
+        metrics={'micro_f1': partial(f1_score, average='micro'), 'macro_f1': partial(f1_score, average='macro')})
+    result = evaluator(x, y)
     return result
 
 
@@ -137,8 +150,9 @@ def main():
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
-    test_result = test(encoder_model, dataloader)
-    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    test_result = eval(encoder_model, dataloader)
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]["mean"]:.4f}±{test_result["micro_f1"]["std"]:.4f},'
+          f' F1Ma={test_result["macro_f1"]["mean"]:.4f}±{test_result["macro_f1"]["std"]:.4f}')
 
 
 if __name__ == '__main__':

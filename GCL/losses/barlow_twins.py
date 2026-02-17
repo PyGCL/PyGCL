@@ -1,26 +1,6 @@
 import torch
-from .losses import Loss
 
-
-def bt_loss(h1: torch.Tensor, h2: torch.Tensor, lambda_, batch_norm=True, eps=1e-15, *args, **kwargs):
-    batch_size = h1.size(0)
-    feature_dim = h1.size(1)
-
-    if lambda_ is None:
-        lambda_ = 1. / feature_dim
-
-    if batch_norm:
-        z1_norm = (h1 - h1.mean(dim=0)) / (h1.std(dim=0) + eps)
-        z2_norm = (h2 - h2.mean(dim=0)) / (h2.std(dim=0) + eps)
-        c = (z1_norm.T @ z2_norm) / batch_size
-    else:
-        c = h1.T @ h2 / batch_size
-
-    off_diagonal_mask = ~torch.eye(feature_dim).bool()
-    loss = (1 - c.diagonal()).pow(2).sum()
-    loss += lambda_ * c[off_diagonal_mask].pow(2).sum()
-
-    return loss
+from .loss import Loss
 
 
 class BarlowTwins(Loss):
@@ -29,6 +9,26 @@ class BarlowTwins(Loss):
         self.batch_norm = batch_norm
         self.eps = eps
 
-    def compute(self, anchor, sample, pos_mask, neg_mask, *args, **kwargs) -> torch.FloatTensor:
-        loss = bt_loss(anchor, sample, self.lambda_, self.batch_norm, self.eps)
+    def compute(self, contrast_instance, *args, **kwargs) -> torch.FloatTensor:
+        anchor, sample, pos_mask, neg_mask = contrast_instance.unpack()
+
+        batch_size = anchor.size(0)
+        feature_dim = anchor.size(1)
+
+        if self.lambda_ is None:
+            lambda_ = 1. / feature_dim
+        else:
+            lambda_ = self.lambda_
+
+        if self.batch_norm:
+            z1_norm = (anchor - anchor.mean(dim=0)) / (anchor.std(dim=0) + self.eps)
+            z2_norm = (sample - sample.mean(dim=0)) / (sample.std(dim=0) + self.eps)
+            c = (z1_norm.T @ z2_norm) / batch_size
+        else:
+            c = anchor.T @ sample / batch_size
+
+        off_diagonal_mask = ~torch.eye(feature_dim).bool()
+        loss = (1 - c.diagonal()).pow(2).sum()
+        loss += lambda_ * c[off_diagonal_mask].pow(2).sum()
+
         return loss.mean()

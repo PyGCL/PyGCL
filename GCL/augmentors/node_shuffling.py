@@ -1,12 +1,22 @@
-from GCL.augmentors.augmentor import Graph, Augmentor
+from __future__ import annotations
+
+from GCL.augmentors.augmentor import PyGGraph, Augmentor
 from GCL.augmentors.functional import permute
 
 
 class NodeShuffling(Augmentor):
     def __init__(self):
+        """
+        Shuffle the nodes of the graph.
+        """
         super(NodeShuffling, self).__init__()
 
-    def augment(self, g: Graph) -> Graph:
-        x, edge_index, edge_weights = g.unfold()
-        x = permute(x)
-        return Graph(x=x, edge_index=edge_index, edge_weights=edge_weights)
+    def pyg_augment(self, g: PyGGraph):
+        g = g.clone()
+        g.x = permute(g.x)
+        return g
+
+    def dgl_augment(self, g: DGLGraph):
+        g = g.clone()
+        g.ndata['x'] = permute(g.ndata['x'])
+        return g

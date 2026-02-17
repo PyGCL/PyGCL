@@ -1,4 +1,4 @@
-from .augmentor import Graph, Augmentor, Compose, RandomChoice
+from .augmentor import Augmentor, Compose, RandomChoice, PyGAugmentor, DGLAugmentor
 from .identity import Identity
 from .rw_sampling import RWSampling
 from .ppr_diffusion import PPRDiffusion
@@ -10,9 +10,10 @@ from .node_shuffling import NodeShuffling
 from .feature_masking import FeatureMasking
 from .feature_dropout import FeatureDropout
 from .edge_attr_masking import EdgeAttrMasking
+from .adaptive_edge_removing import AdaptiveEdgeRemoving, DegreeWeights, PageRankWeights, EigenVectorWeights
+from .adaptive_feature_masking import AdaptiveFeatureMasking
 
 __all__ = [
-    'Graph',
     'Augmentor',
     'Compose',
     'RandomChoice',
@@ -26,7 +27,14 @@ __all__ = [
     'MarkovDiffusion',
     'NodeDropping',
     'NodeShuffling',
-    'RWSampling'
+    'RWSampling',
+    'PyGAugmentor',
+    'DGLAugmentor',
+    "AdaptiveEdgeRemoving",
+    "AdaptiveFeatureMasking",
+    "DegreeWeights",
+    "PageRankWeights",
+    "EigenVectorWeights"
 ]
 
 classes = __all__

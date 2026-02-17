@@ -7,7 +7,7 @@ python:
    version: 3.8
    system_packages: true
    install:
-      - requirements: docs/requirements.txt
+      - requirements: docs/requirements_docs.txt
       - method: setuptools
         path: .
 

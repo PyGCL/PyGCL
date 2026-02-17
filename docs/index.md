@@ -28,6 +28,7 @@ notes/installation
 :glob:
 
 modules/augmentors
+modules/eval
 ```
 
 # Indices and Tables

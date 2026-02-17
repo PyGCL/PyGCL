@@ -2,14 +2,16 @@ import torch
 import os.path as osp
 import GCL.losses as L
 
-from torch import nn
 from tqdm import tqdm
+from torch import nn
 from torch.optim import Adam
-from GCL.eval import get_split, LREvaluator
+from functools import partial
+from GCL.eval import random_split, LRTrainableEvaluator
 from GCL.models import SingleBranchContrast
+from sklearn.metrics import f1_score
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import uniform
-from torch_geometric.data import NeighborSampler
+from torch_geometric.loader import NeighborLoader
 from torch_geometric.datasets import Reddit
 
 
@@ -18,6 +20,7 @@ class GConv(nn.Module):
         super(GConv, self).__init__()
         self.layers = torch.nn.ModuleList()
         self.activations = torch.nn.ModuleList()
+        self.num_layers = num_layers
         for i in range(num_layers):
             if i == 0:
                 self.layers.append(SAGEConv(input_dim, hidden_dim))
@@ -25,10 +28,9 @@ class GConv(nn.Module):
                 self.layers.append(SAGEConv(hidden_dim, hidden_dim))
             self.activations.append(nn.PReLU(hidden_dim))
 
-    def forward(self, x, adjs):
-        for i, (edge_index, _, size) in enumerate(adjs):
-            x_target = x[:size[1]]
-            x = self.layers[i]((x, x_target), edge_index)
+    def forward(self, x, edge_index):
+        for i in range(self.num_layers):
+            x = self.layers[i](x, edge_index)
             x = self.activations[i](x)
         return x
 
@@ -54,11 +56,12 @@ class Encoder(torch.nn.Module):
 def train(encoder_model, contrast_model, data, dataloader, optimizer):
     encoder_model.train()
     total_loss = total_examples = 0
-    for batch_size, node_id, adjs in dataloader:
-        adjs = [adj.to('cuda') for adj in adjs]
+    for batch in dataloader:
+        batch = batch.to('cuda')
         optimizer.zero_grad()
-        z, g, zn = encoder_model(data.x[node_id], adjs)
-        loss = contrast_model(h=z, g=g, hn=zn)
+        z, g, zn = encoder_model(batch.x, batch.edge_index)
+        z = z[:batch.batch_size]
+        loss = contrast_model(h=z, g=g, hn=zn[:batch.batch_size])
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * z.shape[0]
@@ -66,18 +69,21 @@ def train(encoder_model, contrast_model, data, dataloader, optimizer):
     return total_loss / total_examples
 
 
-def test(encoder_model, data, dataloader):
+def eval(encoder_model, data, dataloader):
     encoder_model.eval()
     zs = []
-    for i, (batch_size, node_id, adjs) in enumerate(dataloader):
-        adjs = [adj.to('cuda') for adj in adjs]
-        z, _, _ = encoder_model(data.x[node_id], adjs)
-        zs.append(z)
+    for batch in dataloader:
+        batch = batch.to('cuda')
+        z, _, _ = encoder_model(batch.x, batch.edge_index)
+        zs.append(z[:batch.batch_size])
     x = torch.cat(zs, dim=0)
 
-    split = get_split(num_samples=x.size()[0], train_ratio=0.1, test_ratio=0.8)
-    result = LREvaluator()(x, data.y, split)
-    return result
+    split = random_split(num_samples=x.size(0), num_splits=10, train_ratio=0.1, test_ratio=0.8)
+    evaluator = LRTrainableEvaluator(
+        input_dim=x.size(1), num_classes=data.y.max().item() + 1,
+        metrics={'micro_f1': partial(f1_score, average='micro'), 'macro_f1': partial(f1_score, average='macro')},
+        split=split, device=data.x.device, test_metric='micro_f1')
+    return evaluator(x, data.y)
 
 
 def main():
@@ -89,12 +95,12 @@ def main():
     dataset = Reddit(path)
     data = dataset[0].to(device)
 
-    train_loader = NeighborSampler(data.edge_index, node_idx=None,
-                                   sizes=[10, 10, 25], batch_size=128,
-                                   shuffle=True, num_workers=32)
-    test_loader = NeighborSampler(data.edge_index, node_idx=None,
-                                  sizes=[10, 10, 25], batch_size=128,
-                                  shuffle=False, num_workers=32)
+    train_loader = NeighborLoader(
+        data, num_neighbors=[10, 10, 25], batch_size=128,
+        shuffle=True, num_workers=32)
+    test_loader = NeighborLoader(
+        data, num_neighbors=[10, 10, 25], batch_size=128,
+        shuffle=False, num_workers=32)
 
     gconv = GConv(input_dim=dataset.num_features, hidden_dim=512, num_layers=3).to(device)
     encoder_model = Encoder(encoder=gconv, hidden_dim=512).to(device)
@@ -108,8 +114,9 @@ def main():
             pbar.set_postfix({'loss': loss})
             pbar.update()
 
-    test_result = test(encoder_model, data, test_loader)
-    print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    test_result = eval(encoder_model, data, test_loader)
+    print(f'(E): Best test F1Mi={test_result["micro_f1"]["mean"]:.4f}±{test_result["micro_f1"]["std"]:.4f},'
+          f' F1Ma={test_result["macro_f1"]["mean"]:.4f}±{test_result["macro_f1"]["std"]:.4f}')
 
 
 if __name__ == '__main__':

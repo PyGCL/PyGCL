@@ -1,5 +1,9 @@
 # Installation
 
+```{contents} Contents
+:local:
+```
+
 ## Prerequisites
 
 PyGCL needs the following packages to be installed beforehand:

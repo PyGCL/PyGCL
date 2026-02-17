@@ -1,13 +1,27 @@
-from GCL.augmentors.augmentor import Graph, Augmentor
+from __future__ import annotations
+
+from GCL.augmentors.augmentor import PyGGraph, Augmentor
 from GCL.augmentors.functional import drop_feature
 
 
 class FeatureMasking(Augmentor):
     def __init__(self, pf: float):
+        """
+        Masks features with probability pf.
+        Args:
+            pf: probability of feature masking.
+        """
         super(FeatureMasking, self).__init__()
         self.pf = pf
 
-    def augment(self, g: Graph) -> Graph:
-        x, edge_index, edge_weights = g.unfold()
-        x = drop_feature(x, self.pf)
-        return Graph(x=x, edge_index=edge_index, edge_weights=edge_weights)
+    def pyg_augment(self, g: PyGGraph):
+        g = g.clone()
+        g.x = drop_feature(g.x, self.pf)
+        return g
+
+    def dgl_augment(self, g: DGLGraph):
+        g = g.clone()
+        new_x = drop_feature(g.ndata['x'], self.pf)
+        g.ndata['x'] = new_x
+
+        return g
